@@ -12,13 +12,15 @@ lazy val projectname = (project in file("."))
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
     scalacOptions += "-encoding=UTF-8",//用来支持中文注释
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin),
-    Compile / javaSource := baseDirectory.value / "hw"/"java",
+    Compile / javaSource := baseDirectory.value / "sw"/"java",
     javacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
+    //onnxruntime 依赖
     libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
     libraryDependencies ++= Seq(
       "org.junit.jupiter" % "junit-jupiter-api" % "5.7.0",
       "org.junit.jupiter" % "junit-jupiter-engine" % "5.7.0"
     ),
-  )
 
+  )
+// build.sbt
 fork := true
