@@ -283,10 +283,6 @@ public class ScoreMNIST {
           logger.info(i.toString());
         }
 
-        logger.info("Metadata:");
-        for (NodeInfo i : session){
-          logger.info(i.toString());
-        }
 
         logger.info("Outputs:");
         for (NodeInfo i : session.getOutputInfo().values()) {

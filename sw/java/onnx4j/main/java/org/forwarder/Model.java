@@ -69,7 +69,7 @@ public class Model extends org.onnx4j.Model {
 	}
 
 	public String getId() {
-		return id;
+		return this.id;
 	}
 
 	@Override

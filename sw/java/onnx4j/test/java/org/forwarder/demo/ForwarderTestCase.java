@@ -69,8 +69,7 @@ public abstract class ForwarderTestCase extends TestCase {
 		String absoluteModelPath = URLDecoder.decode(ForwarderTestCase.class.getResource(modelPath).getFile(), "utf-8");
 		assertNotNull(absoluteModelPath);
 
-		try (Forwarder forwarder = Forwarder
-				.config(Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build())
+		try (Forwarder forwarder = Forwarder.config(Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build())
 				.load(absoluteModelPath).executor(RayExecutor.class)) {
 			assert forwarder != null;
 			for (Entry<String, String> tensorPairPath : tensorPairPaths.entrySet()) {
@@ -100,10 +99,6 @@ public abstract class ForwarderTestCase extends TestCase {
 			}
 		} catch (Exception e) {
 			logger.error("Failed to close forwarder instance", e);
-		}finally {
-			
-				forwarder.close();
-			
 		}
 
 		logger.debug("Finished");
@@ -136,6 +131,7 @@ public abstract class ForwarderTestCase extends TestCase {
 		String tensorProtoPath = URLDecoder.decode(this.getClass().getResource(tensorProtoName).getFile(), "utf-8");
 		assertNotNull(tensorProtoPath);
 		TensorProto tensorProto = TensorProto.parseFrom(FileUtils.readFileToByteArray(new File(tensorProtoPath)));
+		forwarder.getConfig().getTensorOptions();
 		return TensorBuilder.builder(tensorProto, forwarder.getConfig().getTensorOptions())
 				.manager(forwarder.getModel().getTensorManager()).name(inputName).build();
 	}

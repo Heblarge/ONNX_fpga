@@ -24,7 +24,10 @@ lazy val projectname = (project in file("."))
     //  "org.junit.jupiter" % "junit-jupiter-engine" % "5.7.0" % Test,
 //
     //),
-    //libraryDependencies += "org.junit" % "junit" % "4.13.2" % Test,
+    // https://mvnrepository.com/artifact/junit/junit
+    libraryDependencies += "junit" % "junit" % "4.13.1" % Test,
+    libraryDependencies += "org.hamcrest" % "hamcrest-core" % "1.3" % Test,
+    libraryDependencies += "org.hamcrest" % "hamcrest-library" % "1.3" % Test,
     //onnx4j
     //libraryDependencies += "org" %% "forwarder.backend.tensorflow" % "0.0.1-SNAPSHOT",
     //libraryDependencies += "org" %% "forwarder.backend.dl4j" % "0.0.1",

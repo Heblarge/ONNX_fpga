@@ -113,11 +113,11 @@ public class Model extends OnnxObject implements AutoCloseable {
 	}
 
 	public Options getTensorOptions() {
-		return tensorOptions;
+		return this.tensorOptions;
 	}
 
 	public TensorManager<Tensor> getTensorManager() {
-		return tensorManager;
+		return this.tensorManager;
 	}
 	
 	@Override

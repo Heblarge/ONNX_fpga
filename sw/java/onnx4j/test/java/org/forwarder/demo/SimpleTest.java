@@ -43,6 +43,7 @@ import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+
 /**
  * Unit test for Forward class.
  */
@@ -77,8 +78,7 @@ public class SimpleTest extends TestCase {
 		String modelPath = URLDecoder.decode(SimpleTest.class.getResource("/simple/model.onnx").getFile(), "utf-8");
 		assertNotNull(modelPath);
 
-		this.forwarder = Forwarder
-				.config(Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build())
+		this.forwarder = Forwarder.config(Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build())
 				.load(modelPath).executor(RecursionExecutor.class);
 		assert forwarder != null;
 	}
