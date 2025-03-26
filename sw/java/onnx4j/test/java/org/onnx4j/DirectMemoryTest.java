@@ -19,18 +19,38 @@ package org.onnx4j;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
 import java.nio.ByteBuffer;
 import java.util.Random;
 
 import org.junit.Test;
 
-import sun.nio.ch.DirectBuffer;
 
 /**
  * Unit test for Direct memory allocation and deallocation
  */
 @SuppressWarnings("restriction")
 public class DirectMemoryTest {
+	/**
+     * 通过反射访问 DirectByteBuffer 的 cleaner 并手动释放内存
+     */
+    private void cleanDirectBuffer(ByteBuffer buffer) throws Exception {
+        if (buffer.isDirect()) {
+            // 获取 DirectByteBuffer 的 cleaner 字段（Java 8+）
+            Field cleanerField = buffer.getClass().getDeclaredField("cleaner");
+            cleanerField.setAccessible(true);
+            
+            // 调用 cleaner 的 clean() 方法
+            Object cleaner = cleanerField.get(buffer);
+            if (cleaner != null) {
+                Class<?> cleanerClass = cleaner.getClass();
+                Method cleanMethod = cleanerClass.getMethod("clean");
+                cleanMethod.invoke(cleaner);
+            }
+        }
+    }
 
 	/**
 	 * <p>
@@ -49,17 +69,19 @@ public class DirectMemoryTest {
 	 * 【VM参数：-XX:+PrintGCDetails -XX:MaxDirectMemorySize=100M】
 	 */
 	@Test
-	public void testWithDeallocateByManually() {
-		for (int n = 0; n < 100; n++) {
-			Float magicNum = new Random().nextFloat();
-			ByteBuffer buf = ByteBuffer.allocateDirect(100 * 1024 * 1024);
-			buf.putFloat(0, magicNum);
-			assertEquals(magicNum, Float.valueOf(buf.getFloat(0)));
-			((DirectBuffer) buf).cleaner().clean();
-			((DirectBuffer) buf).cleaner().clean();
-			// assertFalse(magicNum.equals(Float.valueOf(buf.getFloat(0))));
-		}
-	}
+    public void testWithDeallocateByManually() throws Exception {
+        for (int n = 0; n < 100; n++) {
+            Float magicNum = new Random().nextFloat();
+            ByteBuffer buf = ByteBuffer.allocateDirect(100 * 1024 * 1024);
+            buf.putFloat(0, magicNum);
+            assertEquals("写入和读取的值应一致", magicNum, Float.valueOf(buf.getFloat(0)));
+
+            // 手动清理内存（替代 ((DirectBuffer) buf).cleaner().clean()）
+            cleanDirectBuffer(buf);
+            
+            buf = null; // 帮助 GC 回收引用（非必需）
+        }
+    }
 
 	/**
 	 * <p>

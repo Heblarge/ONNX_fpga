@@ -100,6 +100,10 @@ public abstract class ForwarderTestCase extends TestCase {
 			}
 		} catch (Exception e) {
 			logger.error("Failed to close forwarder instance", e);
+		}finally {
+			
+				forwarder.close();
+			
 		}
 
 		logger.debug("Finished");

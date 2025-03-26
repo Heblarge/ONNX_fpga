@@ -285,7 +285,7 @@ public class ScoreMNIST {
 
         logger.info("Metadata:");
         for (NodeInfo i : session){
-          logger.info(i.toString())
+          logger.info(i.toString());
         }
 
         logger.info("Outputs:");
