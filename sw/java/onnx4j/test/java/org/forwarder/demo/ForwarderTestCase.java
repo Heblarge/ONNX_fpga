@@ -105,7 +105,7 @@ public abstract class ForwarderTestCase extends TestCase {
 	}
 
 	/**
-	 * 判别两个比对的Tensor，数据类型和形状是否相等，数值上是否相似（在指定的容差范围内）
+	 * Determines whether two compared tensors, data types and shapes are equal and numerically similar (within the specified tolerance range).
 	 * 
 	 * @param actual
 	 * @param excepted
@@ -141,5 +141,7 @@ public abstract class ForwarderTestCase extends TestCase {
 		return tensorString.length() > TENSOR_MAX_OUTPUT_LEN
 				? tensorString.subSequence(0, TENSOR_MAX_OUTPUT_LEN) + " ..." : tensorString;
 	}
+	
+
 
 }

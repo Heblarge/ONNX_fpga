@@ -25,9 +25,10 @@ public class MemoryTest {
 				.policyLearning(LearningPolicy.FIRST_LOOP).policyMirroring(MirroringPolicy.FULL)
 				.policySpill(SpillPolicy.EXTERNAL).build();
 
-		int len = 10000000;
+		int len = 4;
+		int iter =1;
 
-		for (int n = 0; n < 1000000; n++) {
+		for (int n = 0; n < iter; n++) {
 			// try (Nd4jWorkspace ws = (Nd4jWorkspace)
 			// Nd4j.getWorkspaceManager().getAndActivateWorkspace(wsCfg,
 			// "testws")) {
@@ -38,13 +39,22 @@ public class MemoryTest {
 			/*Nd4j.linspace(1, len, len).reshape(1, len)
 			.mmul(Nd4j.linspace(1, len, len).reshape(1, len).transpose());
 			System.gc();*/
-			INDArray a = Nd4j.linspace(1, len, len);
-			INDArray b = a.reshape(1, len);
-			INDArray c = Nd4j.linspace(1, len, len);
-			INDArray d = a.reshape(1, len);
-			INDArray e = d.transpose();
-			INDArray f = b.mmul(e);
-			System.out.println(f);
+			//测试一些INDArray的常规计算操作
+			INDArray a = Nd4j.linspace(1, len, len);//生成线性递增的数组，范围从1到len，长度为len
+			System.out.println("a:"+a);
+			INDArray b = a.reshape(1, len);//reshape为1行len列的数组
+			System.out.println("b:"+b);
+			INDArray c = Nd4j.linspace(1, len, len);//生成线性递增的数组，范围从1到len，长度为len
+			System.out.println(c);
+			INDArray d = a.reshape(1, len);//reshape为1行len列的数组
+			System.out.println(d);
+			INDArray e = d.transpose();//转置数组
+
+			System.out.println(e);
+			INDArray f = b.mmul(e);//矩阵乘法
+			System.out.println(f);//输出结果
+			System.out.println("iter:"+n);
+
 			//f.close();
 			//e.close();
 			//d.close();
@@ -96,10 +106,18 @@ public class MemoryTest {
 				- 2 * learningRate * temp.mul(features.getColumn(2)).sum(0).getDouble(0) / features.size(0);
 		parameter[3] = parameter[3] - 2 * learningRate * temp.sum(0).getDouble(0) / features.size(0);
 		INDArray functionResult = features.getColumn(0).mul(parameter[0]).add(features.getColumn(1).mul(parameter[1]))
-				.add(features.getColumn(2).mul(parameter[2])).add(parameter[3]).sub(label);// 用最新的参数计算总损失用
+				.add(features.getColumn(2).mul(parameter[2])).add(parameter[3]).sub(label);
 		double totalLoss = functionResult.mul(functionResult).sum(0).getDouble(0);
 		System.out.println("totalLoss:" + totalLoss);
 		System.out.println(parameter[0] + " " + parameter[1] + " " + parameter[2] + " " + parameter[3]);
+	}
+
+	public static void main(String[] args) {
+		MemoryTest test = new MemoryTest();
+        System.out.println("run testMemory()");
+        test.testMemory();
+        System.out.println("run  testLinearRegression()");
+        test.testLinearRegression();
 	}
 
 }

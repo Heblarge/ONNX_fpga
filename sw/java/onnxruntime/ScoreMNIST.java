@@ -2,7 +2,7 @@
  * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * Licensed under the MIT License.
  */
-package sample;
+package onnxruntime;
 
 import ai.onnxruntime.NodeInfo;
 import ai.onnxruntime.OnnxTensor;
