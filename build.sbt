@@ -18,16 +18,17 @@ lazy val projectname = (project in file("."))
     javacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
     //onnxruntime 依赖
     libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
-    //libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.2" % Test,
+    
     //libraryDependencies ++= Seq(
     //  "org.junit.jupiter" % "junit-jupiter-api" % "5.7.0" % Test,
     //  "org.junit.jupiter" % "junit-jupiter-engine" % "5.7.0" % Test,
 //
     //),
     // https://mvnrepository.com/artifact/junit/junit
-    libraryDependencies += "junit" % "junit" % "4.13.1" % Test,
-    libraryDependencies += "org.hamcrest" % "hamcrest-core" % "1.3" % Test,
-    libraryDependencies += "org.hamcrest" % "hamcrest-library" % "1.3" % Test,
+    //libraryDependencies += "junit" % "junit" % "4.13.1" % Test,
+    libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.1",
+    //libraryDependencies += "org.hamcrest" % "hamcrest-core" % "1.3" % Test,
+    //libraryDependencies += "org.hamcrest" % "hamcrest-library" % "1.3" % Test,
     //onnx4j
     //libraryDependencies += "org" %% "forwarder.backend.tensorflow" % "0.0.1-SNAPSHOT",
     //libraryDependencies += "org" %% "forwarder.backend.dl4j" % "0.0.1",
@@ -67,4 +68,5 @@ libraryDependencies += "org.reflections" % "reflections" % "0.9.11"
 
   )
 // build.sbt
+crossPaths := false
 fork := true
