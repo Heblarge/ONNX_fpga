@@ -68,7 +68,9 @@ public class ModelTest extends TestCase {
 				this.handle(g, output.getNode());
 			}
 			
-			model.close();
+			//model.close();
+			//Model是个AutoCloseable，所以可以自动关闭
+
 		}
 	}
 	

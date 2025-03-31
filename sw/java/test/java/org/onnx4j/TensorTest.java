@@ -50,7 +50,7 @@ public class TensorTest {
 
 			@Override
 			protected void dispose(Tensor tensor) {
-				tensor.close();//! 就是这个有问题
+				tensor.close();
 			}
 
 		};
