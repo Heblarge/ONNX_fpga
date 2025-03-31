@@ -42,6 +42,7 @@ public class DL4JBackend extends Backend<INDArray> {
 	public DL4JBackend(Model model) {
 		super(model);
 	}
+	
 
 	@Override
 	public String getName() {

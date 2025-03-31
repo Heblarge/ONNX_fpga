@@ -41,6 +41,10 @@ public enum BackendRegistry {
 		logger.info("Backend named \"{}\" has installed", backend.getName());
 	}
 	
+	/**
+	 * Retrieves the map of registered backends.
+	 * @return A map containing the names and classes of all registered backends.
+	 */
 	public Map<String, Class<? extends Backend>> get() {
 		return this.backends;
 	}

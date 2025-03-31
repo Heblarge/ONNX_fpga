@@ -30,6 +30,7 @@ import javax.naming.OperationNotSupportedException;
 
 import org.apache.commons.io.FileUtils;
 import org.forwarder.Backend;
+import org.forwarder.Model;
 import org.forwarder.Config;
 import org.forwarder.Forwarder;
 import org.forwarder.Session;
@@ -69,14 +70,16 @@ public abstract class ForwarderTestCase extends TestCase {
 		String absoluteModelPath = URLDecoder.decode(ForwarderTestCase.class.getResource(modelPath).getFile(), "utf-8");
 		assertNotNull(absoluteModelPath);
 
-		try (Forwarder forwarder = Forwarder.config(Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build())
-				.load(absoluteModelPath).executor(RayExecutor.class)) {
+		try {
+			Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build();
+			Forwarder forwarder = new Forwarder();
+			Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(RayExecutor.class);
 			assert forwarder != null;
 			for (Entry<String, String> tensorPairPath : tensorPairPaths.entrySet()) {
-				Tensor inputTensor = this.loadTensor(forwarder, inputName, tensorPairPath.getKey());
+				Tensor inputTensor = this.loadTensor(loadedModel, inputName, tensorPairPath.getKey());
 				logger.debug("Loaded input tensor proto named \"{}\"", tensorPairPath.getKey());
 
-				Tensor exceptedOutputTensor = this.loadTensor(forwarder, inputName, tensorPairPath.getValue());
+				Tensor exceptedOutputTensor = this.loadTensor(loadedModel, inputName, tensorPairPath.getValue());
 				logger.debug("Loaded input tensor proto named \"{}\"", tensorPairPath.getValue());
 
 				logger.debug("Input Tensor: {}", this.dumpTensor(inputTensor));
@@ -84,7 +87,7 @@ public abstract class ForwarderTestCase extends TestCase {
 
 				for (String backendName : backendNames) {
 					for (int n = 0; n < 50; n++) {
-					Backend<?> backend = forwarder.backend(backendName);
+					Backend<?> backend = loadedModel.backend(backendName);
 					try (Session<?> session = backend.newSession()) {
 						Tensor y0 = session.feed(inputTensor, false).forward().getOutput(outputName);
 
@@ -125,15 +128,15 @@ public abstract class ForwarderTestCase extends TestCase {
 		}
 	}
 
-	protected Tensor loadTensor(Forwarder forwarder, String inputName, String tensorProtoName)
+	protected Tensor loadTensor(Model model, String inputName, String tensorProtoName)
 			throws InvalidProtocolBufferException, IOException, NoSuchFieldException, SecurityException,
 			IllegalArgumentException, IllegalAccessException {
 		String tensorProtoPath = URLDecoder.decode(this.getClass().getResource(tensorProtoName).getFile(), "utf-8");
 		assertNotNull(tensorProtoPath);
 		TensorProto tensorProto = TensorProto.parseFrom(FileUtils.readFileToByteArray(new File(tensorProtoPath)));
-		forwarder.getConfig().getTensorOptions();
-		return TensorBuilder.builder(tensorProto, forwarder.getConfig().getTensorOptions())
-				.manager(forwarder.getModel().getTensorManager()).name(inputName).build();
+		model.getConfig().getTensorOptions();
+		return TensorBuilder.builder(tensorProto, model.getConfig().getTensorOptions())
+				.manager(model.getTensorManager()).name(inputName).build();
 	}
 
 	protected String dumpTensor(Tensor tensor) {
