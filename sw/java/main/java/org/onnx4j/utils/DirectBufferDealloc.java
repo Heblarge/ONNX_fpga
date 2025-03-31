@@ -20,8 +20,9 @@ public class DirectBufferDealloc {
 			getCleanerMethod = directBufferClass.getMethod("cleaner");
 			getAttachmentMethod = directBufferClass.getMethod("attachment");
 
-			cleanerClass = Class.forName("sun.misc.Cleaner");
-			doCleanMethod = cleanerClass.getMethod("clean");
+			// Java 9+中Cleaner位于jdk.internal.ref包
+            cleanerClass = Class.forName("jdk.internal.ref.Cleaner");
+            doCleanMethod = cleanerClass.getMethod("clean");
 		} catch (ClassNotFoundException | NoSuchMethodException e) {
 
 			throw new RuntimeException(e);

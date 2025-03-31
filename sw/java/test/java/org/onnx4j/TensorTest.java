@@ -18,12 +18,17 @@ package org.onnx4j;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.Reference;
 import java.nio.ByteBuffer;
 
 import org.junit.Test;
+
+import org.onnx4j.Tensor;
 import org.onnx4j.tensor.DataType;
 import org.onnx4j.tensor.Shape;
 import org.onnx4j.tensor.TensorBuilder;
@@ -45,14 +50,14 @@ public class TensorTest {
 
 			@Override
 			protected void dispose(Tensor tensor) {
-				tensor.close();
+				tensor.close();//! 就是这个有问题
 			}
 
 		};
 		TensorBuilder builder = TensorBuilder.builder(DataType.FLOAT, Shape.create(2L, 3L, 3L), Tensor.options())
 				.manager(tsMgr);
 		for (int n = 0; n < 2 * 3 * 3; n++) {
-			builder.putFloat(new Float(n));
+			builder.putFloat(Float.valueOf(n));
 		}
 
 		try (Tensor ts = builder.build()) {
@@ -95,19 +100,14 @@ public class TensorTest {
 		assertNull(pf.get());
 		assertNull(queue.poll());
 
-		// tensor = null;
-		while (true) {
-			System.gc();
-			// assertNotNull(queue.poll());
-			if (queue.poll() != null)
-				break;
-			else {
-				/*
-				 * try { Thread.sleep(500); } catch (InterruptedException e) {
-				 * // TODO Auto-generated catch block e.printStackTrace(); }
-				 */
-			}
-		}
+		tensor = null;
+		try {
+        // 设置超时（例如5秒）
+        Reference<? extends Tensor> ref = queue.remove(5000);
+        	assertNotNull("Tensor is not recollected", ref);
+    	} catch (InterruptedException e) {
+    	    fail("time out");
+    	}
 
 		// tensor = null;
 		// System.gc();
