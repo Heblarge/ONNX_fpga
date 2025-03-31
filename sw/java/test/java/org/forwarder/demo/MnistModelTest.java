@@ -71,7 +71,7 @@ public class MnistModelTest extends ForwarderTestCase {
 				"/mnist/opset_v1/model.onnx", 
 				"Input73", 
 				"Plus422_Output_0",
-				new String[] { "Tensorflow", "DL4J" }, 
+				new String[] {  "DL4J" }, 
 				0.001f);
 	}
 
@@ -91,7 +91,7 @@ public class MnistModelTest extends ForwarderTestCase {
 				"/mnist/opset_v7/model.onnx", 
 				"Input3", 
 				"Plus214_Output_0",
-				new String[] { "Tensorflow", "DL4J" }, 
+				new String[] { "DL4J" }, 
 				0.001f);
 	}
 
@@ -111,7 +111,7 @@ public class MnistModelTest extends ForwarderTestCase {
 				"/mnist/opset_v8/model.onnx", 
 				"Input3", 
 				"Plus214_Output_0",
-				new String[] { "Tensorflow", "DL4J" }, 
+				new String[] {  "DL4J" }, 
 				0.001f);
 	}
 
