@@ -81,7 +81,7 @@ public class SimpleTest extends TestCase {
 
 		String modelPath = URLDecoder.decode(SimpleTest.class.getResource("/simple/model.onnx").getFile(), "utf-8");
 		assertNotNull(modelPath);
-		Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build();
+		Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).setExecutor(RecursionExecutor.class).build();
 		
 
 		this.forwarder = new Forwarder();

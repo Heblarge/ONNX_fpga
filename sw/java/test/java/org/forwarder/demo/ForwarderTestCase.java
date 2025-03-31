@@ -71,19 +71,20 @@ public abstract class ForwarderTestCase extends TestCase {
 		assertNotNull(absoluteModelPath);
 
 		try {
-			Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).build();
+			Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).setExecutor(RayExecutor.class).build();
 			Forwarder forwarder = new Forwarder();
 			Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(RayExecutor.class);
 			assert forwarder != null;
+			assert loadedModel!=null;
 			for (Entry<String, String> tensorPairPath : tensorPairPaths.entrySet()) {
 				Tensor inputTensor = this.loadTensor(loadedModel, inputName, tensorPairPath.getKey());
-				logger.debug("Loaded input tensor proto named \"{}\"", tensorPairPath.getKey());
+				logger.info("Loaded input tensor proto named \"{}\"", tensorPairPath.getKey());
 
 				Tensor exceptedOutputTensor = this.loadTensor(loadedModel, inputName, tensorPairPath.getValue());
-				logger.debug("Loaded input tensor proto named \"{}\"", tensorPairPath.getValue());
+				logger.info("Loaded input tensor proto named \"{}\"", tensorPairPath.getValue());
 
-				logger.debug("Input Tensor: {}", this.dumpTensor(inputTensor));
-				logger.debug("Excepted Tensor: {}", this.dumpTensor(exceptedOutputTensor));
+				logger.info("Input Tensor: {}", this.dumpTensor(inputTensor));
+				logger.info("Excepted Tensor: {}", this.dumpTensor(exceptedOutputTensor));
 
 				for (String backendName : backendNames) {
 					for (int n = 0; n < 50; n++) {
@@ -91,20 +92,20 @@ public abstract class ForwarderTestCase extends TestCase {
 					try (Session<?> session = backend.newSession()) {
 						Tensor y0 = session.feed(inputTensor, false).forward().getOutput(outputName);
 
-						logger.debug("Actual: {}", this.dumpTensor(y0));
+						logger.info("Actual: {}", this.dumpTensor(y0));
 
-						this.assertSimilarity(y0, exceptedOutputTensor, 0.001f);
+						this.assertSimilarity(y0, exceptedOutputTensor, tolerance);
 					}
 					}
 				}
 
-				inputTensor.close();
+				//inputTensor.close();
 			}
 		} catch (Exception e) {
 			logger.error("Failed to close forwarder instance", e);
 		}
 
-		logger.debug("Finished");
+		logger.info("Finished");
 	}
 
 	/**

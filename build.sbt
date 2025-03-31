@@ -35,7 +35,10 @@ javaOptions ++= Seq(
   "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
   "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
   "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED",
-  "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED"
+  "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+  "--add-exports=java.base/sun.nio=ALL-UNNAMED",
+  "--add-opens=java.base/java.nio=ALL-UNNAMED"
 )
 //onnx4j
 libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.1"

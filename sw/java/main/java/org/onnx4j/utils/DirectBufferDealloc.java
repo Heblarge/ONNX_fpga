@@ -66,6 +66,7 @@ public class DirectBufferDealloc {
 				throw new RuntimeException(e);
 			}
 		} else {
+			//System.out.println("you are trying to clean object which is not a Instance of directBufferClass,deallocateDirectBuffer0 will ignore it");
 			return false;
 		}
 	}
