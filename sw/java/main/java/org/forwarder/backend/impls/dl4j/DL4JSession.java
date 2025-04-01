@@ -56,7 +56,8 @@ public class DL4JSession extends Session<INDArray> {
 	                .policyLocation(LocationPolicy.RAM)
 	                .build(),
                 ND4J_WORKSPACE_NAME_PREFIX + UUID.randomUUID());
-		this.workspace.enableDebug(backend.getModel().getConfig().isDebug());
+		if(backend!=null)
+		{this.workspace.enableDebug(backend.getModel().getConfig().isDebug());}
 	}
 	
 	public MemoryWorkspace getMemoryWorkspace() {

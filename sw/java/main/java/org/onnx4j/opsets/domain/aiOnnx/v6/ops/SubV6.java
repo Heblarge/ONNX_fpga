@@ -72,6 +72,7 @@ public interface SubV6 extends SubV1, AiOnnxOperatorV6 {
 	 * tensor(uint32), tensor(uint64), tensor(int32), tensor(int64),
 	 * tensor(float16), tensor(float), tensor(double).
 	 */
+	//!此处更改为highPrecisionNumeric数据类型支持
 	public static final TypeConstraint TPYE_CONSTRAINT_T = new TypeConstraint(DataType.highPrecisionNumeric());
 
 	/**
