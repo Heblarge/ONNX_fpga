@@ -21,11 +21,13 @@ import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v7.ops.DL4JAveragePoolV7;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v7.ops.DL4JBatchNormalizationV7;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v7.ops.DL4JDropoutV7;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v7.ops.DL4JSubV7;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v7.ops.DL4JAddV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.AiOnnxOperatorSetInitializerV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.AveragePoolV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.BatchNormalizationV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.DropoutV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.SubV7;
+import org.onnx4j.opsets.domain.aiOnnx.v7.ops.AddV7;
 
 public class DL4JAiOnnxOperatorSetV7 extends DL4JAiOnnxOperatorSetV6 implements AiOnnxOperatorSetInitializerV7 {
 
@@ -43,6 +45,9 @@ public class DL4JAiOnnxOperatorSetV7 extends DL4JAiOnnxOperatorSetV6 implements 
 
 	@Override
 	public SubV7 getSubV7() { return new DL4JSubV7(); }
+
+	@Override
+	public AddV7 getAddV7() { return new DL4JAddV7(); }
 
 	public DL4JAiOnnxOperatorSetV7() {
 		super(1, "", "", 7L, "ONNX OPSET-V7 USING DL4J BACKEND");

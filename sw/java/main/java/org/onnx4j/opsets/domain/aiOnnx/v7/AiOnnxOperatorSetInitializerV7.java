@@ -24,6 +24,7 @@ import org.onnx4j.opsets.domain.aiOnnx.v7.ops.AveragePoolV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.BatchNormalizationV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.DropoutV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.SubV7;
+import org.onnx4j.opsets.domain.aiOnnx.v7.ops.AddV7;
 
 /**
  * Default ONNX Operator Set in version 7
@@ -43,6 +44,8 @@ public interface AiOnnxOperatorSetInitializerV7 extends AiOnnxOpsetInitializerV6
 
 	public abstract SubV7 getSubV7();
 
+	public abstract AddV7 getAddV7();
+
 	@Override
 	public default Map<String, Operator> initializeOperators() {
 		Map<String, Operator> operators = AiOnnxOpsetInitializerV6.super.initializeOperators();
@@ -55,6 +58,8 @@ public interface AiOnnxOperatorSetInitializerV7 extends AiOnnxOpsetInitializerV6
 		operators.put(AveragePoolV7.OP_TYPE, this.getAveragePoolV7());
 		// 20191227
 		operators.put(SubV7.OP_TYPE, this.getSubV7());
+		// 20250402
+		operators.put(AddV7.OP_TYPE, this.getAddV7());
 		return operators;
 	}
 

@@ -27,9 +27,9 @@ import java.util.regex.Pattern;
  * Demo code, supporting both a pytorch CNN trained on MNIST and a scikit-learn model trained on
  * MNIST.
  */
-public class ScoreMNIST {
+public class OnnxRuntime_run_MNIST {
 
-  private static final Logger logger = Logger.getLogger(ScoreMNIST.class.getName());
+  private static final Logger logger = Logger.getLogger(OnnxRuntime_run_MNIST.class.getName());
 
   /** Pattern for splitting libsvm format files. */
   private static final Pattern splitPattern = Pattern.compile("\\s+");

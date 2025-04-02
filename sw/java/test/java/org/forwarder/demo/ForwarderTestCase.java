@@ -93,6 +93,7 @@ public abstract class ForwarderTestCase extends TestCase {
 						Tensor y0 = session.feed(inputTensor, false).forward().getOutput(outputName);
 
 						logger.info("Actual: {}", this.dumpTensor(y0));
+						logger.info("Excepted: {}", this.dumpTensor(exceptedOutputTensor));
 
 						this.assertSimilarity(y0, exceptedOutputTensor, tolerance);
 					}

@@ -25,6 +25,7 @@ import org.onnx4j.opsets.domain.aiOnnx.v7.ops.AveragePoolV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.BatchNormalizationV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.DropoutV7;
 import org.onnx4j.opsets.domain.aiOnnx.v7.ops.SubV7;
+import org.onnx4j.opsets.domain.aiOnnx.v7.ops.AddV7;
 
 public class TFAiOnnxOperatorSetV7 extends TFAiOnnxOperatorSetV6 implements AiOnnxOperatorSetInitializerV7 {
 
@@ -57,5 +58,10 @@ public class TFAiOnnxOperatorSetV7 extends TFAiOnnxOperatorSetV6 implements AiOn
 		// TODO Auto-generated method stub
 		return null;
 	}
+	public AddV7 getAddV7() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 
 }
