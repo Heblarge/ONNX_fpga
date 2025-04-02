@@ -45,6 +45,12 @@ public class DL4JSubV1 extends DL4JAiOnnxOperator implements SubV1 {
 			INDArray out = Nd4j.createUninitialized(a.shape(), a.ordering());
 			return Broadcast.sub(a, b, out, (axis != null) ? axis.intValue() : 0);
 		} else {
+			if(a.shape()!=b.shape()){
+				throw new IllegalStateException(
+					String.format("Shape mismatch when broadcast != 1. a.shape=%s, b.shape=%s",
+            a.shape(),
+            b.shape())
+				);}
 			return a.sub(b);
 		}
 	}

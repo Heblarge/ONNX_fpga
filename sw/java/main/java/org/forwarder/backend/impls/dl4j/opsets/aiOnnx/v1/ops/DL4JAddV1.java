@@ -45,6 +45,12 @@ public class DL4JAddV1 extends DL4JAiOnnxOperator implements AddV1 {
 			INDArray out = Nd4j.createUninitialized(a.shape(), a.ordering());
 			return Broadcast.add(a, b, out, (axis != null) ? axis.intValue() : 0);
 		} else {
+			if(a.shape()!=b.shape()){
+				throw new IllegalStateException(
+					String.format("Shape mismatch when broadcast != 1. a.shape=%s, b.shape=%s",
+            a.shape(),
+            b.shape())
+				);}
 			return a.add(b);
 		}
 	}

@@ -45,6 +45,12 @@ public class DL4JDivV1 extends DL4JAiOnnxOperator implements DivV1 {
 			INDArray out = Nd4j.createUninitialized(a.shape(), a.ordering());
 			return Broadcast.div(a, b, out, (axis != null) ? axis.intValue() : 0);
 		} else {
+			if(a.shape()!=b.shape()){
+				throw new IllegalStateException(
+					String.format("Shape mismatch when broadcast != 1. a.shape=%s, b.shape=%s",
+            a.shape(),
+            b.shape())
+				);}
 			return a.div(b);
 		}
 	}
