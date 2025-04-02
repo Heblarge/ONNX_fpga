@@ -40,6 +40,12 @@ public class DL4JMulV6 extends DL4JMulV1 implements MulV6 {
 		if (broadcast == 1L) {
 			return Broadcast.mul(a, b, a, axis.intValue());
 		} else {
+			if(a.shape()!=b.shape()){
+				throw new IllegalStateException(
+					String.format("Shape mismatch when broadcast != 1. a.shape=%s, b.shape=%s",
+            a.shape(),
+            b.shape())
+				);}
 			return a.mul(b);
 		}
 	}
