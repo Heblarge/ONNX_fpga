@@ -19,6 +19,7 @@ package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v1.ops;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.DL4JAiOnnxOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v1.ops.ShapeV1;
@@ -34,7 +35,7 @@ public class DL4JShapeV1 extends DL4JAiOnnxOperator implements ShapeV1 {
 	}
 
 	protected INDArray shape(INDArray data) {
-		return Nd4j.create(data.shapeInfoDataBuffer(), data.shape());
+		return Nd4j.createFromArray(data.shape()).castTo(DataType.LONG);
 	}
 
 }

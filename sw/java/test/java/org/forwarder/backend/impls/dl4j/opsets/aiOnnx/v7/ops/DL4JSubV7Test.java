@@ -171,10 +171,14 @@ public class DL4JSubV7Test extends DL4JTestCase {
 	@Test
 	public void test8() throws Exception {
 		try (INDArray excepted = null; INDArray a = Nd4j.create(3); INDArray b = Nd4j.create(4)) {
-			//thrown.expect(IllegalStateException.class);
+			thrown.expect(IllegalStateException.class);
 			this.testSub(excepted, a, b);
+		}
+		try (INDArray excepted = null; INDArray a = Nd4j.create(3); INDArray b = Nd4j.create(4)) {
+			thrown.expect(IllegalStateException.class);
 			this.testSub(excepted, b, a);
 		}
+		
 	}
 
 	/**
@@ -187,10 +191,14 @@ public class DL4JSubV7Test extends DL4JTestCase {
 	@Test
 	public void test9() throws Exception {
 		try (INDArray excepted = null; INDArray a = Nd4j.create(2, 1); INDArray b = Nd4j.create(8, 4, 3)) {
-			//thrown.expect(IllegalStateException.class);
+			thrown.expect(IllegalStateException.class);
 			this.testSub(excepted, a, b);
+		}
+		try (INDArray excepted = null; INDArray a = Nd4j.create(2, 1); INDArray b = Nd4j.create(8, 4, 3)) {
+			thrown.expect(IllegalStateException.class);
 			this.testSub(excepted, b, a);
 		}
+		
 	}
 
 	private void testSub(INDArray excepted, INDArray a, INDArray b) throws Exception {
@@ -200,6 +208,7 @@ public class DL4JSubV7Test extends DL4JTestCase {
 			System.out.println(String.format("{Excepted: %s} - {Actual: %s}", excepted.shapeInfoToString(),
 					y.shapeInfoToString()));
 			assertTrue(y.equalShapes(excepted));
+			//assertTrue(y.equalsWithEps(excepted,1e-4));
 		}
 	}
 
