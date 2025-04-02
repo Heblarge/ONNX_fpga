@@ -26,6 +26,7 @@ import org.onnx4j.opsets.domain.aiOnnx.v6.ops.CastV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.DropoutV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.MulV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SigmoidV6;
+import org.onnx4j.opsets.domain.aiOnnx.v6.ops.AddV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SubV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SumV6;
 
@@ -55,6 +56,10 @@ public class TFAiOnnxOperatorSetV6 extends TFAiOnnxOperatorSetV5 implements AiOn
 		return null;
 	}
 
+	@Override
+	public AddV6 getAddV6() {
+		return null;
+	}
 	@Override
 	public SubV6 getSubV6() {
 		// TODO Auto-generated method stub

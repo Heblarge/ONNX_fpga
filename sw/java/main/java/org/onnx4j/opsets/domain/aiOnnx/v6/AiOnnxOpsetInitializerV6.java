@@ -26,10 +26,11 @@ import org.onnx4j.opsets.domain.aiOnnx.v6.ops.DropoutV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.MulV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SigmoidV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SubV6;
+import org.onnx4j.opsets.domain.aiOnnx.v6.ops.AddV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SumV6;
 
 /**
- * Default ONNX Operator Set in version 2
+ * Default ONNX Operator Set in version 6
  * 
  * @author HarryLee
  *
@@ -43,6 +44,8 @@ public interface AiOnnxOpsetInitializerV6 extends AiOnnxOpsetInitializerV5 {
 	public abstract CastV6 getCastV6();
 
 	public abstract SubV6 getSubV6();
+
+	public abstract AddV6 getAddV6();
 
 	public abstract SumV6 getSumV6();
 
@@ -61,6 +64,8 @@ public interface AiOnnxOpsetInitializerV6 extends AiOnnxOpsetInitializerV5 {
 		operators.put(CastV6.OP_TYPE, this.getCastV6());
 		// 20191227
 		operators.put(SubV6.OP_TYPE, this.getSubV6());
+		// 20250402
+		operators.put(AddV6.OP_TYPE, this.getAddV6());
 		// 20191230
 		operators.put(SumV6.OP_TYPE, this.getSumV6());
 		// 20191231

@@ -23,6 +23,7 @@ import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v6.ops.DL4JDropoutV6;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v6.ops.DL4JMulV6;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v6.ops.DL4JSigmoidV6;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v6.ops.DL4JSubV6;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v6.ops.DL4JAddV6;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v6.ops.DL4JSumV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.AiOnnxOpsetInitializerV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.BatchNormalizationV6;
@@ -31,10 +32,14 @@ import org.onnx4j.opsets.domain.aiOnnx.v6.ops.DropoutV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.MulV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SigmoidV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SubV6;
+import org.onnx4j.opsets.domain.aiOnnx.v6.ops.AddV6;
 import org.onnx4j.opsets.domain.aiOnnx.v6.ops.SumV6;
 
 public class DL4JAiOnnxOperatorSetV6 extends DL4JAiOnnxOperatorSetV5 implements AiOnnxOpsetInitializerV6 {
 
+	@Override
+	public AddV6 getAddV6() { return new DL4JAddV6(); }
+	
 	@Override
 	public MulV6 getMulV6() { return new DL4JMulV6(); }
 
