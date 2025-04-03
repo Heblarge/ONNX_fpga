@@ -3,6 +3,7 @@
 *.bak
 *.py
 extract.json
+/rtl/
 
 # sbt specific
 .cache/
