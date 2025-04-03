@@ -1,0 +1,48 @@
+package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v8.ops;
+
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.DL4JAiOnnxOperator;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.api.buffer.DataType;
+import org.nd4j.linalg.factory.Nd4j;
+import org.onnx4j.Inputs;
+import org.onnx4j.model.graph.Node;
+import org.onnx4j.opsets.domain.aiOnnx.v8.ops.ExpandV8;
+import org.onnx4j.opsets.operator.OperatorOutputs;
+
+public class DL4JExpandV8 extends DL4JAiOnnxOperator implements ExpandV8 {
+
+    @Override
+    public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
+        ExpandInputsV8<INDArray> castedInputs = new ExpandInputsV8<>(node, inputs);
+        INDArray input = castedInputs.getInput();
+        INDArray shapeTensor = castedInputs.getShape();
+
+        INDArray expanded = expand(input, shapeTensor);
+
+        return new ExpandOutputV8<>(expanded);
+    }
+
+    /**
+     * 实现 Expand 算子逻辑：将输入张量 broadcast 到目标形状
+     *
+     * @param input        输入张量
+     * @param shapeTensor  目标 shape，ONNX 中为 1D int64 张量
+     * @return broadcast 结果
+     */
+    protected INDArray expand(INDArray input, INDArray shapeTensor) {
+        // 读取目标形状
+        long[] targetShape = shapeTensor.toLongVector();
+
+        // 广播实现（注：expandDims 返回视图）
+        INDArray broadcasted = input.broadcast(targetShape);
+
+        // 可选：强制拷贝为新内存（有些算子要求返回可写副本）
+        return broadcasted;
+
+//        INDArray detachedCopy = Nd4j.zeros(broadcasted.shape()).castTo(broadcasted.dataType());
+//        detachedCopy.assign(broadcasted);
+//        return detachedCopy;
+
+    }
+}
+

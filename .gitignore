@@ -1,6 +1,8 @@
 *.class
 *.log
 *.bak
+*.py
+extract.json
 
 # sbt specific
 .cache/

@@ -32,8 +32,14 @@ public abstract class OperatorInputs<T_TENSOR> {
 	protected Attributes attrs;
 
 	public OperatorInputs(Node node, Inputs inputs) {
+//		this.inputArray = inputs.get();
+//		this.attrs = node.getAttrs();
 		this.inputArray = inputs.get();
-		this.attrs = node.getAttrs();
+		if (node != null) {
+			this.attrs = node.getAttrs();
+		} else {
+			this.attrs = null; // 或 new Attributes()
+		}
 	}
 
 	public <T extends OperatorInputs<T_TENSOR>> T cast(Class<T> clazz) {

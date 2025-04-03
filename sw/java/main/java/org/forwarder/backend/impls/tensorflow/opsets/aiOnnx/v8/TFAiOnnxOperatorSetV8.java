@@ -19,6 +19,7 @@ package org.forwarder.backend.impls.tensorflow.opsets.aiOnnx.v8;
 import org.forwarder.backend.impls.tensorflow.opsets.aiOnnx.v7.TFAiOnnxOperatorSetV7;
 import org.onnx4j.opsets.domain.aiOnnx.v8.AiOnnxOpsetInitializerV8;
 import org.onnx4j.opsets.domain.aiOnnx.v8.ops.SumV8;
+import org.onnx4j.opsets.domain.aiOnnx.v8.ops.ExpandV8;
 
 public class TFAiOnnxOperatorSetV8 extends TFAiOnnxOperatorSetV7 implements AiOnnxOpsetInitializerV8 {
 
@@ -37,4 +38,9 @@ public class TFAiOnnxOperatorSetV8 extends TFAiOnnxOperatorSetV7 implements AiOn
 		return null;
 	}
 
+	@Override
+	public ExpandV8 getExpandV8() {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

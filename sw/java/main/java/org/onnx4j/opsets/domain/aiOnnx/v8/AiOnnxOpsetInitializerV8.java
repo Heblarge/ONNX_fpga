@@ -21,6 +21,7 @@ import java.util.Map;
 import org.onnx4j.opsets.Operator;
 import org.onnx4j.opsets.domain.aiOnnx.v7.AiOnnxOperatorSetInitializerV7;
 import org.onnx4j.opsets.domain.aiOnnx.v8.ops.SumV8;
+import org.onnx4j.opsets.domain.aiOnnx.v8.ops.ExpandV8;
 
 /**
  * Default ONNX Operator Set in version 8
@@ -32,11 +33,16 @@ public interface AiOnnxOpsetInitializerV8 extends AiOnnxOperatorSetInitializerV7
 
 	public abstract SumV8 getSumV8();
 
+	public abstract ExpandV8 getExpandV8();
+
 	@Override
 	public default Map<String, Operator> initializeOperators() {
 		Map<String, Operator> operators = AiOnnxOperatorSetInitializerV7.super.initializeOperators();
 		// 20191230
 		operators.put(SumV8.OP_TYPE, this.getSumV8());
+
+		operators.put(ExpandV8.OP_TYPE, this.getExpandV8());
+
 		return operators;
 	}
 

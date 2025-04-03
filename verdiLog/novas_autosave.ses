@@ -1,0 +1,81 @@
+@verdi rc file Version 1.0
+[General]
+saveDB = TRUE
+relativePath = FALSE
+saveSingleView = FALSE
+saveNWaveWinId = 
+VerdiVersion = Verdi_N-2017.12-SP2
+[KeyNote]
+Line1 = Automatic Backup 0
+Line2 = Save Open Database Information: Yes
+Line3 = Path Option: Absolute Paths
+Line4 = Windows Option: All Windows
+[TestBench]
+ConstrViewShow = 0
+InherViewShow = 0
+FSDBMsgShow = 0
+AnnotationShow = 0
+powerDumped = 0
+[hb]
+postSimFile = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb
+syncTime = 300
+viewport = 297 280 2136 1354 0 0 1104 2134
+activeNode = "HadamardProduct"
+activeScope = "HadamardProduct"
+activeFile = "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/./simWorkspace/tmp/job_1/HadamardProduct.v"
+interactiveMode = False
+viewType = Source
+simulatorMode = False
+sourceBeginLine = 6
+baMode = False
+srcLineNum = True
+AutoWrap = True
+IdentifyFalseLogic = False
+syncSignal = False
+traceMode = Hierarchical
+showTraceInSchema = True
+paMode = False
+funcMode = False
+powerAwareAnnot = True
+amsAnnot = True
+traceCrossHier = True
+DnDtraceCrossHierOnly = True
+traceIncTopPort = False
+leadingZero = False
+signalPane = False
+Scope1 = "HadamardProduct"
+multipleSelection = 1 5 2 0 0
+sdfCheckUndef = FALSE
+simFlow = FALSE
+[hb.design]
+importCmd = "-dbdir" "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/HadamardProduct.daidir" 
+invokeDir = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM
+[hb.sourceTab.1]
+scope = HadamardProduct
+File = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/tmp/job_1/HadamardProduct.v
+Line = 7
+[nMemoryManager]
+FsdbFile = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb
+UserActionNum = 0
+nMemWindowNum = 0
+[wave.0]
+viewPort = 0 28 2136 852 475 39
+primaryWindow = TRUE
+SessionFile = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/verdiLog/novas_autosave.ses.wave.0
+displayGrid = FALSE
+hierarchicalName = FALSE
+snap = TRUE
+displayLeadingZeros = FALSE
+fixDelta = FALSE
+displayCursorMarker = FALSE
+autoUpdate = FALSE
+highlightGlitchs = FALSE
+waveformSyncCursorMarker = FALSE
+waveformSyncHorizontalRange = FALSE
+waveformSyncVerticalscroll = FALSE
+displayErrors = TRUE
+displayMsgSymbols = TRUE
+showMsgDescriptions = TRUE
+autoFit = FALSE
+displayDeltaY = FALSE
+centerCursor = FALSE

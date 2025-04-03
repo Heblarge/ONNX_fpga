@@ -38,8 +38,19 @@ javaOptions ++= Seq(
   "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
   "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
   "--add-exports=java.base/sun.nio=ALL-UNNAMED",
-  "--add-opens=java.base/java.nio=ALL-UNNAMED"
+  "--add-opens=java.base/java.nio=ALL-UNNAMED",
+
+  "-processor",
+  "lombok.launch.AnnotationProcessorHider$AnnotationProcessor"
 )
+Compile / compile := (Compile / compile).value
+Compile / doc / sources := Seq.empty
+Compile / compile / javacOptions ++= Seq(
+  "-Xlint:unchecked",
+  "-Xlint:deprecation",
+  "-parameters"
+)
+
 //onnx4j
 libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.1"
 libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.12.0"
@@ -48,6 +59,10 @@ libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.4"
 libraryDependencies += "com.google.guava" % "guava" % "30.1-jre"
 libraryDependencies += "javax.annotation" % "javax.annotation-api" % "1.3.2"
 libraryDependencies += "javax.servlet" % "javax.servlet-api" % "4.0.1"
+
+libraryDependencies += "org.projectlombok" % "lombok" % "1.18.30" % Provided
+
+
 libraryDependencies ++= Seq(
   "org.nd4j" % "nd4j-api" % nd4jVersion,
   "org.nd4j" % "nd4j-native" % nd4jVersion,
