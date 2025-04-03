@@ -4,6 +4,9 @@
 *.py
 extract.json
 /rtl/
+*.html
+.png
+
 
 # sbt specific
 .cache/
@@ -16,6 +19,7 @@ src_managed/
 project/boot/
 project/project
 project/plugins/project/
+verdiLog/
 
 # Scala-IDE specific
 .scala_dependencies
