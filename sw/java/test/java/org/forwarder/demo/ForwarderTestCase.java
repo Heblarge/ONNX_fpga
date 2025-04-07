@@ -67,15 +67,18 @@ public abstract class ForwarderTestCase extends TestCase {
 			String[] backendNames, float tolerance) throws FileNotFoundException, IOException, NoSuchMethodException,
 			SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
 			InvocationTargetException, OperationNotSupportedException {
+		// 从Resource获取模型文件地址
 		String absoluteModelPath = URLDecoder.decode(ForwarderTestCase.class.getResource(modelPath).getFile(), "utf-8");
 		assertNotNull(absoluteModelPath);
 
 		try {
+			//尝试构建Forwarder，加载model
 			Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).setExecutor(RayExecutor.class).build();
 			Forwarder forwarder = new Forwarder();
 			Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(RayExecutor.class);
 			assert forwarder != null;
 			assert loadedModel!=null;
+			//遍历待测试的所有输入
 			for (Entry<String, String> tensorPairPath : tensorPairPaths.entrySet()) {
 				Tensor inputTensor = this.loadTensor(loadedModel, inputName, tensorPairPath.getKey());
 				logger.info("Loaded input tensor proto named \"{}\"", tensorPairPath.getKey());
@@ -85,16 +88,18 @@ public abstract class ForwarderTestCase extends TestCase {
 
 				logger.info("Input Tensor: {}", this.dumpTensor(inputTensor));
 				logger.info("Excepted Tensor: {}", this.dumpTensor(exceptedOutputTensor));
-
+				//遍历待测试的所有后端
 				for (String backendName : backendNames) {
 					for (int n = 0; n < 50; n++) {
 					Backend<?> backend = loadedModel.backend(backendName);
+					//通过backend启动一个session
 					try (Session<?> session = backend.newSession()) {
+						//推理并获取输出
 						Tensor y0 = session.feed(inputTensor, false).forward().getOutput(outputName);
 
 						logger.info("Actual: {}", this.dumpTensor(y0));
 						logger.info("Excepted: {}", this.dumpTensor(exceptedOutputTensor));
-
+						//判断结果是否误差太大
 						this.assertSimilarity(y0, exceptedOutputTensor, tolerance);
 					}
 					}

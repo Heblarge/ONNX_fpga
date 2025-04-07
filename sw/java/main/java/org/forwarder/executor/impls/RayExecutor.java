@@ -49,16 +49,20 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
 	private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node) {
 		Inputs inputs = new Inputs();
+		// 遍历节点的所有输入名称，并为每个输入创建Input对象并添加到inputs集合中
 		for (String inputName : node.getInputNames()) {
+			// 为每个输入名称创建Input对象，使用wrap方法包装inputName、node和从session获取的中间输出结果
 			Input input = Input.wrap(inputName, node, session.getIntermediateOutput(inputName));
 			inputs.append(input);
 		}
+		// 调用父类中的handle方法，传入session、opsets、node和inputs，获取outputs集合
 		Outputs outputs = super.handle(session, opsets, node, inputs);
+		// 遍历outputs集合中的每个输出，将其名称和对应的张量存储回session的中间输出结果中
 		for (Output output : outputs.get()) {
 			session.putIntermediateOutput(output.getName(), output.getTensor());
 		}
 	}
-
+	// 从图的输出节点（终点）开始反向遍历
 	private Collection<Node> toOrderedSequenceNodes(Graph graph) {
 		Collection<Node> nodes = new LinkedList<Node>();
 		for (GraphOutput graphOutput : graph.getOutputs()) {
@@ -67,17 +71,19 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 		}
 		return nodes;
 	}
-
+	
 	private void predecessors(Collection<Node> nodes, Graph graph, Node node) {
 		Collection<Node> set = graph.predecessors(node);
+		// 递归处理所有前驱节点
 		for (Node predecessorNode : set) {
 			this.predecessors(nodes, graph, predecessorNode);
 		}
-
+		// 将前驱节点加入列表
 		for (Node predecessor : set) {
 			this.addOrderedSequenceNode(nodes, predecessor);
 		}
 	}
+
 
 	private void addOrderedSequenceNode(Collection<Node> nodes, Node node) {
 		if (this.contains(nodes, node) == false)
@@ -89,8 +95,6 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 			if (node.equals(existingNode))
 				return true;
 		}
-
 		return false;
 	}
-
 }

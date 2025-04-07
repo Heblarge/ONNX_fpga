@@ -88,22 +88,24 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 	public Session<T_BK_TS> feed(String name, Tensor tensor) {
 		return this.feed(name, tensor, true);
 	}
-
+	//这个版本是最完整的
 	public Session<T_BK_TS> feed(String name, Tensor tensor, boolean autoAttach) {
+		//获取计算图的输入
 		GraphInput graphInput = this.backend.getModel().getGraph().getInputs(name);
 		if (graphInput == null) {
 			throw new IllegalArgumentException(String.format("Input named \"%s\" had not be defined in graph", name));
 		} else {
+			//检查输入的tensor的dataType和shape是否和网络定义的一致
 			if (!tensor.equals(graphInput.getValueInfo())) {
 				throw new IllegalArgumentException(
 						String.format("Shape or DataType is not equals to the input tensor named \"%s\" ", name));
 			}
 		}
-
+		//转换为后端原生数据类型T_BK_TS
 		T_BK_TS backendTensor = this.backend.toBackendTensor(this.intermediateTensorManager, tensor);
-
+		//将输入作为中间结果存入一个map中，用name作为key
 		this.intermediateOutputs.put(name, backendTensor);
-
+		//默认会把输入的Tensor类型也存起来
 		if (autoAttach) {
 			this.exchangeTensorManager.attach(name, tensor);
 		}
@@ -114,17 +116,20 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 	public Session<T_BK_TS> forward() {
 		//
 		// Put all constant resources to session
+		// 将后端常量张量全部存入当前会话的中间结果集
 		//
 		this.intermediateOutputs.putAll(this.backend.getTensorManager().get());
 
+		//从后端获取执行器
 		Executor<T_BK_TS> executor = this.backend.getModel().getExecutor();
+		//递归执行推理
 		executor.execute(this, this.backend.getOpsets());
 
 		for (GraphOutput graphOutput : this.backend.getModel().getGraph().getOutputs()) {
-			T_BK_TS backendTensor = this.intermediateOutputs.get(graphOutput.getName());
+			T_BK_TS backendTensor = this.intermediateOutputs.get(graphOutput.getName());//从中间结果获取所有名字和网络需要的输出一致的张量
 			Tensor tensor = this.backend.toNativeTensor(this.exchangeTensorManager, graphOutput.getName(),
-					backendTensor);
-			Output output = Output.wrap(graphOutput.getName(), tensor);
+					backendTensor);//转换回Tensor类型
+			Output output = Output.wrap(graphOutput.getName(), tensor);//封装为输出对象并存入结果集
 			outputs.append(graphOutput.getName(), output);
 		}
 		return this;
