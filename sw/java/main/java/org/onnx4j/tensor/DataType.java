@@ -33,10 +33,13 @@ public enum DataType {
 	DOUBLE(10, Double.class, Double.BYTES),
 	STRING(11, String.class, 3), // 3 bytes per UTF-8 String
 	BOOL(12, Byte.class, Byte.BYTES),
-	
+
+
+
 	// NOT IMPLEMENT
 	COMPLEX64(13, Void.class, -1),
-	COMPLEX128(14, Void.class, -1);
+	COMPLEX128(14, Void.class, -1),
+	BFLOAT16(16, Void.class, 2); // 16 bits bfloat
 	
 	private int code;
 	private int unitSize;
@@ -75,6 +78,7 @@ public enum DataType {
 			case TensorProto.DataType.DOUBLE_VALUE: return DataType.DOUBLE;
 			case TensorProto.DataType.STRING_VALUE: return DataType.STRING;
 			case TensorProto.DataType.BOOL_VALUE: return DataType.BOOL;
+			case TensorProto.DataType.BFLOAT16_VALUE: return DataType.BFLOAT16;
 			default: return null;
 		}
 	}
@@ -110,8 +114,9 @@ public enum DataType {
 				DataType.STRING, 
 				DataType.BOOL, 
 				DataType.COMPLEX64, 
-				DataType.COMPLEX128
-			};
+				DataType.COMPLEX128,
+				DataType.BFLOAT16
+		};
 		return dataTypes;
 	}
 	

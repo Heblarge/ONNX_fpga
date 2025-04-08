@@ -30,18 +30,9 @@ public class DL4JExpandV8 extends DL4JAiOnnxOperator implements ExpandV8 {
      * @return broadcast 结果
      */
     protected INDArray expand(INDArray input, INDArray shapeTensor) {
-        // 读取目标形状
         long[] targetShape = shapeTensor.toLongVector();
-
-        // 广播实现（注：expandDims 返回视图）
         INDArray broadcasted = input.broadcast(targetShape);
-
-        // 可选：强制拷贝为新内存（有些算子要求返回可写副本）
         return broadcasted;
-
-//        INDArray detachedCopy = Nd4j.zeros(broadcasted.shape()).castTo(broadcasted.dataType());
-//        detachedCopy.assign(broadcasted);
-//        return detachedCopy;
 
     }
 }

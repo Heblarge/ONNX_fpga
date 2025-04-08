@@ -23,5 +23,4 @@ public interface AiOnnxOperatorV11 extends AiOnnxOperatorV10 {
 	public default long getVersion() {
 		return 11L;
 	}
-
 }

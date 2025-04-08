@@ -82,7 +82,6 @@ public interface ReshapeV5 extends ReshapeV1, AiOnnxOperatorV5 {
 
 		public ReshapeInputsV5(Node node, Inputs inputs) {
 			super(node, inputs);
-
 			this.shapeTensorField = new InputField<T_TENSOR>(this, TPYE_CONSTRAINT_INT64, super.inputArray[1]);
 		}
 

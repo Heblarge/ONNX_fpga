@@ -39,5 +39,4 @@ public class DL4JConcatV1 extends DL4JAiOnnxOperator implements ConcatV1 {
 	protected INDArray concat(List<INDArray> inputs, Long axis) {
 		return Nd4j.concat(axis.intValue(), inputs.toArray(new INDArray[inputs.size()]));
 	}
-
 }

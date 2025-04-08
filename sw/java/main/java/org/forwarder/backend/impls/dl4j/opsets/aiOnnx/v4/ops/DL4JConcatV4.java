@@ -34,5 +34,4 @@ public class DL4JConcatV4 extends DL4JConcatV1 implements ConcatV4 {
 		Long axis = castedOperatorInputs.getAxis();
 		return new ConcatOutputV4<INDArray>(super.concat(inputList, axis));
 	}
-
 }
