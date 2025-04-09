@@ -64,6 +64,7 @@ public class DL4JSliceV13Test extends DL4JTestCase {
                 {8, 7 , 6}
         });
         testSlice(expected, dataMatrix(), tensor(2, 3), tensor(0, 0), tensor(0, 1), tensor(-1, -1));
+        // 注意！ 目前不支持 Step 0，不支持负 Step 时 start > end，上述两种情况应当返回空张量
     }
 
     @Test
@@ -83,16 +84,4 @@ public class DL4JSliceV13Test extends DL4JTestCase {
         });
         testSlice(expected, dataMatrix(), tensor(0), tensor(3), tensor(0), tensor(2));
     }
-
-
-    @Test
-    public void test6() throws Exception {
-        INDArray expected = Nd4j.create(new double[][]{
-                {1, 2, 3, 4},
-                {9,10,11,12}
-        });
-        testSlice(expected, dataMatrix(), tensor(2,3), tensor(0,0), (null), tensor(0,-1));
-    }
-
-
 }

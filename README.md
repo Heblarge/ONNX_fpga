@@ -115,55 +115,69 @@
 
 下面以Slice为例子：(/sw/java/test/java/org/forwarder/backend/impls/dl4j/opsets/aiOnnx/v13/ops/CompareSliceV13.py)
 
-#### 1：定义输入张量（`make_tensor_value_info`）与切片参数（`make_tensor`）
+#### 1：定义输入张量、切片参数、输出张量
 
 ```python
 from onnx import TensorProto, helper
-# 输入数据：类型为 FLOAT，形状为 (3, 4)
+# 输入数据：形状为 (3, 4)
 inputs = [helper.make_tensor_value_info("data", TensorProto.FLOAT, [3, 4])]
-# 切片参数：
-initializers = [
-  const("starts", starts),
-  const("ends", ends)
-]
+
+# 切片参数，传入的参数（starts，ends，axes，steps）的值会包含在模型文件中：
+initializers = [const("starts", starts), const("ends", ends)]
 # 可选参数：
 if axes is not None:
   initializers.append(const("axes", axes))
 if steps is not None:
   initializers.append(const("steps", steps))
+
+# 或将参数作为输入，在推理中动态传入，就无需 initializers。
+#inputs = [
+#  helper.make_tensor_value_info("data", TensorProto.FLOAT, [3, 4]),
+#  helper.make_tensor_value_info("starts", TensorProto.INT64, [2]),
+#  helper.make_tensor_value_info("ends", TensorProto.INT64, [2]),
+#  helper.make_tensor_value_info("axes", TensorProto.INT64, [2]),
+#  helper.make_tensor_value_info("steps", TensorProto.INT64, [2]),
+#]
+  
+# 输出数据：
+outputs = [helper.make_tensor_value_info("output", TensorProto.FLOAT, [None, None])]
 ```
 
 #### 2：构造节点
 ```python
 from onnx.helper import make_node
-slice_node = make_node(
-    "Slice",
-    inputs=["data", "starts", "ends", "axes"],  # 参数顺序必须一致
-    outputs=["sliced"]
-)
+# 输入节点的张量名称
+input_names = ["data", "starts", "ends"]
+if axes is not None:
+  input_names.append("axes")
+if steps is not None:
+  input_names.append("steps")
+# 节点输出的张量名称
+input_names = ["sliced"]
+# 创建节点
+slice_node = make_node("Slice", inputs = input_names, outputs = input_names)
 ```
 
 #### 3：构造图与模型并导出文件
 ```python
 from onnx.helper import make_graph, make_model
-graph = make_graph(
-    [slice_node],
-    "slice-graph",
-    inputs=[data],
-    outputs=[make_tensor_value_info("sliced", TensorProto.DOUBLE, None)],
-    initializer=[starts_tensor, ends_tensor, axes_tensor]
-)
+# 静态参数
+graph = helper.make_graph([slice_node], "slice_test", inputs, outputs, initializer=initializers)
+# 动态参数
+# graph = helper.make_graph([slice_node], "slice_test_dynamic", inputs, outputs)
+
 model = make_model(graph, opset_imports=[onnx.helper.make_opsetid("", 13)]) # 此处可以指定算子集版本为13
-check_model(model) # 检查而合法性
+# 检查而合法性
+check_model(model)
+# 导出模型到 slice_test.onnx 文件
 with open("slice_test.onnx", "wb") as f:
-  f.write(model.SerializeToString()) # 导出模型到 slice_test.onnx 文件
+  f.write(model.SerializeToString()) 
 ```
 
 #### 4：使用 ONNXRuntime 推理模型并获取输出结构
 ```python
 import onnxruntime as ort
 import numpy as np
-
 sess = ort.InferenceSession("slice_test.onnx")
 data_array = np.array([
     [1, 2, 3, 4],
@@ -171,9 +185,20 @@ data_array = np.array([
     [9,10,11,12]
 ], dtype=np.float64)
 
+# 使用静态参数
 outputs = sess.run(None, {"data": data_array})
-result = outputs[0]
-print(result)
+
+# 如果使用动态参数传递
+#inputs = {
+#  "data": data,
+#  "starts": np.array([0, 1], dtype=np.int64),
+#  "ends":   np.array([2, 4], dtype=np.int64),
+#  "axes":   np.array([0, 1], dtype=np.int64),
+#  "steps":  np.array([1, 1], dtype=np.int64),
+#}
+#outputs = sess.run(None, inputs)
+
+print(outputs)
 ```
 
 
