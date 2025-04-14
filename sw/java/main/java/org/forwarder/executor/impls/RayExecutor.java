@@ -43,15 +43,16 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 	@Override
 	public void execute(Session<T_BK_TS> session, OperatorSets opsets) {
 		for (Node node : this.orderedSequenceNodes) {
+			//提取图中的每一个节点
 			this.handle(session, opsets, node);
 		}
 	}
 
 	private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node) {
 		Inputs inputs = new Inputs();
-		// 遍历节点的所有输入名称，并为每个输入创建Input对象并添加到inputs集合中
+		// 遍历当前节点的所有输入名称，并为每个输入创建Input对象并添加到inputs集合中
 		for (String inputName : node.getInputNames()) {
-			// 为每个输入名称创建Input对象，使用wrap方法包装inputName、node和从session获取的中间输出结果
+			// 为当前节点的每个输入名称创建Input对象，使用wrap方法包装inputName、node和从session获取的中间输出结果
 			Input input = Input.wrap(inputName, node, session.getIntermediateOutput(inputName));
 			inputs.append(input);
 		}
@@ -59,6 +60,7 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 		Outputs outputs = super.handle(session, opsets, node, inputs);
 		// 遍历outputs集合中的每个输出，将其名称和对应的张量存储回session的中间输出结果中
 		for (Output output : outputs.get()) {
+			// session.intermediateOutputs 包含节点内静态参数，推理的中间结果在此追加
 			session.putIntermediateOutput(output.getName(), output.getTensor());
 		}
 	}
@@ -71,7 +73,19 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 		}
 		return nodes;
 	}
-	
+
+	public void printExecutionSequence() {
+		System.out.println("==== Execution Sequence of Nodes (Topological Order) ====");
+		int idx = 0;
+		for (Node node : this.orderedSequenceNodes) {
+			String opType = node.getOpType();
+			String name = node.getName();
+			System.out.printf("[%02d] Node Name: %-30s OpType: %s\n", idx++, name, opType);
+		}
+		System.out.println("===========================================================");
+	}
+
+
 	private void predecessors(Collection<Node> nodes, Graph graph, Node node) {
 		Collection<Node> set = graph.predecessors(node);
 		// 递归处理所有前驱节点

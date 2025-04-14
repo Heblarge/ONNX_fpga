@@ -1,7 +1,6 @@
 *.class
 *.log
 *.bak
-*.py
 extract.json
 /rtl/
 *.html

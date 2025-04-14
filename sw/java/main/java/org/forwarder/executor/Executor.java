@@ -43,6 +43,7 @@ public abstract class Executor<T_BK_TS> {
 					String.format("Op=%s not supported in this backend", node.getOpType()));
 
 		Executable<T_BK_TS> execOp = Executable.class.cast(op);
+		// 执行当前算子的推理
 		return execOp.forward(node, inputs).toOutputs(node);
 	}
 

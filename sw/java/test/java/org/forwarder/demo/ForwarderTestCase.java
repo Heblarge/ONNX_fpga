@@ -73,9 +73,17 @@ public abstract class ForwarderTestCase extends TestCase {
 
 		try {
 			//尝试构建Forwarder，加载model
-			Config cfg=Config.builder().setDebug(true).setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN).setExecutor(RayExecutor.class).build();
+			Config cfg=Config.builder()
+					.setDebug(true)
+					.setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN)
+					.setExecutor(RayExecutor.class)
+					.build();
 			Forwarder forwarder = new Forwarder();
 			Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(RayExecutor.class);
+
+			RayExecutor<?> executor = (RayExecutor<?>) loadedModel.getExecutor();
+			executor.printExecutionSequence();
+
 			assert forwarder != null;
 			assert loadedModel!=null;
 			//遍历待测试的所有输入
@@ -101,7 +109,7 @@ public abstract class ForwarderTestCase extends TestCase {
 						logger.info("Excepted: {}", this.dumpTensor(exceptedOutputTensor));
 						//判断结果是否误差太大
 						this.assertSimilarity(y0, exceptedOutputTensor, tolerance);
-					}
+						}
 					}
 				}
 
@@ -151,7 +159,4 @@ public abstract class ForwarderTestCase extends TestCase {
 		return tensorString.length() > TENSOR_MAX_OUTPUT_LEN
 				? tensorString.subSequence(0, TENSOR_MAX_OUTPUT_LEN) + " ..." : tensorString;
 	}
-	
-
-
 }

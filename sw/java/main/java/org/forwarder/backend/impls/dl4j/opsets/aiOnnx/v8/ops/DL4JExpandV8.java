@@ -31,9 +31,7 @@ public class DL4JExpandV8 extends DL4JAiOnnxOperator implements ExpandV8 {
      */
     protected INDArray expand(INDArray input, INDArray shapeTensor) {
         long[] targetShape = shapeTensor.toLongVector();
-        INDArray broadcasted = input.broadcast(targetShape);
-        return broadcasted;
-
+        return input.broadcast(targetShape);
     }
 }
 

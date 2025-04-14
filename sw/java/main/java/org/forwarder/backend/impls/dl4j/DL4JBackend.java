@@ -51,7 +51,9 @@ public class DL4JBackend extends Backend<INDArray> {
 
 	@Override
 	public void disposeBackendTensor(INDArray backendTensor) {
-		backendTensor.close();
+		if(backendTensor.closeable()){
+			backendTensor.close();
+		}
 	}
 
 	@Override

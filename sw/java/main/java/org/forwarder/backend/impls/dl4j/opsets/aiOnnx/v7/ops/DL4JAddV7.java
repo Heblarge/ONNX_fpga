@@ -36,5 +36,4 @@ public class DL4JAddV7 extends DL4JAddV6 implements AddV7 {
 	protected INDArray add(INDArray a, INDArray b) {
 		return a.add(b);
 	}
-
 }
