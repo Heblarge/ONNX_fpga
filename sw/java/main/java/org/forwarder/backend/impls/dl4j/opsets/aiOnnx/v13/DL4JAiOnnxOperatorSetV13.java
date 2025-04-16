@@ -4,10 +4,14 @@ import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v12.DL4JAiOnnxOperatorSetV
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JConcatV13;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JReshapeV13;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JSliceV13;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JSoftplusV13;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JQuantizeLinearV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.AiOnnxOpsetInitializerV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ConcatV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReshapeV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SliceV13;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SoftplusV13;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.QuantizeLinearV13;
 
 public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implements AiOnnxOpsetInitializerV13 {
     @Override
@@ -20,6 +24,12 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     }
     public SliceV13 getSliceV13(){
         return new DL4JSliceV13();
+    }
+    public SoftplusV13 getSoftplusV13(){
+        return new DL4JSoftplusV13();
+    }
+    public QuantizeLinearV13 getQuantizeLinearV13(){
+        return new DL4JQuantizeLinearV13();
     }
 
     public DL4JAiOnnxOperatorSetV13() {

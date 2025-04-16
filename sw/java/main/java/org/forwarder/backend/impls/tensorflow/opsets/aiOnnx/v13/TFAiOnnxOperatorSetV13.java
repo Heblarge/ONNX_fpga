@@ -32,4 +32,15 @@ public class TFAiOnnxOperatorSetV13 extends TFAiOnnxOperatorSetV12 implements Ai
         return null;
     }
 
+    @Override
+    public SoftplusV13 getSoftplusV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public QuantizeLinearV13 getQuantizeLinearV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }
