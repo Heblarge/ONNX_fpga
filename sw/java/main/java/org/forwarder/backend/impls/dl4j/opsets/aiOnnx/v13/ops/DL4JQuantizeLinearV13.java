@@ -39,6 +39,10 @@ public class DL4JQuantizeLinearV13 extends DL4JAiOnnxOperator implements Quantiz
     }
 
     private INDArray quantizeLinear(INDArray x, INDArray yScale, INDArray yZeroPoint, int axis) {
+
+        if (yScale.minNumber().doubleValue() == 0.0) {
+            throw new IllegalArgumentException("Scale cannot be zero.");
+        }
         if (yScale.rank() == 1) {
             yScale = reshapeForBroadcast(yScale, x.rank(), axis);
         }
@@ -50,8 +54,9 @@ public class DL4JQuantizeLinearV13 extends DL4JAiOnnxOperator implements Quantiz
         INDArray rounded = Transforms.round(scaled, false);
 
         if (yZeroPoint == null) {
-            DataType outputType = inferOutputType(yZeroPoint);
-            yZeroPoint = Nd4j.scalar(0).castTo(outputType);
+//            DataType outputType = inferOutputType(yZeroPoint);
+//            yZeroPoint = Nd4j.scalar(0).castTo(outputType);
+            yZeroPoint = Nd4j.scalar(0).castTo(inferOutputType(yZeroPoint));
         }
 
         INDArray quantized = rounded.add(yZeroPoint);
@@ -61,9 +66,13 @@ public class DL4JQuantizeLinearV13 extends DL4JAiOnnxOperator implements Quantiz
     }
 
     private INDArray reshapeForBroadcast(INDArray tensor, int targetRank, int axis) {
-        int[] newShape = new int[targetRank];
+//        int[] newShape = new int[targetRank];
+//        Arrays.fill(newShape, 1);
+//        newShape[axis] = (int) tensor.length();
+//        return tensor.reshape(newShape);
+        long[] newShape = new long[targetRank];
         Arrays.fill(newShape, 1);
-        newShape[axis] = (int) tensor.length();
+        newShape[axis] = tensor.length();
         return tensor.reshape(newShape);
     }
 

@@ -33,6 +33,36 @@ public class TFAiOnnxOperatorSetV13 extends TFAiOnnxOperatorSetV12 implements Ai
     }
 
     @Override
+    public AddV13 getAddV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public SubV13 getSubV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public ExpV13 getExpV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public LogV13 getLogV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public ReluV13 getReluV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
     public SoftplusV13 getSoftplusV13() {
         // TODO Auto-generated method stub
         return null;
@@ -43,4 +73,12 @@ public class TFAiOnnxOperatorSetV13 extends TFAiOnnxOperatorSetV12 implements Ai
         // TODO Auto-generated method stub
         return null;
     }
+
+    @Override
+    public DequantizeLinearV13 getDequantizeLinearV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+
 }
