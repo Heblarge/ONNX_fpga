@@ -21,6 +21,7 @@ import java.util.Map;
 import org.onnx4j.opsets.Operator;
 import org.onnx4j.opsets.domain.aiOnnx.v8.AiOnnxOpsetInitializerV8;
 import org.onnx4j.opsets.domain.aiOnnx.v9.ops.CastV9;
+import org.onnx4j.opsets.domain.aiOnnx.v9.ops.WhereV9;
 
 /**
  * Default ONNX Operator Set in version 9
@@ -32,11 +33,15 @@ public interface AiOnnxOpsetInitializerV9 extends AiOnnxOpsetInitializerV8 {
 	
 	public abstract CastV9 getCastV9();
 
+	public abstract WhereV9 getWhereV9();
+
 	@Override
 	public default Map<String, Operator> initializeOperators() {
 		Map<String, Operator> operators = AiOnnxOpsetInitializerV8.super.initializeOperators();
 		// 20191216
 		operators.put(CastV9.OP_TYPE, this.getCastV9());
+
+		operators.put(WhereV9.OP_TYPE, this.getWhereV9());
 		return operators;
 	}
 

@@ -18,8 +18,10 @@ package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v9;
 
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v8.DL4JAiOnnxOperatorSetV8;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v9.ops.DL4JCastV9;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v9.ops.DL4JWhereV9;
 import org.onnx4j.opsets.domain.aiOnnx.v9.AiOnnxOpsetInitializerV9;
 import org.onnx4j.opsets.domain.aiOnnx.v9.ops.CastV9;
+import org.onnx4j.opsets.domain.aiOnnx.v9.ops.WhereV9;
 
 public class DL4JAiOnnxOperatorSetV9 extends DL4JAiOnnxOperatorSetV8 implements AiOnnxOpsetInitializerV9 {
 
@@ -34,5 +36,5 @@ public class DL4JAiOnnxOperatorSetV9 extends DL4JAiOnnxOperatorSetV8 implements 
 
 	@Override
 	public CastV9 getCastV9() { return new DL4JCastV9(); }
-
+	public WhereV9 getWhereV9() { return new DL4JWhereV9(); }
 }
