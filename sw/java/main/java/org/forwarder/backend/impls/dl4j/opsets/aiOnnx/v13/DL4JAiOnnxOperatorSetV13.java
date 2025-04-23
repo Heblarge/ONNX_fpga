@@ -1,29 +1,9 @@
 package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13;
 
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v12.DL4JAiOnnxOperatorSetV12;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JConcatV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JReshapeV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JSliceV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JAddV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JSubV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JExpV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JLogV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JReluV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JSoftplusV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JQuantizeLinearV13;
-import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JDequantizeLinearV13;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.*;
 import org.onnx4j.opsets.domain.aiOnnx.v13.AiOnnxOpsetInitializerV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ConcatV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReshapeV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SliceV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.AddV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SubV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ExpV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.LogV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReluV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SoftplusV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.QuantizeLinearV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.DequantizeLinearV13;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.*;
 
 public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implements AiOnnxOpsetInitializerV13 {
     @Override
@@ -36,6 +16,7 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public SliceV13            getSliceV13(){
         return new            DL4JSliceV13();
     }
+    public ReduceMaxV13        getReduceMaxV13(){return new          DL4JReduceMaxV13();}
     public AddV13              getAddV13(){
         return new              DL4JAddV13();
     }

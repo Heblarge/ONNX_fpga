@@ -2,17 +2,7 @@ package org.onnx4j.opsets.domain.aiOnnx.v13;
 
 import org.onnx4j.opsets.Operator;
 import org.onnx4j.opsets.domain.aiOnnx.v12.AiOnnxOpsetInitializerV12;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ConcatV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReshapeV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SliceV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.AddV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SubV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ExpV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.LogV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReluV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SoftplusV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.QuantizeLinearV13;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.DequantizeLinearV13;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.*;
 
 import java.util.Map;
 
@@ -22,6 +12,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
     public abstract ConcatV13 getConcatV13();
 
     public abstract SliceV13 getSliceV13();
+
+    public abstract ReduceMaxV13 getReduceMaxV13();
 
     public abstract AddV13 getAddV13();
 
@@ -47,6 +39,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
         operators.put(ConcatV13.OP_TYPE, this.getConcatV13());
 
         operators.put(SliceV13.OP_TYPE, this.getSliceV13());
+
+        operators.put(ReduceMaxV13.OP_TYPE, this.getReduceMaxV13());
 
         operators.put(AddV13.OP_TYPE, this.getAddV13());
 
