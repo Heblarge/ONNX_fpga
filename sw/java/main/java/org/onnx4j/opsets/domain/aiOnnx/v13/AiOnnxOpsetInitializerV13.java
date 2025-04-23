@@ -17,6 +17,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract MaxV13 getMaxV13();
 
+    public abstract GreaterV13 getGreaterV13();
+
     public abstract AddV13 getAddV13();
 
     public abstract SubV13 getSubV13();
@@ -43,6 +45,10 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
         operators.put(SliceV13.OP_TYPE, this.getSliceV13());
 
         operators.put(ReduceMaxV13.OP_TYPE, this.getReduceMaxV13());
+
+        operators.put(MaxV13.OP_TYPE, this.getMaxV13());
+
+        operators.put(GreaterV13.OP_TYPE, this.getGreaterV13());
 
         operators.put(AddV13.OP_TYPE, this.getAddV13());
 

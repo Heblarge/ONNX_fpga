@@ -10,12 +10,7 @@ import org.onnx4j.opsets.operator.OperatorInputs;
 import org.onnx4j.opsets.operator.output.SingleOperatorOutputs;
 import org.onnx4j.tensor.DataType;
 
-/**
- * Max Operator v13
- *
- * Computes the element-wise max of multiple input tensors.
- * Supports Numpy-style broadcasting. All input tensors must have the same type.
- */
+
 public interface MaxV13 extends AiOnnxOperatorV13 {
 
     public static final String OP_TYPE = "Max";
@@ -46,7 +41,7 @@ public interface MaxV13 extends AiOnnxOperatorV13 {
         @SuppressWarnings("unchecked")
         public MaxInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
-            // ✅ 将 inputArray 转换为 List<T_TENSOR>
+
             this.inputTensors = Arrays.asList((T_TENSOR[]) inputArray);
         }
 

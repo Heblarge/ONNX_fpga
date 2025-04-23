@@ -20,7 +20,7 @@ public class DL4JMaxV13Test extends DL4JTestCase {
 
     @Test
     public void testMaxBroadcastableInputs() throws Exception {
-        // 测试广播 + 多输入张量最大值
+        // 测试多输入张量最大值
         this.testMax(
                 Nd4j.create(new float[] {2.0f, 5.0f, 4.0f}),
                 Arrays.asList(
