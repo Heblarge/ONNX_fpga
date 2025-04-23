@@ -15,6 +15,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract ReduceMaxV13 getReduceMaxV13();
 
+    public abstract MaxV13 getMaxV13();
+
     public abstract AddV13 getAddV13();
 
     public abstract SubV13 getSubV13();
