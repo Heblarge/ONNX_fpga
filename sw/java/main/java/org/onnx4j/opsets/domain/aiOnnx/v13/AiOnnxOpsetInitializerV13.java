@@ -19,6 +19,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract GreaterV13 getGreaterV13();
 
+    public abstract MatMulV13 getMatMulV13();
+
     public abstract AddV13 getAddV13();
 
     public abstract SubV13 getSubV13();
@@ -49,6 +51,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
         operators.put(MaxV13.OP_TYPE, this.getMaxV13());
 
         operators.put(GreaterV13.OP_TYPE, this.getGreaterV13());
+
+        operators.put(MatMulV13.OP_TYPE, this.getMatMulV13());
 
         operators.put(AddV13.OP_TYPE, this.getAddV13());
 
