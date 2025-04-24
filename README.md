@@ -87,15 +87,15 @@
 | Reshape          | 1  | 1  | 1  | 1  | 5  | 5  | 5  | 5  | 5  | 5   | 5   | 5   | 13  | OK   | zhoujsh |
 | Concat           | 1  | 1  | 1  | 4  | 4  | 4  | 4  | 4  | 4  | 4   | 11  | 11  | 13  | OK   | zhoujsh |
 | Slice            | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 10  | 11  | 11  | 13  | OK   | zhoujsh |
-| Expand           | X  | X  | X  | X  | X  | X  | X  | 8  | 8  | 8   | 8   | 8   | 13  |      | zhoujsh |
+| Expand           | X  | X  | X  | X  | X  | X  | X  | 8  | 8  | 8   | 8   | 8   | 13  | OK   | Heblarge|
 | Tile             | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 6  | 6   | 6   | 6   | 13  |      |         |
-| Cast             | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 9  | 9   | 9   | 9   | 13  |      |         |
-| Transpose        | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1   | 1   | 1   | 13  |      |         |
+| Cast             | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 9  | 9   | 9   | 9   | 13  | OK   | Heblarge|
+| Transpose        | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1   | 1   | 1   | 13  | OK   | Heblarge|
 | ReduceMax        | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 11  | 12  | 11  | 13  | OK   | chix    |
 | Max              | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 8  | 8  | 8   | 12  | 12  | 13  | OK   | chix    |
 | Greater          | 1  | 1  | 1  | 1  | 1  | 1  | 7  | 7  | 9  | 9   | 9   | 9   | 13  | OK   | chix    |
 | Where            | X  | X  | X  | X  | X  | X  | X  | X  | 9  | 9   | 9   | 9   | 9   | OK   | chix    |
-| Neg              | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 6  | 6   | 6   | 6   | 13  |      | hezi    |
+| Neg              | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 6  | 6   | 6   | 6   | 13  | OK   | Heblarge|
 | ConstantOfShape  | X  | X  | X  | X  | X  | X  | X  | X  | 9  | 9   | 9   | 9   | 9   |      |         |
 | MatMul           | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 9  | 9   | 9   | 9   | 13  | OK   | chix    |
 | GeMM             | 1  | 1  | 1  | 1  | 1  | 6  | 7  | 7  | 9  | 9   | 11  | 11  | 13  |      | mazy    |
