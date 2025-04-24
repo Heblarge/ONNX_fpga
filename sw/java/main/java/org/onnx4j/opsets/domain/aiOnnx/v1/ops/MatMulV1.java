@@ -54,7 +54,7 @@ public interface MatMulV1 extends AiOnnxOperatorV1 {
 
 	/**
 	 * Executes operator
-	 * 
+	 *
 	 * @param x0
 	 *            N-dimensional matrix A
 	 * @param x1
