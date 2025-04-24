@@ -1,7 +1,6 @@
 package org.forwarder.backend.impls.tensorflow.opsets.aiOnnx.v13;
 
 import org.forwarder.backend.impls.tensorflow.opsets.aiOnnx.v12.TFAiOnnxOperatorSetV12;
-import org.onnx4j.opsets.domain.aiOnnx.v12.ops.ReduceMaxV12;
 import org.onnx4j.opsets.domain.aiOnnx.v13.AiOnnxOpsetInitializerV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.*;
 
@@ -52,6 +51,34 @@ public class TFAiOnnxOperatorSetV13 extends TFAiOnnxOperatorSetV12 implements Ai
 
     @Override
     public MatMulV13 getMatMulV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+    @Override
+    public ExpandV13 getExpandV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    public CastV13 getCastV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public TileV13 getTileV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public TransposeV13 getTransposeV13() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public NegV13 getNegV13() {
         // TODO Auto-generated method stub
         return null;
     }

@@ -13,6 +13,14 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract SliceV13 getSliceV13();
 
+    public abstract TileV13 getTileV13();
+
+    public abstract ExpandV13 getExpandV13();
+
+    public abstract TransposeV13 getTransposeV13();
+
+    public abstract CastV13 getCastV13();
+
     public abstract ReduceMaxV13 getReduceMaxV13();
 
     public abstract MaxV13 getMaxV13();
@@ -20,6 +28,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
     public abstract GreaterV13 getGreaterV13();
 
     public abstract MatMulV13 getMatMulV13();
+
+    public abstract NegV13 getNegV13();
 
     public abstract AddV13 getAddV13();
 
@@ -45,6 +55,16 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
         operators.put(ConcatV13.OP_TYPE, this.getConcatV13());
 
         operators.put(SliceV13.OP_TYPE, this.getSliceV13());
+
+        operators.put(ExpandV13.OP_TYPE, this.getExpandV13());
+
+        operators.put(TileV13.OP_TYPE, this.getTileV13());
+
+        operators.put(NegV13.OP_TYPE, this.getNegV13());
+
+        operators.put(CastV13.OP_TYPE, this.getCastV13());
+
+        operators.put(TransposeV13.OP_TYPE, this.getTransposeV13());
 
         operators.put(ReduceMaxV13.OP_TYPE, this.getReduceMaxV13());
 

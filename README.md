@@ -88,7 +88,7 @@
 | Concat           | 1  | 1  | 1  | 4  | 4  | 4  | 4  | 4  | 4  | 4   | 11  | 11  | 13  | OK   | zhoujsh |
 | Slice            | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 10  | 11  | 11  | 13  | OK   | zhoujsh |
 | Expand           | X  | X  | X  | X  | X  | X  | X  | 8  | 8  | 8   | 8   | 8   | 13  | OK   | Heblarge|
-| Tile             | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 6  | 6   | 6   | 6   | 13  |      | Heblarge|
+| Tile             | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 6  | 6   | 6   | 6   | 13  | OK   | Heblarge|
 | Cast             | 1  | 1  | 1  | 1  | 1  | 6  | 6  | 6  | 9  | 9   | 9   | 9   | 13  | OK   | Heblarge|
 | Transpose        | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1   | 1   | 1   | 13  | OK   | Heblarge|
 | ReduceMax        | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 1  | 11  | 12  | 11  | 13  | OK   | chix    |
