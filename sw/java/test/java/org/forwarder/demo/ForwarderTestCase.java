@@ -69,7 +69,7 @@ public abstract class ForwarderTestCase extends TestCase {
 			InvocationTargetException, OperationNotSupportedException {
 		// 从Resource获取模型文件地址
 		String absoluteModelPath = URLDecoder.decode(ForwarderTestCase.class.getResource(modelPath).getFile(), "utf-8");
-		assertNotNull(absoluteModelPath);
+		assertNotNull(absoluteModelPath);//判断非空
 
 		try {
 			//尝试构建Forwarder，加载model

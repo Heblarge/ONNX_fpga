@@ -39,9 +39,10 @@ javaOptions ++= Seq(
   "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
   "--add-exports=java.base/sun.nio=ALL-UNNAMED",
   "--add-opens=java.base/java.nio=ALL-UNNAMED",
-
-  "-processor",
-  "lombok.launch.AnnotationProcessorHider$AnnotationProcessor"
+  //! if you are using IDEA with lombok plugin, uncomment the following line:
+  //"-processor",
+  //"lombok.launch.AnnotationProcessorHider$AnnotationProcessor"
+  
 )
 Compile / compile := (Compile / compile).value
 Compile / doc / sources := Seq.empty
@@ -61,6 +62,7 @@ libraryDependencies += "javax.annotation" % "javax.annotation-api" % "1.3.2"
 libraryDependencies += "javax.servlet" % "javax.servlet-api" % "4.0.1"
 
 libraryDependencies += "org.projectlombok" % "lombok" % "1.18.30" % Provided
+
 
 
 libraryDependencies ++= Seq(
