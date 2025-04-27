@@ -19,17 +19,12 @@ import org.onnx4j.tensor.DataType;
 public interface ConvV11 extends ConvV1, AiOnnxOperatorV11 {
 
     String OP_TYPE = "Conv";
-
-    /** 限定输入输出为浮点类型：float16/float32/double */
     TypeConstraint TYPE_CONSTRAINT_T = new Field.TypeConstraint(DataType.FLOAT16, DataType.FLOAT, DataType.DOUBLE);
 
     @Override default String getOpType() { return OP_TYPE; }
     @Override default OperatorStatus getStatus() { return OperatorStatus.STABLE; }
 
-    /**
-     * v11 比 v1 新增了 auto_pad、dilations、group、kernel_shape、pads、strides 属性
-     * 直接复用 ConvV1.ConvInputsV1 并在此覆盖属性定义即可
-     */
+
     class ConvInputsV11<T_TENSOR> extends ConvV1.ConvInputsV1<T_TENSOR> {
         private final AttributeField<String>     autoPadField;
         private final AttributeField<List<Long>> dilationsField;

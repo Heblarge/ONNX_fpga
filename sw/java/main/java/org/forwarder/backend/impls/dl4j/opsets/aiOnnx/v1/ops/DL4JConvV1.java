@@ -47,8 +47,15 @@ public class DL4JConvV1 extends DL4JAiOnnxOperator implements ConvV1 {
 		return new ConvOutputV1<INDArray>(this.conv(x, w, b, autoPad, dilations, group, kernelShape, pads, strides));
 	}
 
-	protected INDArray conv(INDArray x, INDArray w, INDArray b, String autoPad, List<Long> dilations, Long group,
-			List<Long> kernelShape, List<Long> pads, List<Long> strides) {
+	protected INDArray conv(INDArray x,
+							INDArray w,
+							INDArray b,
+							String autoPad,
+							List<Long> dilations,
+							Long group,
+							List<Long> kernelShape,
+							List<Long> pads,
+							List<Long> strides) {
 		Conv2DConfigBuilder configBuilder = Conv2DConfig.builder()
 				.dataFormat(Conv2DConfig.NCHW)
 				.dH(dilations.get(0))

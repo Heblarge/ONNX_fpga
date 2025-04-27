@@ -25,6 +25,9 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public MaxV13              getMaxV13(){return new                DL4JMaxV13();}
     public GreaterV13          getGreaterV13(){return new            DL4JGreaterV13();}
     public MatMulV13           getMatMulV13(){return new             DL4JMatMulV13();}
+    public GeMMV13             getGeMMV13(){
+        return new             DL4JGeMMV13();
+    }
     public AddV13              getAddV13(){
         return new              DL4JAddV13();
     }
