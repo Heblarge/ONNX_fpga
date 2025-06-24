@@ -34,6 +34,37 @@ object MyTopLevelSim extends App {
         }
       }
 
+  // 新增：兼容Java调用的重载方法
+  def runSim(cond0Seq: scala.collection.Seq[java.lang.Boolean], cond1Seq: scala.collection.Seq[java.lang.Boolean]): scala.collection.Seq[(Int, Boolean)] = {
+    require(cond0Seq.length == cond1Seq.length, "输入序列长度必须一致")
+    val flags = VCSFlags(
+      compileFlags = List("-kdb", "-lca"),
+      elaborateFlags = List("-kdb", "-lca")
+    )
+    var result = Seq.empty[(Int, Boolean)]
+    SimConfig
+      .withVCS(flags)
+      .withFSDBWave.compile(new MyTopLevel)
+      .doSim{dut =>
+        dut.clockDomain.forkStimulus(period = 10)
+        var modelState = 0
+        for (idx <- cond0Seq.indices) {
+          val c0 = cond0Seq(idx).booleanValue()
+          val c1 = cond1Seq(idx).booleanValue()
+          dut.io.cond0 #= c0
+          dut.io.cond1 #= c1
+          dut.clockDomain.waitRisingEdge()
+          val modelFlag = modelState == 0 || dut.io.cond1.toBoolean
+          result :+= (dut.io.state.toInt, dut.io.flag.toBoolean)
+          assert(dut.io.state.toInt == modelState)
+          assert(dut.io.flag.toBoolean == modelFlag)
+          if (dut.io.cond0.toBoolean) {
+            modelState = (modelState + 1) & 0xff
+          }
+        }
+      }
+    result
+  }
 }
 
 
