@@ -29,6 +29,12 @@ public class MyTopLevelSimJavaTest {
         Tuple2<Object, Object> first = resultSeq.apply(0);
         assertTrue(first._1() instanceof Integer);
         assertTrue(first._2() instanceof Boolean);
+        // 输出第一个结果
+        System.out.println("state: " + first._1() + ", flag: " + first._2());
+        // 输出所有结果
+        for (Tuple2<Object, Object> tup : scala.collection.JavaConverters.seqAsJavaList(resultSeq)) {
+            System.out.println("state: " + tup._1() + ", flag: " + tup._2());
+        }
         // 可添加更多断言
     }
 }
