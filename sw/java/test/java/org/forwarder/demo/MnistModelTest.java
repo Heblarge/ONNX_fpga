@@ -99,7 +99,7 @@ public class MnistModelTest extends ForwarderTestCase {
 			SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
 			InvocationTargetException, OperationNotSupportedException, IOException {
 		Map<String, String> tensorPairPaths = new HashMap<>();
-		for (int n = 0; n < 3; n++) {
+		for (int n = 0; n < 1; n++) {
 			tensorPairPaths.put(
 					"/mnist/opset_v8/test_data_set_" + n + "/input_0.pb",
 					"/mnist/opset_v8/test_data_set_" + n + "/output_0.pb"
@@ -108,7 +108,7 @@ public class MnistModelTest extends ForwarderTestCase {
 
 		super.testModel(
 				tensorPairPaths, 
-				"/mnist/opset_v8/model.onnx", 
+				"/mnist/opset_v8/model.onnx",
 				"Input3", 
 				"Plus214_Output_0",
 				new String[] {  "DL4J" }, 

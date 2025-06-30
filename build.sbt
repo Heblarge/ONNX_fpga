@@ -13,7 +13,7 @@ lazy val Onnx_SpinalHDL = (project in file("."))
   .settings(
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
     //scalacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
-    libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin),
+    libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin,"com.github.spinalhdl" %% "spinalhdl-sim" % spinalVersion),
     libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
 
   )
