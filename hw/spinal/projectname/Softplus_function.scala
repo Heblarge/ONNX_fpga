@@ -93,13 +93,10 @@ case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
   val P_raw = P_table((xh.resize(K1 bits) ## xm.resize(K2 bits)).asUInt)
   val N_raw = N_table((xh.resize(K1 bits) ## xl.resize(K3 bits)).asUInt)
 
-  val sum = Reg(softplusx_Type) init 0
-  when(io.x.valid) {
-    sum := P_raw + N_raw
-  }
-  // 结果计算
-  io.softplusx.payload := sum.resized
-  io.softplusx.valid := RegNext(io.x.valid)
+  val sum = P_raw + N_raw
+
+  io.softplusx.payload := RegNext(sum) init 0
+  io.softplusx.valid := RegNext(io.x.valid) init False
 
 
 }

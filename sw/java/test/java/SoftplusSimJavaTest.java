@@ -23,7 +23,7 @@ public class SoftplusSimJavaTest {
         //assertEquals("The number of outputs should match the number of inputs.", testInputs.length, actualOutputs.length);
 
 
-        double delta = 0.2;
+        double delta = 0.01;
 
         System.out.printf("%-10s | %-20s | %-20s | %-15s%n", "Input (x)", "Expected (softplus(x))", "Actual (softplus(x))", "Relative Error");
         System.out.println(new String(new char[75]).replace('\0', '-'));
