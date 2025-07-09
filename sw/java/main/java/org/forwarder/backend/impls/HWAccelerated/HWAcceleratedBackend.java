@@ -1,0 +1,81 @@
+package org.forwarder.backend.impls.HWAccelerated;
+
+import java.util.Arrays;
+
+import org.forwarder.Backend;
+import org.forwarder.Model;
+import org.forwarder.Session;
+import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedSession;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedDataTypeHelper;
+import org.nd4j.linalg.api.buffer.DataBuffer;
+import org.nd4j.linalg.api.buffer.DataType;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import org.onnx4j.Tensor;
+import org.onnx4j.TensorManager;
+import org.onnx4j.tensor.Shape;
+import org.onnx4j.tensor.TensorBuilder;
+
+public class HWAcceleratedBackend extends Backend<INDArray> {
+
+    public static final String BACKEND_NAME = "HWAccelerated";
+
+    public HWAcceleratedBackend() {
+        super();
+    }
+
+    public HWAcceleratedBackend(Model model) {
+        super(model);
+    }
+
+
+    @Override
+    public String getName() {
+        return BACKEND_NAME;
+    }
+
+    @Override
+    public void disposeBackendTensor(INDArray backendTensor) {
+        if(backendTensor.closeable()){
+            backendTensor.close();
+        }
+    }
+
+    @Override
+    public INDArray toBackendTensor(TensorManager<INDArray> tensorManager, org.onnx4j.Tensor onnx4jTensor) {
+        DataType backendDataType = HWAcceleratedDataTypeHelper.toHWAcceleratedDataType(onnx4jTensor.getDataType());
+        DataBuffer dataBuffer = Nd4j.createBuffer(onnx4jTensor.getData(), backendDataType, (int) onnx4jTensor.getElementSize());
+        int shape[] = Arrays.stream(onnx4jTensor.getShape()).mapToInt(i -> (int) i).toArray();
+        INDArray ndArray = Nd4j.create(dataBuffer, shape);
+
+        //
+        // Attach to Onnx4j.TensorManager if the backend tensor had not been attached.
+        //
+        if (ndArray.isAttached() == false)
+            tensorManager.attach(onnx4jTensor.getName(), ndArray);
+
+        return ndArray;
+    }
+
+    @Override
+    public org.onnx4j.Tensor toNativeTensor(TensorManager<Tensor> tensorManager, String name, INDArray backendTensor) {
+        org.onnx4j.tensor.DataType onnx4jDataType = HWAcceleratedDataTypeHelper.toOnnx4jDataType(backendTensor.data().dataType());
+        TensorBuilder builder = TensorBuilder
+                .builder(onnx4jDataType, Shape.create(backendTensor.shape()), backendTensor.data().asNio())
+                .name(name)
+                .docString("Created from org.nd4j.linalg.api.ndarray.INDArray in HWAcceleratedBackend.toTensor()");
+        //
+        // Attach to Onnx4j.TensorManager if the backend tensor had not been attached.
+        //
+        if (backendTensor.isAttached() == false)
+            builder.manager(tensorManager);
+
+        return builder.build();
+    }
+
+    @Override
+    public Session<INDArray> newSession() {
+        return new HWAcceleratedSession(this);
+    }
+
+}
