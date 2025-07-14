@@ -1,0 +1,43 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.forwarder.backend.impls.HWAccelerated.opsets.v8;
+
+import org.forwarder.backend.impls.HWAccelerated.opsets.v8.ops.HWAcceleratedExpandV8;
+import org.forwarder.backend.impls.HWAccelerated.opsets.v8.ops.HWAcceleratedSumV8;
+import org.forwarder.backend.impls.HWAccelerated.opsets.v7.HWAcceleratedOperatorSetV7;
+import org.onnx4j.opsets.domain.aiOnnx.v8.AiOnnxOpsetInitializerV8;
+import org.onnx4j.opsets.domain.aiOnnx.v8.ops.ExpandV8;
+import org.onnx4j.opsets.domain.aiOnnx.v8.ops.SumV8;
+
+public class HWAcceleratedOperatorSetV8 extends HWAcceleratedOperatorSetV7 implements AiOnnxOpsetInitializerV8 {
+
+	@Override
+	public SumV8 getSumV8() { return new HWAcceleratedSumV8(); }
+
+	@Override
+	public ExpandV8 getExpandV8() { return new HWAcceleratedExpandV8(); }
+
+	public HWAcceleratedOperatorSetV8() {
+		super(1, "", "", 8L, "ONNX OPSET-V8 USING DL4J BACKEND");
+	}
+
+	public HWAcceleratedOperatorSetV8(int irVersion, String irVersionPrerelease, String irBuildMetadata,
+			long opsetVersion, String docString) {
+		super(irVersion, irVersionPrerelease, irBuildMetadata, opsetVersion, docString);
+	}
+
+}

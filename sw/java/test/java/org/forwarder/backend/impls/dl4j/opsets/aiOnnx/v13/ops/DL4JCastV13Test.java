@@ -57,7 +57,7 @@ public class DL4JCastV13Test extends DL4JTestCase {
     // ------------------------- 测试工具方法 -------------------------
     private void testCast(INDArray input, INDArray expected, DataType inputType, DataType targetType) throws Exception {
         try (DL4JSession session = new DL4JSession(null)) {
-            DL4JCastV13 operator = new DL4JCastV13();
+            testCastV13 operator = new testCastV13();
             INDArray output = operator.cast(input, targetType); // 直接传DataType
 
             assertArrayEquals(
@@ -67,12 +67,15 @@ public class DL4JCastV13Test extends DL4JTestCase {
                     String.format("[%s -> %s] DataType mismatch", inputType, targetType),
                     expected.dataType(), output.dataType());
 
-            // 数据内容
             if (!targetType.equals(DataType.FLOAT16)) {
                 assertEquals(
                         String.format("[%s -> %s] Data content mismatch", inputType, targetType),
                         expected.toString(), output.toString());
             }
+            System.out.printf("Test [%s -> %s] PASSED%n", inputType, targetType);
+        } catch (Throwable t) {
+            System.err.printf("Test [%s -> %s] FAILED: %s%n", inputType, targetType, t.getMessage());
+            throw t;  // 重新抛出异常，保证JUnit能识别测试失败
         }
     }
 }

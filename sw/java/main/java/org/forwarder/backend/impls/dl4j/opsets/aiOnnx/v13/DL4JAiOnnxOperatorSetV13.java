@@ -16,7 +16,7 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public SliceV13            getSliceV13(){
         return new            DL4JSliceV13();
     }
-    public CastV13            getCastV13(){return new            DL4JCastV13();}
+    public CastV13            getCastV13(){return new                testCastV13();}
     public ExpandV13            getExpandV13(){return new            DL4JExpandV13();}
     public TransposeV13            getTransposeV13(){return new            DL4JTransposeV13();}
     public NegV13            getNegV13(){return new            DL4JNegV13();}

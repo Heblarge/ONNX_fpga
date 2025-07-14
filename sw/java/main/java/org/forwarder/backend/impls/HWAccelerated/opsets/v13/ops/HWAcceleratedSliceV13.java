@@ -1,18 +1,17 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
-import java.util.List;
-import java.util.ArrayList;
-
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.indexing.NDArrayIndex;
-import org.nd4j.linalg.indexing.INDArrayIndex;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SliceV13;
 import org.nd4j.linalg.factory.Nd4j;
-
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SliceV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class HWAcceleratedSliceV13 extends HWAcceleratedOperator implements SliceV13{
 
