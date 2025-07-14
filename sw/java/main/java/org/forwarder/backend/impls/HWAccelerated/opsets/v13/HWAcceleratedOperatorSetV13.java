@@ -22,30 +22,16 @@ public class HWAcceleratedOperatorSetV13 extends HWAcceleratedOperatorSetV12 imp
     public NegV13            getNegV13(){return new                  HWAcceleratedNegV13();}
     public TileV13            getTileV13(){return new                HWAcceleratedTileV13();}
     public ReduceMaxV13        getReduceMaxV13(){return new          HWAcceleratedReduceMaxV13();}
-    public MaxV13              getMaxV13(){return new                HWAcceleratedMaxV13();}
+    //public MaxV13              getMaxV13(){return new                HWAcceleratedMaxV13();}
     public GreaterV13          getGreaterV13(){return new            HWAcceleratedGreaterV13();}
-    public MatMulV13           getMatMulV13(){return new             HWAcceleratedMatMulV13();}
-    public GeMMV13             getGeMMV13(){
-        return new             HWAcceleratedGeMMV13();
-    }
-    public AddV13              getAddV13(){
-        return new              HWAcceleratedAddV13();
-    }
-    public SubV13              getSubV13(){
-        return new              HWAcceleratedSubV13();
-    }
-    public ExpV13              getExpV13(){
-        return new              HWAcceleratedExpV13();
-    }
-    public LogV13              getLogV13(){
-        return new              HWAcceleratedLogV13();
-    }
-    public ReluV13             getReluV13(){
-        return new             HWAcceleratedReluV13();
-    }
-    public SoftplusV13         getSoftplusV13(){
-        return new         HWAcceleratedSoftplusV13();
-    }
+    //public MatMulV13           getMatMulV13(){return new             HWAcceleratedMatMulV13();}
+    //public GeMMV13             getGeMMV13(){return new             HWAcceleratedGeMMV13();}
+    //public AddV13              getAddV13(){return new              HWAcceleratedAddV13();}
+    //public SubV13              getSubV13(){return new              HWAcceleratedSubV13();}
+    //public ExpV13              getExpV13(){return new              HWAcceleratedExpV13();}
+    //public LogV13              getLogV13(){return new              HWAcceleratedLogV13();}
+    //public ReluV13             getReluV13(){return new             HWAcceleratedReluV13();}
+    //public SoftplusV13         getSoftplusV13(){return new         HWAcceleratedSoftplusV13();}
     public QuantizeLinearV13   getQuantizeLinearV13(){
         return new   HWAcceleratedQuantizeLinearV13();
     }
