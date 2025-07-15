@@ -33,7 +33,7 @@ public interface SoftplusV13 extends AiOnnxOperatorV13 {
             this.xField = new InputField<>(this, TPYE_CONSTRAINT_T, inputArray[0]);
         }
 
-        public T_TENSOR getX() {
+        public T_TENSOR getInput() {
             return xField.getData();
         }
     }

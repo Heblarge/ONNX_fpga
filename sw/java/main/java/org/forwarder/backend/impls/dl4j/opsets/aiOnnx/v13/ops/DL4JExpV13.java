@@ -12,9 +12,9 @@ public class DL4JExpV13 extends DL4JAiOnnxOperator implements ExpV13 {
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
-        ExpV13.LogInputsV13<INDArray> castedInputs = new ExpV13.LogInputsV13<>(node, inputs);
+        ExpV13.ExpInputsV13<INDArray> castedInputs = new ExpV13.ExpInputsV13<>(node, inputs);
         INDArray input = castedInputs.getInput();
-        return new ExpV13.LogOutputV13<>(this.exp(input));
+        return new ExpV13.ExpOutputV13<>(this.exp(input));
     }
 
     public INDArray exp(INDArray x) {

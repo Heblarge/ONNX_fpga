@@ -29,11 +29,11 @@ public interface ExpV13 extends AiOnnxOperatorV13 {
         return OP_TYPE;
     }
 
-    class LogInputsV13<T_TENSOR> extends OperatorInputs<T_TENSOR> {
+    class ExpInputsV13<T_TENSOR> extends OperatorInputs<T_TENSOR> {
 
         protected InputField<T_TENSOR> inputField;
 
-        public LogInputsV13(Node node, Inputs inputs) {
+        public ExpInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
             this.inputField = new InputField<>(this, TYPE_CONSTRAINT_T, inputArray[0]);
         }
@@ -43,9 +43,9 @@ public interface ExpV13 extends AiOnnxOperatorV13 {
         }
     }
 
-    class LogOutputV13<T_TENSOR> extends SingleOperatorOutputs<T_TENSOR> {
+    class ExpOutputV13<T_TENSOR> extends SingleOperatorOutputs<T_TENSOR> {
 
-        public LogOutputV13(T_TENSOR output) {
+        public ExpOutputV13(T_TENSOR output) {
             super(output);
         }
 

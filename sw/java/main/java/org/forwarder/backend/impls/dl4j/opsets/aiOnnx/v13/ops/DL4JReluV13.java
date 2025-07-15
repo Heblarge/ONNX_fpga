@@ -13,7 +13,7 @@ public class DL4JReluV13 extends DL4JAiOnnxOperator implements ReluV13 {
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         ReluV13.ReluInputsV13<INDArray> castedInputs = new ReluV13.ReluInputsV13<>(node, inputs);
-        INDArray x = castedInputs.getX();
+        INDArray x = castedInputs.getInput();
         return new ReluV13.ReluOutputV13<>(this.relu(x));
     }
 

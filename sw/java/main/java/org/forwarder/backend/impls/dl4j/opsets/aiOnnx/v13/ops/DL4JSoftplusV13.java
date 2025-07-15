@@ -13,8 +13,8 @@ public class DL4JSoftplusV13 extends DL4JAiOnnxOperator implements SoftplusV13 {
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         SoftplusV13.SoftplusInputsV13<INDArray> castedInputs = new SoftplusV13.SoftplusInputsV13<>(node, inputs);
-        INDArray x = castedInputs.getX();
-        return new SoftplusV13.SoftplusOutputV13<>(this.softplus(x));
+        INDArray input = castedInputs.getInput();
+        return new SoftplusV13.SoftplusOutputV13<>(this.softplus(input));
     }
 
 

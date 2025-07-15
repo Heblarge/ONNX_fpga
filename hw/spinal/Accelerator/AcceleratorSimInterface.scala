@@ -1,0 +1,111 @@
+package Accelerator
+
+import Interface._
+import Util._
+
+import spinal.core._
+import spinal.core.sim._
+import spinal.sim.VCSFlags
+import spinal.lib.sim.StreamDriver
+
+import scala.util.Random
+
+object AcceleratorSimInterface {
+  val period = 10
+  val instDriveSpeed = 0.5f
+  val seed = 114514
+  val random = new Random(seed)
+  val acceleratorCfg = Accelerator_Config(
+    UIDWidth = 32,
+    ShiftWidth = 6,
+    AddressWidth = 20,
+    ShapeWidth = 16,
+    matSubRowNum = 2,
+    activationRowNum = 2,
+    elementWidth = 24,
+    intWidth = 12,
+    in_Length_Max = 32,
+    systolicArrayInFifoDepth = 16,
+    systolicArrayOutFifoDepth = 8,
+    systolicArrayInstFifoDepth = 32,
+    activationOutFifoDepth = 32,
+    slicedInstFifoDepth = 32,
+    numCores = 1
+  )
+  lazy val compiled = SimConfig.withFsdbWave // This is magic
+    .withConfig(
+      SpinalConfig(
+        bitVectorWidthMax = 100000
+      )
+    )
+    .withVCS(
+      VCSFlags(
+        compileFlags = List("-kdb", "-lca", "+notimingchecks"),
+        elaborateFlags = List("-fgp", "-kdb", "-lca", "+rad", "+notimingchecks"),
+        runFlags = List("-l ./run.log")
+      )
+    )
+    .compile {
+      val dut = Accelerator(acceleratorCfg)
+      dut.sdpramA.mem.simPublic()
+      dut.sdpramB.mem.simPublic()
+      dut.sdpramZ.mem.simPublic()
+      dut.collector.inst_finish.simPublic()
+      dut
+    }
+
+  def runSimOneInst(matA: Array[Array[Int]], matB: Array[Array[Int]], instJava: InstJavaTODO) = {
+    val instSim = new InstSim(instJava)
+    var matZ = Array[Array[Int]]()
+    compiled.doSimUntilVoid { dut =>
+      SimTimeout(10000000 * period)
+      dut.clockDomain.forkStimulusRandomClk(random, period)
+      dut.clkCore.forkStimulusRandomClk(random, period)
+      memSetMat(
+        dut.sdpramA.mem,
+        instSim.input0Address,
+        matA,
+        acceleratorCfg.matSubRowNum,
+        acceleratorCfg.elementWidth
+      )
+      memSetMat(
+        dut.sdpramB.mem,
+        instSim.input1Address,
+        matB,
+        acceleratorCfg.matSubRowNum,
+        acceleratorCfg.elementWidth
+      )
+
+      var m = 0
+      StreamDriver(dut.io.ComputeInstruction_Stream, dut.clockDomain) { payload =>
+        if (m < 2) {
+          instSim.driveSim(payload)
+          m += 1
+          true
+        } else {
+          false
+        }
+      }.setFactor(instDriveSpeed)
+
+      fork {
+        while (true) {
+          dut.clockDomain.waitSamplingWhere(dut.collector.inst_finish.toBoolean == true)
+          dut.clockDomain.waitSampling()
+          dut.clockDomain.waitSampling()
+          matZ = memGetMat(
+            dut.sdpramZ.mem,
+            instSim.outputAddress,
+            acceleratorCfg.matSubRowNum,
+            acceleratorCfg.elementWidth,
+            instSim.outputShape0,
+            instSim.outputShape1
+          )
+          simSuccess()
+        }
+      }
+    }
+
+    matZ
+  }
+
+}

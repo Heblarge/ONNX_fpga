@@ -12,9 +12,12 @@ val tensorflowVersion = "1.15.0" // 你可以根据需要调整版本号
 lazy val Onnx_SpinalHDL = (project in file("."))
   .settings(
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
+    scalacOptions ++= Seq("-language:postfixOps"),
     //scalacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin,"com.github.spinalhdl" %% "spinalhdl-sim" % spinalVersion),
     libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
+    libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0"
+
 
   )
 
