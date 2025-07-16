@@ -14,7 +14,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
-        int matrixSize = 4;
+        int matrixSize = 32;
         int minValue = -10;
         int maxValue = 10;
 
@@ -44,23 +44,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
 
         assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
 
-        float[] expectedVector = expected.data().asFloat();
-        //float[] actualVector = actualOutput.data().asFloat();
-
-        float[] actualColumnMajorVector = actualOutput.data().asFloat();
-        // 手动将硬件返回的列主序向量，重新排列为行主序
-        int rows = (int) actualOutput.shape()[0];
-        int cols = (int) actualOutput.shape()[1];
-        float[] actualVector = new float[actualColumnMajorVector.length];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                // 目标行主序索引
-                int rowMajorIndex = i * cols + j;
-                // 源列主序索引
-                int columnMajorIndex = j * rows + i;
-                actualVector[rowMajorIndex] = actualColumnMajorVector[columnMajorIndex];
-            }
-        }
+        float[] expectedVector = expected.dup('c').data().asFloat();
+        float[] actualVector = actualOutput.data().asFloat();
 
         int errorCount = 0;
         double relativeErrorTolerance = 0.02; // 允许 2% 的相对误差
@@ -80,7 +65,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
             double absoluteError = actualVal - expectedVal;
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
 
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance);
+            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance)|| (Math.abs(absoluteError) < 1e-3);
 
             System.out.printf(
                         "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",

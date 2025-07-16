@@ -7,22 +7,22 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.AddV13;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.GeMMV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
 
-public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13 {
+public class HWAcceleratedGeMMV13 extends HWAcceleratedOperator implements GeMMV13 {
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
-        AddInputsV13<INDArray> castedInputs = new AddInputsV13<>(node, inputs);
+        GeMMInputsV13<INDArray> castedInputs = new GeMMInputsV13<>(node, inputs);
         INDArray matrixa = castedInputs.getA();
         INDArray matrixb = castedInputs.getB();
-        INDArray outputTensor = this.add(matrixa,matrixb);
-        return new AddOutputV13<>(outputTensor);
+        INDArray outputTensor = this.gemm(matrixa,matrixb);
+        return new GeMMOutputV13<>(outputTensor);
     }
 
-    public INDArray add(INDArray a, INDArray b) {
+    public INDArray gemm(INDArray a, INDArray b) {
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
@@ -35,8 +35,6 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
             throw new IllegalArgumentException("A B rows must have same size!");
         }
 
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        double factor = Math.pow(2, fracWidth);
         int[][] fixedPointA = new int[rows][cols];
         int[][] fixedPointB = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
@@ -49,7 +47,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
 
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
-                "elementadd",
+                "matmul",
                 0,
                 false,
                 "none",

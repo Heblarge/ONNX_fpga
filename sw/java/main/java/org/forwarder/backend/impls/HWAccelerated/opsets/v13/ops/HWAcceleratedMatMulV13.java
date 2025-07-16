@@ -35,15 +35,13 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
             throw new IllegalArgumentException("A B rows must have same size!");
         }
 
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        double factor = Math.pow(2, fracWidth);
         int[][] fixedPointA = new int[rows][cols];
         int[][] fixedPointB = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 将浮点数转换为定点数
-                fixedPointA[i][j] = (int) Math.round(a.getFloat(i, j));
-                fixedPointB[i][j] = (int) Math.round(b.getFloat(i, j));
+                fixedPointA[i][j] = (int) (a.getFloat(i, j));
+                fixedPointB[i][j] = (int) (b.getFloat(i, j));
             }
         }
 

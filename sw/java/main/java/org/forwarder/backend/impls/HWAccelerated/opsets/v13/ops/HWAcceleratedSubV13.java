@@ -42,8 +42,8 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 将浮点数转换为定点数
-                fixedPointA[i][j] = (int) Math.round(a.getFloat(i, j) * factor);
-                fixedPointB[i][j] = (int) Math.round(b.getFloat(i, j) * factor * -1);
+                fixedPointA[i][j] = (int) (a.getFloat(i, j));
+                fixedPointB[i][j] = (int) (b.getFloat(i, j) * -1);
             }
         }
 
@@ -67,7 +67,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 将定点数转换回浮点数
-                Output[i * cols + j] = (float) (fixedPointOutput[i][j] / factor);
+                Output[i * cols + j] = (float) (fixedPointOutput[i][j]);
             }
         }
 

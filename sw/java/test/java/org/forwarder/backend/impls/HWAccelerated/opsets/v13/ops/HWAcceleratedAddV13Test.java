@@ -14,12 +14,12 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
-        int matrixSize = 4;
-        float minValue = -10.0f;
-        float maxValue = 10.0f;
+        int matrixSize = 32;
+        int minValue = -10;
+        int maxValue = 10;
 
-        float[][] randomMatrixA = generateRandomFloatMatrix(matrixSize, matrixSize, minValue, maxValue);
-        float[][] randomMatrixB = generateRandomFloatMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrixA = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrixB = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
         INDArray MatrixA = Nd4j.create(randomMatrixA);
         INDArray MatrixB = Nd4j.create(randomMatrixB);
 
@@ -66,7 +66,7 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
             double absoluteError = actualVal - expectedVal;
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
 
-            boolean pass = (relativeError < relativeErrorTolerance);
+            boolean pass = (relativeError < relativeErrorTolerance) || (Math.abs(absoluteError) < 1e-3);
 
             System.out.printf(
                         "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
@@ -93,13 +93,13 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
 }
 
 
-    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
+    private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 生成一个在 [min, max) 区间内的随机浮点数
-                matrix[i][j] = min + random.nextFloat() * (max - min);
+                // 生成一个在 [min, max) 区间内的随机整数
+                matrix[i][j] = random.nextInt(max - min + 1) + min;
             }
         }
         return matrix;

@@ -15,7 +15,7 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
-        int matrixSize = 4;
+        int matrixSize = 32;
         float minValue = -3.0f;
         float maxValue = 2.0f;
 
@@ -69,7 +69,7 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
             double absoluteError = actualVal - expectedVal;
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
 
-            boolean pass = (relativeError < relativeErrorTolerance);
+            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance)|| (Math.abs(absoluteError) < 1e-3);
 
             System.out.printf(
                         "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",

@@ -24,27 +24,27 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract ReduceMaxV13 getReduceMaxV13();
 
-    //public abstract MaxV13 getMaxV13();
+    public abstract MaxV13 getMaxV13();
 
     public abstract GreaterV13 getGreaterV13();
 
-    //public abstract MatMulV13 getMatMulV13();
+    public abstract MatMulV13 getMatMulV13();
 
     public abstract NegV13 getNegV13();
 
-    //public abstract GeMMV13 getGeMMV13();
+    public abstract GeMMV13 getGeMMV13();
 
-    //public abstract AddV13 getAddV13();
+    public abstract AddV13 getAddV13();
 
-    //public abstract SubV13 getSubV13();
+    public abstract SubV13 getSubV13();
 
-    //public abstract ExpV13 getExpV13();
+    public abstract ExpV13 getExpV13();
 
-    //public abstract LogV13 getLogV13();
+    public abstract LogV13 getLogV13();
 
-    //public abstract ReluV13 getReluV13();
+    public abstract ReluV13 getReluV13();
 
-    //public abstract SoftplusV13 getSoftplusV13();
+    public abstract SoftplusV13 getSoftplusV13();
 
     public abstract QuantizeLinearV13 getQuantizeLinearV13();
 
@@ -71,25 +71,25 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
         operators.put(ReduceMaxV13.OP_TYPE, this.getReduceMaxV13());
 
-        //operators.put(MaxV13.OP_TYPE, this.getMaxV13());
+        operators.put(MaxV13.OP_TYPE, this.getMaxV13());
 
         operators.put(GreaterV13.OP_TYPE, this.getGreaterV13());
 
-        //operators.put(MatMulV13.OP_TYPE, this.getMatMulV13());
+        operators.put(MatMulV13.OP_TYPE, this.getMatMulV13());
 
-        //operators.put(GeMMV13.OP_TYPE, this.getGeMMV13());
+        operators.put(GeMMV13.OP_TYPE, this.getGeMMV13());
 
-        //operators.put(AddV13.OP_TYPE, this.getAddV13());
+        operators.put(AddV13.OP_TYPE, this.getAddV13());
 
-        //operators.put(SubV13.OP_TYPE, this.getSubV13());
+        operators.put(SubV13.OP_TYPE, this.getSubV13());
 
-        //operators.put(ExpV13.OP_TYPE, this.getExpV13());
+        operators.put(ExpV13.OP_TYPE, this.getExpV13());
 
-        //operators.put(LogV13.OP_TYPE, this.getLogV13());
+        operators.put(LogV13.OP_TYPE, this.getLogV13());
 
-        //operators.put(ReluV13.OP_TYPE, this.getReluV13());
+        operators.put(ReluV13.OP_TYPE, this.getReluV13());
 
-        //operators.put(SoftplusV13.OP_TYPE, this.getSoftplusV13());
+        operators.put(SoftplusV13.OP_TYPE, this.getSoftplusV13());
 
         operators.put(QuantizeLinearV13.OP_TYPE, this.getQuantizeLinearV13());
 

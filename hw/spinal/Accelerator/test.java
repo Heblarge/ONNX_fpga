@@ -12,7 +12,7 @@ public class test {
 		// 调用Scala的矩阵加法
 		InstJavaTODO instJava = new InstJavaTODO(
 				0,
-				"matmul",
+				"elementmax",
 				0,
 				false,
 				"none",
@@ -32,7 +32,7 @@ public class test {
 		System.out.println("\nMatrix B:");
 		printMatrix(matrixB);
 
-		System.out.println("\nResult of A x B:");
+		System.out.println("\nResult of A B elementMax:");
 		printMatrix(result);
 
 	}

@@ -4,42 +4,64 @@ import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.ops.transforms.Transforms;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
-public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
+public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
         int matrixSize = 32;
-        float minValue = 0.0f;
-        float maxValue = 12.0f;
+        int minValue = -10;
+        int maxValue = 10;
 
-        float[][] randomMatrix = generateRandomFloatMatrix(matrixSize, matrixSize, minValue, maxValue);
-        INDArray input = Nd4j.create(randomMatrix);
+        float[][] randomMatrixA = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrixB = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
+        INDArray MatrixA = Nd4j.create(randomMatrixA);
+        INDArray MatrixB = Nd4j.create(randomMatrixB);
 
-        float[][] expectedMatrix = new float[matrixSize][matrixSize];
-        for (int i = 0; i < matrixSize; i++) {
-            for (int j = 0; j < matrixSize; j++) {
-                expectedMatrix[i][j] = (float) Math.log(randomMatrix[i][j]);
-            }
-        }
-        INDArray expected = Nd4j.create(expectedMatrix);
+        INDArray expectedMatrix = Transforms.max(MatrixA, MatrixB);
 
-        this.testLog(expected, input);
+        this.testMax(expectedMatrix, MatrixA, MatrixB);
+    }
+
+    @Test
+    public void test1() throws Exception {
+        INDArray matrixA = Nd4j.create(new float[][]{
+                {1.0f, 5.0f},
+                {4.0f, 2.0f}
+        });
+        INDArray matrixB = Nd4j.create(new float[][]{
+                {3.0f, 1.0f},
+                {2.0f, 6.0f}
+        });
+
+        // 2. 定义用户指定的期望结果
+        INDArray expectedMatrix = Nd4j.create(new float[][]{
+                {3.0f, 5.0f},
+                {4.0f, 6.0f}
+        });
+
+        // 3. 调用核心测试方法进行验证
+        this.testMax(expectedMatrix, matrixA, matrixB);
     }
 
 
-    private void testLog(INDArray expected, INDArray input) throws Exception {
-        HWAcceleratedLogV13 operator = new HWAcceleratedLogV13();
+    private void testMax(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
+        HWAcceleratedMaxV13 operator = new HWAcceleratedMaxV13();
+        List<INDArray> inputs = Arrays.asList(inputA, inputB);
+        INDArray actualOutput = operator.max(inputs);
 
-        INDArray actualOutput = operator.log(input);
-
-        System.out.println("\ninput:");
-        System.out.print(input);
+        System.out.println("\ninputA:");
+        System.out.print(inputA);
+        System.out.println("\ninputB:");
+        System.out.print(inputB);
         System.out.println("\nexpectedMatrix:");
         System.out.print(expected);
         System.out.println("\nactualOutput:");
@@ -47,7 +69,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
 
         assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
 
-        float[] expectedVector = expected.data().asFloat();
+        float[] expectedVector = expected.dup('c').data().asFloat();
         float[] actualVector = actualOutput.data().asFloat();
 
         int errorCount = 0;
@@ -95,13 +117,13 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
 }
 
 
-    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
+    private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 生成一个在 [min, max) 区间内的随机浮点数
-                matrix[i][j] = min + random.nextFloat() * (max - min);
+                // 生成一个在 [min, max) 区间内的随机整数
+                matrix[i][j] = random.nextInt(max - min + 1) + min;
             }
         }
         return matrix;

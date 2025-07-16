@@ -10,36 +10,33 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
-public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
+public class HWAcceleratedGeMMV13Test extends HWAcceleratedTestCase {
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
         int matrixSize = 32;
-        float minValue = 0.0f;
-        float maxValue = 12.0f;
+        int minValue = -10;
+        int maxValue = 10;
 
-        float[][] randomMatrix = generateRandomFloatMatrix(matrixSize, matrixSize, minValue, maxValue);
-        INDArray input = Nd4j.create(randomMatrix);
+        float[][] randomMatrixA = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrixB = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
+        INDArray MatrixA = Nd4j.create(randomMatrixA);
+        INDArray MatrixB = Nd4j.create(randomMatrixB);
 
-        float[][] expectedMatrix = new float[matrixSize][matrixSize];
-        for (int i = 0; i < matrixSize; i++) {
-            for (int j = 0; j < matrixSize; j++) {
-                expectedMatrix[i][j] = (float) Math.log(randomMatrix[i][j]);
-            }
-        }
-        INDArray expected = Nd4j.create(expectedMatrix);
+        INDArray expectedMatrix = MatrixA.mmul(MatrixB);
 
-        this.testLog(expected, input);
+        this.testGeMM(expectedMatrix, MatrixA, MatrixB);
     }
 
 
-    private void testLog(INDArray expected, INDArray input) throws Exception {
-        HWAcceleratedLogV13 operator = new HWAcceleratedLogV13();
+    private void testGeMM(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
+        HWAcceleratedGeMMV13 operator = new HWAcceleratedGeMMV13();
+        INDArray actualOutput = operator.gemm(inputA, inputB);
 
-        INDArray actualOutput = operator.log(input);
-
-        System.out.println("\ninput:");
-        System.out.print(input);
+        System.out.println("\ninputA:");
+        System.out.print(inputA);
+        System.out.println("\ninputB:");
+        System.out.print(inputB);
         System.out.println("\nexpectedMatrix:");
         System.out.print(expected);
         System.out.println("\nactualOutput:");
@@ -47,7 +44,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
 
         assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
 
-        float[] expectedVector = expected.data().asFloat();
+        float[] expectedVector = expected.dup('c').data().asFloat();
         float[] actualVector = actualOutput.data().asFloat();
 
         int errorCount = 0;
@@ -68,7 +65,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
             double absoluteError = actualVal - expectedVal;
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
 
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance) || (Math.abs(absoluteError) < 1e-3);
+            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance)|| (Math.abs(absoluteError) < 1e-3);
 
             System.out.printf(
                         "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
@@ -95,13 +92,13 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
 }
 
 
-    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
+    private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 生成一个在 [min, max) 区间内的随机浮点数
-                matrix[i][j] = min + random.nextFloat() * (max - min);
+                // 生成一个在 [min, max) 区间内的随机整数
+                matrix[i][j] = random.nextInt(max - min + 1) + min;
             }
         }
         return matrix;

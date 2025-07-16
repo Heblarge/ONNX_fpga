@@ -34,7 +34,7 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 将浮点数转换为定点数
-                fixedPointInput[i][j] = (int) Math.round(x.getFloat(i, j) * factor);
+                fixedPointInput[i][j] = (int) (x.getFloat(i, j) * factor);
             }
         }
         InstJavaTODO instruction = new InstJavaTODO(
