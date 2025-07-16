@@ -35,7 +35,29 @@ public class HWAcceleratedConcatV13 extends HWAcceleratedConcatV4 implements Con
     }
 
     @Override
-    protected INDArray concat(List<INDArray> inputs, Long axis) {
-        return Nd4j.concat(axis.intValue(), inputs.toArray(new INDArray[0]));
+    protected INDArray concat(List<INDArray> inputs, Long axisLong) {
+        int rank = inputs.get(0).rank();
+        int axis = normalizeAxis(axisLong, rank);
+
+        long[] shapeRef = inputs.get(0).shape();
+
+        for (int i = 1; i < inputs.size(); i++) {
+            long[] shape = inputs.get(i).shape();
+            if (shape.length != shapeRef.length) {
+                throw new IllegalArgumentException(String.format(
+                        "Input tensor %d rank %d != reference rank %d", i, shape.length, shapeRef.length));
+            }
+            for (int dim = 0; dim < shapeRef.length; dim++) {
+                if (dim == axis) continue;
+                if (shape[dim] != shapeRef[dim]) {
+                    throw new IllegalArgumentException(String.format(
+                            "Input tensor %d shape mismatch at dim %d: expected %d, got %d",
+                            i, dim, shapeRef[dim], shape[dim]));
+                }
+            }
+        }
+
+        return Nd4j.concat(axis, inputs.toArray(new INDArray[0]));
     }
+
 }

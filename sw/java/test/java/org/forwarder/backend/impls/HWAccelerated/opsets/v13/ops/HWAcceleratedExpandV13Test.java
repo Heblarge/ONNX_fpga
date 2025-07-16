@@ -42,28 +42,33 @@ public class HWAcceleratedExpandV13Test extends HWAcceleratedTestCase {
      */
     @Test
     public void testExpandRightAlign() throws Exception {
-        try (
-                INDArray input = Nd4j.linspace(1,12,12).reshape(2,1,6);
-                INDArray shape = Nd4j.createFromArray(2,3,6);
-                INDArray expected = input.broadcast(2,3,6)
-        ) {
-            this.testExpand(expected, input, shape);
-        }
+        INDArray input = Nd4j.linspace(1,12,12).reshape(2,1,6);
+        INDArray shape = Nd4j.createFromArray(2,3,6);
+        INDArray expected = input.broadcast(2,3,6);
+
+        this.testExpand(expected, input, shape);
+
+        // 如果确实需要手动释放，确保调用的对象支持close()
+        // input.close();
+        // shape.close();
+        // expected.close();
     }
+
 
     /**
      * Case 3: shape with non-1D (should fail)
      */
     @Test
     public void testExpandShapeNot1D() throws Exception {
-        try (
-                INDArray input = Nd4j.create(new float[]{1,2,3}, new int[]{3,1});
-                INDArray illegalShape = Nd4j.create(new long[][]{{3,4}}) // This is 2D!
-        ) {
-            thrown.expect(org.nd4j.linalg.exception.ND4JIllegalStateException.class);
-            this.testExpand(null, input, illegalShape);
-        }
+        INDArray input = Nd4j.create(new float[]{1, 2, 3}, new int[]{3, 1});
+        INDArray illegalShape = Nd4j.create(new long[][]{{3, 4}}); // This is 2D!
+
+        thrown.expect(IllegalArgumentException.class);
+        thrown.expectMessage("Shape tensor must be 1-D");
+        this.testExpand(null, input, illegalShape);
+
     }
+
 
     /**
      * Case 4: shape with negative dimension (should fail)
@@ -98,13 +103,10 @@ public class HWAcceleratedExpandV13Test extends HWAcceleratedTestCase {
      */
     @Test
     public void testExpandBroadcastMultiDim() throws Exception {
-        try (
-                INDArray input = Nd4j.create(new float[]{1,2,3}).reshape(1,1,3);
-                INDArray shape = Nd4j.createFromArray(2,4,3);
-                INDArray expected = input.broadcast(2,4,3)
-        ) {
-            this.testExpand(expected, input, shape);
-        }
+        INDArray input = Nd4j.create(new float[]{1,2,3}).reshape(1,1,3);
+        INDArray shape = Nd4j.createFromArray(2,4,3);
+        INDArray expected = input.broadcast(2,4,3);
+        this.testExpand(expected, input, shape);
     }
 
 

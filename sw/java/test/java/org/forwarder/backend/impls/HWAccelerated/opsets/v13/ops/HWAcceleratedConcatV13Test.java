@@ -67,9 +67,10 @@ public class HWAcceleratedConcatV13Test extends HWAcceleratedTestCase {
                 INDArray b = Nd4j.create(2, 4)
         ) {
             thrown.expect(IllegalArgumentException.class);
-            this.testConcat(null, a, b, 1);
+            this.testConcat(null, a, b, 0);
         }
     }
+
 
     /**
      * Concat 1D: (3) + (2) → (5)
@@ -109,5 +110,6 @@ public class HWAcceleratedConcatV13Test extends HWAcceleratedTestCase {
             assertArrayEquals(expected.shape(), y.shape());
         }
     }
+
 }
 

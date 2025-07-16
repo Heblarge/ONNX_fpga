@@ -4,19 +4,46 @@ import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+
 
 import static org.junit.Assert.assertArrayEquals;
 
 public class HWAcceleratedNegV13Test extends HWAcceleratedTestCase {
 
-    private void testNeg(INDArray expected, INDArray input) throws Exception {
+    private void assertINDArrayEqualsWithNaN(INDArray expected, INDArray actual, double eps) {
+        assertArrayEquals(expected.shape(), actual.shape());
+        long length = expected.length();
+        for (int i = 0; i < length; i++) {
+            double e = expected.getDouble(i);
+            double a = actual.getDouble(i);
+            if (Double.isNaN(e)) {
+                if (!Double.isNaN(a)) {
+                    fail("Expected NaN at index " + i + " but got " + a);
+                }
+            } else if (Double.isInfinite(e)) {
+                if (e != a) {
+                    fail("Expected " + e + " at index " + i + " but got " + a);
+                }
+            } else {
+                if (Math.abs(e - a) > eps) {
+                    fail("Expected " + e + " at index " + i + " but got " + a);
+                }
+            }
+        }
+    }
+
+    private void testNeg(INDArray expected, INDArray input) {
         HWAcceleratedNegV13 op = new HWAcceleratedNegV13();
         INDArray result = op.neg(input);
-
-        System.out.printf("Expected: %s, Actual: %s%n", expected.shapeInfoToString(), result.shapeInfoToString());
-        assertArrayEquals(expected.shape(), result.shape());
-        assertArrayEquals(expected.toDoubleVector(), result.toDoubleVector(), 1e-6);
+        assertINDArrayEqualsWithNaN(expected, result, 1e-6);
     }
+
+
 
     @Test
     public void testScalarInput() throws Exception {
