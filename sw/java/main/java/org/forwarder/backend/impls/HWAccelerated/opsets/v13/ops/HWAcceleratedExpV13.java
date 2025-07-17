@@ -29,13 +29,12 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
         if(rows != cols) {
             throw new IllegalArgumentException("rows and cols must be equal!");
         }
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        double factor = Math.pow(2, fracWidth);
+
         int[][] fixedPointInput = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 将浮点数转换为定点数
-                fixedPointInput[i][j] = (int) (x.getFloat(i, j) * factor);
+                fixedPointInput[i][j] = (int) (x.getFloat(i, j));
             }
         }
         InstJavaTODO instruction = new InstJavaTODO(
@@ -59,7 +58,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 将定点数转换回浮点数
-                Output[i * cols + j] = (float) (fixedPointOutput[i][j] / factor);
+                Output[i * cols + j] = (float) (fixedPointOutput[i][j]);
             }
         }
 

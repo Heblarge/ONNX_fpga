@@ -16,15 +16,33 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public SliceV13            getSliceV13(){
         return new            DL4JSliceV13();
     }
-    public CastV13            getCastV13(){return new                DL4JCastV13();}
-    public ExpandV13            getExpandV13(){return new            DL4JExpandV13();}
-    public TransposeV13            getTransposeV13(){return new            DL4JTransposeV13();}
-    public NegV13            getNegV13(){return new            DL4JNegV13();}
-    public TileV13            getTileV13(){return new            DL4JTileV13();}
-    public ReduceMaxV13        getReduceMaxV13(){return new          DL4JReduceMaxV13();}
-    public MaxV13             getMaxV13(){return new                DL4JMaxV13();}
-    public GreaterV13          getGreaterV13(){return new            DL4JGreaterV13();}
-    public MatMulV13           getMatMulV13(){return new             DL4JMatMulV13();}
+    public CastV13             getCastV13(){
+        return new             DL4JCastV13();
+    }
+    public ExpandV13           getExpandV13(){
+        return new           DL4JExpandV13();
+    }
+    public TransposeV13        getTransposeV13(){
+        return new        DL4JTransposeV13();
+    }
+    public NegV13              getNegV13(){
+        return new              DL4JNegV13();
+    }
+    public TileV13             getTileV13(){
+        return new             DL4JTileV13();
+    }
+    public ReduceMaxV13        getReduceMaxV13(){
+        return new        DL4JReduceMaxV13();
+    }
+    public MaxV13              getMaxV13(){
+        return new              DL4JMaxV13();
+    }
+    public GreaterV13          getGreaterV13(){
+        return new          DL4JGreaterV13();
+    }
+    public MatMulV13           getMatMulV13(){
+        return new           DL4JMatMulV13();
+    }
     public GeMMV13             getGeMMV13(){
         return new             DL4JGeMMV13();
     }

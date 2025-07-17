@@ -1,5 +1,6 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
+import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -36,7 +37,12 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
     private void testRelu(INDArray expected, INDArray input) throws Exception {
         HWAcceleratedReluV13 operator = new HWAcceleratedReluV13();
 
-        INDArray actualOutput = operator.relu(input);
+        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        double factor = Math.pow(2, fracWidth);
+        INDArray inputForHardware = input.mul(factor);
+
+        INDArray rawActualOutput = operator.relu(inputForHardware);
+        INDArray actualOutput = rawActualOutput.div(factor);
 
         System.out.println("\ninput:");
         System.out.print(input);
@@ -98,6 +104,7 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
     private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
+
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 // 生成一个在 [min, max) 区间内的随机浮点数

@@ -1,5 +1,6 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
+import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -37,7 +38,12 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
     private void testExp(INDArray expected, INDArray input) throws Exception {
         HWAcceleratedExpV13 operator = new HWAcceleratedExpV13();
 
-        INDArray actualOutput = operator.exp(input);
+        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        double factor = Math.pow(2, fracWidth);
+        INDArray inputForHardware = input.mul(factor);
+
+        INDArray rawActualOutput = operator.exp(inputForHardware);
+        INDArray actualOutput = rawActualOutput.div(factor);
 
         System.out.println("\ninput:");
         System.out.print(input);

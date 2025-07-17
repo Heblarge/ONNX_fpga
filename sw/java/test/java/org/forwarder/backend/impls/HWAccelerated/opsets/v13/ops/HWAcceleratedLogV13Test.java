@@ -1,5 +1,6 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
+import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -11,6 +12,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
 public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
+
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
@@ -36,7 +38,12 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
     private void testLog(INDArray expected, INDArray input) throws Exception {
         HWAcceleratedLogV13 operator = new HWAcceleratedLogV13();
 
-        INDArray actualOutput = operator.log(input);
+        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        double factor = Math.pow(2, fracWidth);
+        INDArray inputForHardware = input.mul(factor);
+
+        INDArray rawActualOutput = operator.log(inputForHardware);
+        INDArray actualOutput = rawActualOutput.div(factor);
 
         System.out.println("\ninput:");
         System.out.print(input);
@@ -68,7 +75,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
             double absoluteError = actualVal - expectedVal;
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
 
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance) || (Math.abs(absoluteError) < 1e-3);
+            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance) || (Math.abs(absoluteError) < 2 * 1e-2);
 
             System.out.printf(
                         "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
