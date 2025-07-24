@@ -146,7 +146,6 @@ public abstract class FWTestCase extends TestCase {
      * @param excepted
      * @param tolerance
      */
-
     protected void assertSimilarity(Tensor actual, Tensor excepted, float tolerance) {
         assertEquals(excepted.getValueInfo(), actual.getValueInfo());
         assertEquals(excepted.getData().capacity(), actual.getData().capacity());

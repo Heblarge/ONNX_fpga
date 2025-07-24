@@ -22,7 +22,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
-
 import javax.naming.OperationNotSupportedException;
 
 import junit.framework.Test;
