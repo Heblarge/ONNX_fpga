@@ -15,11 +15,13 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
         int matrixSize = 32;
+        int rows = 16;
+        int cols = 8;
         int minValue = -10;
         int maxValue = 10;
 
-        float[][] randomMatrixA = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
-        float[][] randomMatrixB = generateRandomIntegerMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrixA = generateRandomIntegerMatrix(rows, cols, minValue, maxValue);
+        float[][] randomMatrixB = generateRandomIntegerMatrix(rows, cols, minValue, maxValue);
         INDArray MatrixA = Nd4j.create(randomMatrixA);
         INDArray MatrixB = Nd4j.create(randomMatrixB);
 

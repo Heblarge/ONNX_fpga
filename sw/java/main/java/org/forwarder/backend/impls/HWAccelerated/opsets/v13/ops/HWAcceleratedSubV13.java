@@ -26,23 +26,27 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
-        int rows = (int) shapeA[0];
-        int cols = (int) shapeA[1];
-        if(rows != cols) {
-            throw new IllegalArgumentException("rows and cols must be equal!");
-        }
-        if((shapeA[0] != shapeB[0]) || (shapeA[1] != shapeB[1])){
-            throw new IllegalArgumentException("A B rows must have same size!");
+        int rowsA = (int) shapeA[0];
+        int colsA = (int) shapeA[1];
+        int rowsB = (int) shapeB[0];
+        int colsB = (int) shapeB[1];
+
+        if(!java.util.Arrays.equals(shapeA, shapeB)) {
+            throw new IllegalArgumentException("Matrix A and B must be equal!");
         }
 
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        double factor = Math.pow(2, fracWidth);
-        int[][] fixedPointA = new int[rows][cols];
-        int[][] fixedPointB = new int[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        int[][] fixedPointA = new int[rowsA][colsA];
+        int[][] fixedPointB = new int[rowsB][colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
                 // 将浮点数转换为定点数
                 fixedPointA[i][j] = (int) (a.getFloat(i, j));
+
+            }
+        }
+        for (int i = 0; i < rowsB; i++) {
+            for (int j = 0; j < colsB; j++) {
+                // 将浮点数转换为定点数
                 fixedPointB[i][j] = (int) (b.getFloat(i, j) * -1);
             }
         }
@@ -57,17 +61,17 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
                 0,
                 0,
                 0,
-                rows,
-                cols,
-                cols
+                rowsA,
+                colsA,
+                colsA
         );
         int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointA, fixedPointB, instruction);
 
-        float[] Output = new float[rows * cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        float[] Output = new float[rowsA * colsA];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
                 // 将定点数转换回浮点数
-                Output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                Output[i * colsA + j] = (float) (fixedPointOutput[i][j]);
             }
         }
 

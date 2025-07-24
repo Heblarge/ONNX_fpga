@@ -17,15 +17,17 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
         int matrixSize = 32;
+        int rows = 16;
+        int cols = 8;
         float minValue = -3.0f;
-        float maxValue = 2.0f;
+        float maxValue = 7.0f;
 
-        float[][] randomMatrix = generateRandomFloatMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrix = generateRandomFloatMatrix(rows, cols, minValue, maxValue);
         INDArray input = Nd4j.create(randomMatrix);
 
-        float[][] expectedMatrix = new float[matrixSize][matrixSize];
-        for (int i = 0; i < matrixSize; i++) {
-            for (int j = 0; j < matrixSize; j++) {
+        float[][] expectedMatrix = new float[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
                 expectedMatrix[i][j] = (float) Math.exp(randomMatrix[i][j]);
             }
         }

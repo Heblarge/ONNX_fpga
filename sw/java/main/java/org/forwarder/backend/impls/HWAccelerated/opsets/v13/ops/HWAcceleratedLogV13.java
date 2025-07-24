@@ -25,9 +25,9 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
         long[] shape = x.shape();
         int rows = (int) shape[0];
         int cols = (int) shape[1];
-        if(rows != cols) {
-            throw new IllegalArgumentException("rows and cols must be equal!");
-        }
+//        if(rows != cols) {
+//            throw new IllegalArgumentException("rows and cols must be equal!");
+//        }
 
         int[][] fixedPointInput = new int[rows][cols];
         for (int i = 0; i < rows; i++) {

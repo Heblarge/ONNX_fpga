@@ -16,15 +16,17 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
         int matrixSize = 32;
+        int rows = 16;
+        int cols = 32;
         float minValue = -16.0f;
         float maxValue = 16.0f;
 
-        float[][] randomMatrix = generateRandomFloatMatrix(matrixSize, matrixSize, minValue, maxValue);
+        float[][] randomMatrix = generateRandomFloatMatrix(rows, cols, minValue, maxValue);
         INDArray input = Nd4j.create(randomMatrix);
 
-        float[][] expectedMatrix = new float[matrixSize][matrixSize];
-        for (int i = 0; i < matrixSize; i++) {
-            for (int j = 0; j < matrixSize; j++) {
+        float[][] expectedMatrix = new float[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
                 expectedMatrix[i][j] = (float) Math.max(0, randomMatrix[i][j]);
             }
         }

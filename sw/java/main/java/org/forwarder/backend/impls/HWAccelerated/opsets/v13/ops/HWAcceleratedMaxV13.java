@@ -29,25 +29,37 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
             throw new IllegalArgumentException("Max operator requires at least one input tensor.");
         }
 
-        INDArray matrixA = inputTensors.get(0);
-        INDArray matrixB = inputTensors.get(1);
+        INDArray a = inputTensors.get(0);
+        INDArray b = inputTensors.get(1);
 
-        long[] shape = matrixA.shape();
-        int rows = (int) shape[0];
-        int cols = (int) shape[1];
-        if(rows != cols) {
-            throw new IllegalArgumentException("rows and cols must be equal!");
+        long[] shapeA = a.shape();
+        long[] shapeB = b.shape();
+
+        int rowsA = (int) shapeA[0];
+        int colsA = (int) shapeA[1];
+        int rowsB = (int) shapeB[0];
+        int colsB = (int) shapeB[1];
+
+        if(!java.util.Arrays.equals(shapeA, shapeB)) {
+            throw new IllegalArgumentException("Matrix A and B must be equal!");
         }
 
-        int[][] fixedPointInputA = new int[rows][cols];
-        int[][] fixedPointInputB = new int[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        int[][] fixedPointA = new int[rowsA][colsA];
+        int[][] fixedPointB = new int[rowsB][colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
                 // 将浮点数转换为定点数
-                fixedPointInputA[i][j] = (int) (matrixA.getFloat(i, j));
-                fixedPointInputB[i][j] = (int) (matrixB.getFloat(i, j));
+                fixedPointA[i][j] = (int) (a.getFloat(i, j));
+
             }
         }
+        for (int i = 0; i < rowsB; i++) {
+            for (int j = 0; j < colsB; j++) {
+                // 将浮点数转换为定点数
+                fixedPointB[i][j] = (int) (b.getFloat(i, j));
+            }
+        }
+
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementmax",
@@ -58,21 +70,21 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
                 0,
                 0,
                 0,
-                rows,
-                cols,
-                cols
+                rowsA,
+                colsA,
+                colsA
         );
-        int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointInputA, fixedPointInputB, instruction);
+        int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointA, fixedPointB, instruction);
 
-        float[] Output = new float[rows * cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        float[] Output = new float[rowsA * colsA];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
                 // 将定点数转换回浮点数
-                Output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                Output[i * colsA + j] = (float) (fixedPointOutput[i][j]);
             }
         }
 
-        return Nd4j.create(Output).reshape(shape);
+        return Nd4j.create(Output).reshape(shapeA);
     }
 
 }

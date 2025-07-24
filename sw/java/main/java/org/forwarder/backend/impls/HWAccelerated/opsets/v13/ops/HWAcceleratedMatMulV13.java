@@ -26,21 +26,28 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
-        int rows = (int) shapeA[0];
-        int cols = (int) shapeA[1];
-        if(rows != cols) {
-            throw new IllegalArgumentException("rows and cols must be equal!");
-        }
-        if((shapeA[0] != shapeB[0]) || (shapeA[1] != shapeB[1])){
-            throw new IllegalArgumentException("A B rows must have same size!");
+        int rowsA = (int) shapeA[0]; // m
+        int colsA = (int) shapeA[1]; // k
+        int colsB = (int) shapeB[1]; // n
+
+        if (shapeA[1] != shapeB[0]) {
+            throw new IllegalArgumentException(
+                    String.format("Matrix shape mismatch for MatMul: A's columns (%d) must equal B's rows (%d).", shapeA[1], shapeB[0])
+            );
         }
 
-        int[][] fixedPointA = new int[rows][cols];
-        int[][] fixedPointB = new int[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        int[][] fixedPointA = new int[rowsA][colsA];
+        int[][] fixedPointB = new int[colsA][colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
                 // 将浮点数转换为定点数
                 fixedPointA[i][j] = (int) (a.getFloat(i, j));
+
+            }
+        }
+        for (int i = 0; i < colsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                // 将浮点数转换为定点数
                 fixedPointB[i][j] = (int) (b.getFloat(i, j));
             }
         }
@@ -55,21 +62,21 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
                 0,
                 0,
                 0,
-                rows,
-                cols,
-                cols
+                rowsA,
+                colsA,
+                colsB
         );
         int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointA, fixedPointB, instruction);
 
-        float[] Output = new float[rows * cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
+        float[] Output = new float[rowsA * colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsB; j++) {
                 // 将定点数转换回浮点数
-                Output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                Output[i * colsB + j] = (float) (fixedPointOutput[i][j]);
             }
         }
 
-        return Nd4j.create(Output).reshape(shapeA);
+        return Nd4j.create(Output).reshape(rowsA, colsB);
     }
 
 }
