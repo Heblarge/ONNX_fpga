@@ -79,7 +79,7 @@ public class ModelTest extends FWTestCase {
                 "/mnist/opset_v13/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx",
                 List.of("Input3", "InputX"), // 假设两个输入名
                 List.of("Out0", "Out1", "Out2"), // 假设三个输出名
-                new String[] { "DL4J" },
+                new String[] { "HWAccelerated" },
                 0.001f
         );
     }
