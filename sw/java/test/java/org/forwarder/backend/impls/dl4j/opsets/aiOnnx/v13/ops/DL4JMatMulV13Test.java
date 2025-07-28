@@ -15,16 +15,17 @@ public class DL4JMatMulV13Test {
     @Test
     public void testFloatMatMul() {
         INDArray a = Nd4j.create(new float[][] {
-                {1, 2},
-                {3, 4}
+                {1, 2, 3},
+                {4, 5, 5}
         });
         INDArray b = Nd4j.create(new float[][] {
-                {5, 6},
-                {7, 8}
+                {1, 2,3,4},
+                {5,6,7,8},
+                {9,10,11,12}
         });
         INDArray expected = Nd4j.create(new float[][] {
-                {19, 22},
-                {43, 50}
+                {38, 44, 50, 56},
+                {83, 98, 113, 128}
         });
         checkEqual("Float", expected, op.matmul(a, b));
     }
