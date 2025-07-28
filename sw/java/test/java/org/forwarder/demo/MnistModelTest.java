@@ -95,23 +95,23 @@ public class MnistModelTest extends ForwarderTestCase {
 //				0.001f);
 //	}
 
-	public void testModelWithOpsetV8() throws FileNotFoundException, NoSuchMethodException,
+	public void testModelWithOpsetV13() throws FileNotFoundException, NoSuchMethodException,
 			SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
 			InvocationTargetException, OperationNotSupportedException, IOException {
 		Map<String, String> tensorPairPaths = new HashMap<>();
 		for (int n = 0; n < 1; n++) {
 			tensorPairPaths.put(
-					"/mnist/opset_v8/test_data_set_" + n + "/input_0.pb",
-					"/mnist/opset_v8/test_data_set_" + n + "/output_0.pb"
+					"/mnist/opset_v13_simple/test_data_set_" + n + "/input" + n + ".pb",
+					"/mnist/opset_v13_simple/test_data_set_" + n + "/output" + n + ".pb"
 					);
 		}
 
 		super.testModel(
 				tensorPairPaths, 
-				"/mnist/opset_v8/model.onnx",
-				"Input3", 
-				"Plus214_Output_0",
-				new String[] {  "DL4J" }, 
+				"/mnist/opset_v13_simple/matmul_model_evensize_v3.onnx",
+				"X",
+				"Y",
+				new String[] {  "DL4J" },
 				0.001f);
 	}
 

@@ -52,11 +52,11 @@ public class ModelTest extends FWTestCase {
      * @throws FileNotFoundException
      */
     public static Test suite() throws FileNotFoundException, IOException {
-        return new TestSuite(MnistModelTest.class);
+        return new TestSuite(ModelTest.class);
     }
 
 
-    public void testModelWithOpsetV8() throws FileNotFoundException, NoSuchMethodException,
+    public void testModelWithOpsetV13() throws FileNotFoundException, NoSuchMethodException,
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new HashMap<>();
@@ -75,10 +75,10 @@ public class ModelTest extends FWTestCase {
 
         super.testModel(
                 tensorPairPaths,
-                "/mnist/opset_v13/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx",
-                List.of("Input3", "InputX"), // 假设两个输入名
-                List.of("Out0", "Out1", "Out2"), // 假设三个输出名
-                new String[] { "HWAccelerated" },
+                "/mnist/opset_v13/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_ir_version5.onnx",
+                List.of("seq_pc", "seq_pos"), // 假设两个输入名
+                List.of("pre_trans", "rot", "trj"), // 假设三个输出名
+                new String[] { "DL4J" },
                 0.001f
         );
     }
