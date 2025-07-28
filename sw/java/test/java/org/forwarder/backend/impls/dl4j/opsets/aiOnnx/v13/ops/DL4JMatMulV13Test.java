@@ -12,24 +12,22 @@ public class DL4JMatMulV13Test {
 
     private final DL4JMatMulV13 op = new DL4JMatMulV13();
 
-    @Test
-    public void testFloatMatMul() {
-        INDArray a = Nd4j.create(new float[][] {
-                {1, 2, 3},
-                {4, 5, 5}
-        });
-        INDArray b = Nd4j.create(new float[][] {
-                {1, 2,3,4},
-                {5,6,7,8},
-                {9,10,11,12}
-        });
-        INDArray expected = Nd4j.create(new float[][] {
-                {38, 44, 50, 56},
-                {83, 98, 113, 128}
-        });
-        checkEqual("Float", expected, op.matmul(a, b));
-
-    }
+//    @Test
+//    public void testFloatMatMul() {
+//        INDArray a = Nd4j.create(new float[][] {
+//                {1, 2},
+//                {3, 4}
+//        });
+//        INDArray b = Nd4j.create(new float[][] {
+//                {5, 6},
+//                {7, 8}
+//        });
+//        INDArray expected = Nd4j.create(new float[][] {
+//                {19, 22},
+//                {43, 50}
+//        });
+//        checkEqual("Float", expected, op.matmul(a, b));
+//    }
 
     @Test
     public void testDoubleMatMul() {
@@ -88,6 +86,25 @@ public class DL4JMatMulV13Test {
         checkEqual("Long", expected, op.matmul(a, b));
     }
 
+    @Test
+    public void testFloatMatMul() {
+        INDArray a = Nd4j.create(new float[][] {
+                {1, 2, 3, 4},
+                {5, 6, 7, 8}
+        });
+        INDArray b = Nd4j.create(new float[][] {
+                {1, 2, 3, 4, 5, 6},
+                {7, 8, 9, 10, 11, 12},
+                {13, 14, 15, 16, 17, 18},
+                {19, 20, 21, 22, 23, 24}
+        });
+        INDArray expected = Nd4j.create(new float[][] {
+                {130, 140, 150, 160, 170, 180},
+                {290, 316, 342, 368, 394, 420}
+        });
+        checkEqual("Float", expected, op.matmul(a, b));
+
+    }
     // 统一比较与打印输出
     private void checkEqual(String type, INDArray expected, INDArray actual) {
         System.out.println("[" + type + "] Expected shape: " + Arrays.toString(expected.shape()));
