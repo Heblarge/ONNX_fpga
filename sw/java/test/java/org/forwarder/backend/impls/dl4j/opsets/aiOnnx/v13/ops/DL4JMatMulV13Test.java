@@ -28,6 +28,7 @@ public class DL4JMatMulV13Test {
                 {83, 98, 113, 128}
         });
         checkEqual("Float", expected, op.matmul(a, b));
+
     }
 
     @Test
