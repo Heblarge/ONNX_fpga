@@ -21,11 +21,13 @@ import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v11.ops.DL4JReduceMaxV11;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v11.ops.DL4JSoftmaxV11;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v11.ops.DL4JSqueezeV11;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v11.ops.DL4JUnsqueezeV11;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v11.ops.DL4JGemmV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.AiOnnxOpsetInitializerV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.ReduceMaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SoftmaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SqueezeV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.UnsqueezeV11;
+import org.onnx4j.opsets.domain.aiOnnx.v11.ops.GemmV11;
 
 public class DL4JAiOnnxOperatorSetV11 extends DL4JAiOnnxOperatorSetV10 implements AiOnnxOpsetInitializerV11 {
 
@@ -40,6 +42,9 @@ public class DL4JAiOnnxOperatorSetV11 extends DL4JAiOnnxOperatorSetV10 implement
 
 	@Override
 	public ReduceMaxV11 getReduceMaxV11() { return new DL4JReduceMaxV11(); }
+
+	@Override
+	public GemmV11 getGemmV11() { return new DL4JGemmV11(); }
 
 	public DL4JAiOnnxOperatorSetV11() {
 		super(1, "", "", 11L, "ONNX OPSET-V11 USING DL4J BACKEND");

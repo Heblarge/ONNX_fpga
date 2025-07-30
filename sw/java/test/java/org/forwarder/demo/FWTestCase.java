@@ -52,7 +52,7 @@ public abstract class FWTestCase extends TestCase {
 
     private static final int TENSOR_MAX_OUTPUT_LEN = 1000;
 
-    private static Logger logger = LoggerFactory.getLogger(ForwarderTestCase.class);
+    private static Logger logger = LoggerFactory.getLogger(FWTestCase.class);
 
     /**
      * Create the test case
@@ -77,7 +77,7 @@ public abstract class FWTestCase extends TestCase {
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException {
         // 从Resource获取模型文件地址
-        String absoluteModelPath = URLDecoder.decode(ForwarderTestCase.class.getResource(modelPath).getFile(), "utf-8");
+        String absoluteModelPath = URLDecoder.decode(FWTestCase.class.getResource(modelPath).getFile(), "utf-8");
         assertNotNull(absoluteModelPath);//判断非空
 
         try {
@@ -114,11 +114,14 @@ public abstract class FWTestCase extends TestCase {
                 for (String backendName : backendNames) {
                     Backend<?> backend = loadedModel.backend(backendName);
                     try (Session<?> session = backend.newSession()) {
+
                         // 输入全部 feed
                         for (Tensor input : inputTensors) {
                             session.feed(input, false);
                         }
-
+                        for (Tensor t : inputTensors) {
+                            logger.info("Input Tensor [{}]: {}", t.getName(), dumpTensor(t));
+                        }
                         // 执行推理
                         session.forward();
 

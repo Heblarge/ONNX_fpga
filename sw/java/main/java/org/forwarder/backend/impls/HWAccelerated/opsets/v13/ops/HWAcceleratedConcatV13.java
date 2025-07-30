@@ -7,7 +7,6 @@ import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ConcatV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
-
 import java.util.List;
 
 public class HWAcceleratedConcatV13 extends HWAcceleratedConcatV4 implements ConcatV13 {

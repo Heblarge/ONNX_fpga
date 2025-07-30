@@ -15,20 +15,18 @@ public class DL4JMatMulV13Test {
     @Test
     public void testFloatMatMul() {
         INDArray a = Nd4j.create(new float[][] {
-                {1, 2, 3},
-                {4, 5, 5}
+                {1, 2},
+                {3, 4}
         });
         INDArray b = Nd4j.create(new float[][] {
-                {1, 2,3,4},
-                {5,6,7,8},
-                {9,10,11,12}
+                {5, 6},
+                {7, 8}
         });
         INDArray expected = Nd4j.create(new float[][] {
-                {38, 44, 50, 56},
-                {83, 98, 113, 128}
+                {19, 22},
+                {43, 50}
         });
         checkEqual("Float", expected, op.matmul(a, b));
-
     }
 
     @Test
@@ -86,6 +84,48 @@ public class DL4JMatMulV13Test {
         });
 
         checkEqual("Long", expected, op.matmul(a, b));
+    }
+
+    @Test
+    public void testFloatMatMul2() {
+        INDArray a = Nd4j.create(new float[][] {
+                {1, 2, 3, 4},
+                {5, 6, 7, 8}
+        });
+        INDArray b = Nd4j.create(new float[][] {
+                {1, 2, 3, 4, 5, 6},
+                {7, 8, 9, 10, 11, 12},
+                {13, 14, 15, 16, 17, 18},
+                {19, 20, 21, 22, 23, 24}
+        });
+        INDArray expected = Nd4j.create(new float[][] {
+                {130, 140, 150, 160, 170, 180},
+                {290, 316, 342, 368, 394, 420}
+        });
+        checkEqual("Float", expected, op.matmul(a, b));
+
+    }
+
+    @Test
+    public void testBatchMatMul() {
+        INDArray a = Nd4j.create(new float[][][] {
+                { {1, 2, 3}, {4, 5, 6} },
+                { {7, 8, 9}, {10, 11, 12} }
+        });
+
+        INDArray b = Nd4j.create(new float[][][] {
+                { {1, 2}, {3, 4}, {5, 6} },
+                { {1, 0}, {1, 0}, {1, 0} }
+        });
+
+        INDArray expected = Nd4j.create(new float[][][] {
+                { {22, 28}, {49, 64} },
+                { {24, 0},  {33, 0} }
+        });
+
+        INDArray result = op.matmul(a, b);
+
+        checkEqual("BatchFloat", expected, result);
     }
 
     // 统一比较与打印输出

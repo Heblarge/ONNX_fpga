@@ -43,8 +43,8 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public MatMulV13           getMatMulV13(){
         return new           DL4JMatMulV13();
     }
-    public GeMMV13             getGeMMV13(){
-        return new             DL4JGeMMV13();
+    public GemmV13 getGemmV13(){
+        return new DL4JGemmV13();
     }
     public AddV13              getAddV13(){
         return new              DL4JAddV13();
