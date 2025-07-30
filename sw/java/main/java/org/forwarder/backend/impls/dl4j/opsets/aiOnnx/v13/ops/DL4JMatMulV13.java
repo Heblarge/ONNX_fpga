@@ -7,6 +7,10 @@ import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MatMulV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
+import org.nd4j.linalg.ops.transforms.Transforms;
+import org.nd4j.linalg.factory.Nd4j;
+import java.util.Arrays;
+
 
 public class DL4JMatMulV13 extends DL4JAiOnnxOperator implements MatMulV13 {
 
@@ -23,27 +27,71 @@ public class DL4JMatMulV13 extends DL4JAiOnnxOperator implements MatMulV13 {
     /**
      * 支持 int、long、float、double，确保输出类型与输入一致
      */
+//    protected INDArray matmul(INDArray a, INDArray b) {
+//        DataType typeA = a.dataType();
+//        DataType typeB = b.dataType();
+//
+//        // 决定输出类型（相同类型优先，浮点优先）
+//        DataType targetType = resolveCommonType(typeA, typeB);
+//
+//        // 转为可计算类型（float 或 double）
+//        INDArray aCalc = convertToComputableType(a);
+//        INDArray bCalc = convertToComputableType(b);
+//
+//        // 执行乘法（mmul 只支持 float/double）
+//        INDArray result = aCalc.mmul(bCalc);
+//
+//        // 转回目标类型（如 INT 或 LONG）
+//        if (!result.dataType().equals(targetType)) {
+//            result = result.castTo(targetType);
+//        }
+//
+//        return result;
+//    }
     protected INDArray matmul(INDArray a, INDArray b) {
-        DataType typeA = a.dataType();
-        DataType typeB = b.dataType();
-
-        // 决定输出类型（相同类型优先，浮点优先）
-        DataType targetType = resolveCommonType(typeA, typeB);
-
-        // 转为可计算类型（float 或 double）
+        DataType targetType = resolveCommonType(a.dataType(), b.dataType());
         INDArray aCalc = convertToComputableType(a);
         INDArray bCalc = convertToComputableType(b);
 
-        // 执行乘法（mmul 只支持 float/double）
-        INDArray result = aCalc.mmul(bCalc);
+        INDArray result;
 
-        // 转回目标类型（如 INT 或 LONG）
+        if (aCalc.rank() == 2 && bCalc.rank() == 2) {
+            result = aCalc.mmul(bCalc);
+        } else if (aCalc.rank() == 3 && bCalc.rank() == 3) {
+            // batch-wise mmul
+            long batch = aCalc.size(0);
+            long m = aCalc.size(1);
+            long k = aCalc.size(2);
+            long n = bCalc.size(2);
+
+            result = Nd4j.createUninitialized(aCalc.dataType(), batch, m, n);
+
+            for (int i = 0; i < (int) batch; i++) {
+                INDArray a_i = aCalc.slice(i); // (m,k)
+                INDArray b_i = bCalc.slice(i); // (k,n)
+                System.out.println("Batch " + i + " a_i shape: " + Arrays.toString(a_i.shape()));
+                System.out.println("Batch " + i + " b_i shape: " + Arrays.toString(b_i.shape()));
+                System.out.println("Batch " + i + " a_i:\n" + a_i);
+                System.out.println("Batch " + i + " b_i:\n" + b_i);
+
+                INDArray product = a_i.mmul(b_i);
+                System.out.println("Batch " + i + " product:\n" + product);
+                result.putSlice(i, product);
+            }
+
+
+
+        } else {
+            throw new UnsupportedOperationException("Unsupported input ranks: A=" + a.rank() + ", B=" + b.rank());
+        }
+
         if (!result.dataType().equals(targetType)) {
             result = result.castTo(targetType);
         }
 
         return result;
     }
+
 
     /**
      * 判断目标输出类型（类型优先级：double > float > long > int）

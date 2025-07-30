@@ -68,7 +68,7 @@ public class DL4JConcatV13Test extends DL4JTestCase {
                 INDArray b = Nd4j.create(2, 4)
         ) {
             thrown.expect(IllegalArgumentException.class);
-            this.testConcat(null, a, b, 1);
+            this.testConcat(null, a, b, 0);
         }
     }
 

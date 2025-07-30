@@ -6,15 +6,14 @@ import static org.junit.Assert.assertTrue;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import org.forwarder.backend.impls.dl4j.DL4JSession;
 import org.forwarder.backend.impls.dl4j.DL4JTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 
-public class DL4JGeMMV13Test extends DL4JTestCase {
+public class DL4JGemmV13Test extends DL4JTestCase {
 
-    private INDArray invokeGemm(DL4JGeMMV13 op,
+    private INDArray invokeGemm(DL4JGemmV13 op,
                                 INDArray A,
                                 INDArray B,
                                 INDArray C,
@@ -23,7 +22,7 @@ public class DL4JGeMMV13Test extends DL4JTestCase {
                                 long transA,
                                 long transB) {
         try {
-            Method m = DL4JGeMMV13.class.getDeclaredMethod(
+            Method m = DL4JGemmV13.class.getDeclaredMethod(
                     "gemm",
                     INDArray.class, INDArray.class, INDArray.class,
                     float.class, float.class, long.class, long.class
@@ -51,7 +50,7 @@ public class DL4JGeMMV13Test extends DL4JTestCase {
                           long transA,
                           long transB) {
 
-        DL4JGeMMV13 op = new DL4JGeMMV13();
+        DL4JGemmV13 op = new DL4JGemmV13();
         INDArray actual = invokeGemm(op, A, B, C, alpha, beta, transA, transB);
 
         System.out.println("=== GEMM Test Debug ===");

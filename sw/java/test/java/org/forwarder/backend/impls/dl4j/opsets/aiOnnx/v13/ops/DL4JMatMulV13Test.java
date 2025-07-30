@@ -12,22 +12,22 @@ public class DL4JMatMulV13Test {
 
     private final DL4JMatMulV13 op = new DL4JMatMulV13();
 
-//    @Test
-//    public void testFloatMatMul() {
-//        INDArray a = Nd4j.create(new float[][] {
-//                {1, 2},
-//                {3, 4}
-//        });
-//        INDArray b = Nd4j.create(new float[][] {
-//                {5, 6},
-//                {7, 8}
-//        });
-//        INDArray expected = Nd4j.create(new float[][] {
-//                {19, 22},
-//                {43, 50}
-//        });
-//        checkEqual("Float", expected, op.matmul(a, b));
-//    }
+    @Test
+    public void testFloatMatMul() {
+        INDArray a = Nd4j.create(new float[][] {
+                {1, 2},
+                {3, 4}
+        });
+        INDArray b = Nd4j.create(new float[][] {
+                {5, 6},
+                {7, 8}
+        });
+        INDArray expected = Nd4j.create(new float[][] {
+                {19, 22},
+                {43, 50}
+        });
+        checkEqual("Float", expected, op.matmul(a, b));
+    }
 
     @Test
     public void testDoubleMatMul() {
@@ -87,7 +87,7 @@ public class DL4JMatMulV13Test {
     }
 
     @Test
-    public void testFloatMatMul() {
+    public void testFloatMatMul2() {
         INDArray a = Nd4j.create(new float[][] {
                 {1, 2, 3, 4},
                 {5, 6, 7, 8}
@@ -105,6 +105,29 @@ public class DL4JMatMulV13Test {
         checkEqual("Float", expected, op.matmul(a, b));
 
     }
+
+    @Test
+    public void testBatchMatMul() {
+        INDArray a = Nd4j.create(new float[][][] {
+                { {1, 2, 3}, {4, 5, 6} },
+                { {7, 8, 9}, {10, 11, 12} }
+        });
+
+        INDArray b = Nd4j.create(new float[][][] {
+                { {1, 2}, {3, 4}, {5, 6} },
+                { {1, 0}, {1, 0}, {1, 0} }
+        });
+
+        INDArray expected = Nd4j.create(new float[][][] {
+                { {22, 28}, {49, 64} },
+                { {24, 0},  {33, 0} }
+        });
+
+        INDArray result = op.matmul(a, b);
+
+        checkEqual("BatchFloat", expected, result);
+    }
+
     // 统一比较与打印输出
     private void checkEqual(String type, INDArray expected, INDArray actual) {
         System.out.println("[" + type + "] Expected shape: " + Arrays.toString(expected.shape()));

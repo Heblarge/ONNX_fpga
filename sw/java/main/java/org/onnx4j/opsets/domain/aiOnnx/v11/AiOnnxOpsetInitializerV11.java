@@ -24,6 +24,7 @@ import org.onnx4j.opsets.domain.aiOnnx.v11.ops.ReduceMaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SoftmaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SqueezeV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.UnsqueezeV11;
+import org.onnx4j.opsets.domain.aiOnnx.v11.ops.GemmV11;
 
 /**
  * Default ONNX Operator Set in version 9
@@ -41,6 +42,8 @@ public interface AiOnnxOpsetInitializerV11 extends AiOnnxOpsetInitializerV10 {
 
 	public abstract ReduceMaxV11 getReduceMaxV11();
 
+	public abstract GemmV11  getGemmV11();
+
 	@Override
 	public default Map<String, Operator> initializeOperators() {
 		Map<String, Operator> operators = AiOnnxOpsetInitializerV10.super.initializeOperators();
@@ -52,6 +55,8 @@ public interface AiOnnxOpsetInitializerV11 extends AiOnnxOpsetInitializerV10 {
 		operators.put(UnsqueezeV11.OP_TYPE, this.getUnsqueezeV11());
 		// 20200113
 		operators.put(ReduceMaxV11.OP_TYPE, this.getReduceMaxV11());
+
+		operators.put(GemmV11.OP_TYPE, this.getGemmV11());
 		return operators;
 	}
 

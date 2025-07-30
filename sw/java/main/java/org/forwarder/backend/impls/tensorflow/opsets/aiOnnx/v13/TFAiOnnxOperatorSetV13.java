@@ -83,8 +83,8 @@ public class TFAiOnnxOperatorSetV13 extends TFAiOnnxOperatorSetV12 implements Ai
         return null;
     }
 
-    //@Override
-    public GeMMV13 getGeMMV13() {
+    @Override
+    public GemmV13 getGemmV13() {
         // TODO Auto-generated method stub
         return null;
     }

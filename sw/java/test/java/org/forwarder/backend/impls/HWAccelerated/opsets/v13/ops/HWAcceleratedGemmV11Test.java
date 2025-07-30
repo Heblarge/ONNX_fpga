@@ -10,7 +10,7 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
-public class HWAcceleratedGeMMV13Test extends HWAcceleratedTestCase {
+public class HWAcceleratedGemmV11Test extends HWAcceleratedTestCase {
 
     @Test
     public void testWithRandomFloatMatrix() throws Exception {
@@ -33,7 +33,7 @@ public class HWAcceleratedGeMMV13Test extends HWAcceleratedTestCase {
 
 
     private void testGeMM(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
-        HWAcceleratedGeMMV13 operator = new HWAcceleratedGeMMV13();
+        HWAcceleratedGemmV13 operator = new HWAcceleratedGemmV13();
         INDArray actualOutput = operator.gemm(inputA, inputB);
 
         System.out.println("\ninputA:");

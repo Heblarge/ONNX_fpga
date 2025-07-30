@@ -20,12 +20,14 @@ import org.forwarder.backend.impls.HWAccelerated.opsets.v11.ops.HWAcceleratedRed
 import org.forwarder.backend.impls.HWAccelerated.opsets.v11.ops.HWAcceleratedSoftmaxV11;
 import org.forwarder.backend.impls.HWAccelerated.opsets.v11.ops.HWAcceleratedSqueezeV11;
 import org.forwarder.backend.impls.HWAccelerated.opsets.v11.ops.HWAcceleratedUnsqueezeV11;
+import org.forwarder.backend.impls.HWAccelerated.opsets.v11.ops.HWAcceleratedGemmV11;
 import org.forwarder.backend.impls.HWAccelerated.opsets.v10.HWAcceleratedOperatorSetV10;
 import org.onnx4j.opsets.domain.aiOnnx.v11.AiOnnxOpsetInitializerV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.ReduceMaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SoftmaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SqueezeV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.UnsqueezeV11;
+import org.onnx4j.opsets.domain.aiOnnx.v11.ops.GemmV11;
 
 public class HWAcceleratedOperatorSetV11 extends HWAcceleratedOperatorSetV10 implements AiOnnxOpsetInitializerV11 {
 
@@ -40,6 +42,8 @@ public class HWAcceleratedOperatorSetV11 extends HWAcceleratedOperatorSetV10 imp
 
 	@Override
 	public ReduceMaxV11 getReduceMaxV11() { return new HWAcceleratedReduceMaxV11(); }
+
+	public GemmV11 getGemmV11() { return new HWAcceleratedGemmV11(); }
 
 	public HWAcceleratedOperatorSetV11() {
 		super(1, "", "", 11L, "ONNX OPSET-V11 USING DL4J BACKEND");

@@ -1,4 +1,4 @@
-package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
+package org.forwarder.backend.impls.HWAccelerated.opsets.v11.ops;
 
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
@@ -7,19 +7,19 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
-import org.onnx4j.opsets.domain.aiOnnx.v13.ops.GeMMV13;
+import org.onnx4j.opsets.domain.aiOnnx.v11.ops.GemmV11;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
 
-public class HWAcceleratedGeMMV13 extends HWAcceleratedOperator implements GeMMV13 {
+public class HWAcceleratedGemmV11 extends HWAcceleratedOperator implements GemmV11 {
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
-        GeMMInputsV13<INDArray> castedInputs = new GeMMInputsV13<>(node, inputs);
+        GeMMInputsV11<INDArray> castedInputs = new GeMMInputsV11<>(node, inputs);
         INDArray matrixa = castedInputs.getA();
         INDArray matrixb = castedInputs.getB();
         INDArray outputTensor = this.gemm(matrixa,matrixb);
-        return new GeMMOutputV13<>(outputTensor);
+        return new GeMMOutputV11<>(outputTensor);
     }
 
     public INDArray gemm(INDArray a, INDArray b) {

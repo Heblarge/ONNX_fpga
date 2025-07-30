@@ -5,7 +5,7 @@ import org.onnx4j.opsets.domain.aiOnnx.v11.AiOnnxOpsetInitializerV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.ReduceMaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SoftmaxV11;
 import org.onnx4j.opsets.domain.aiOnnx.v11.ops.SqueezeV11;
-import org.onnx4j.opsets.domain.aiOnnx.v11.ops.UnsqueezeV11;
+import org.onnx4j.opsets.domain.aiOnnx.v11.ops.*;
 
 
 public class TFAiOnnxOperatorSetV11 extends TFAiOnnxOperatorSetV10 implements AiOnnxOpsetInitializerV11 {
@@ -35,6 +35,12 @@ public class TFAiOnnxOperatorSetV11 extends TFAiOnnxOperatorSetV10 implements Ai
     }
     @Override
     public ReduceMaxV11 getReduceMaxV11() {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public GemmV11 getGemmV11() {
         // TODO Auto-generated method stub
         return null;
     }

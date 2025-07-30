@@ -13,7 +13,7 @@ import org.onnx4j.opsets.operator.fields.InputField;
 import org.onnx4j.opsets.operator.output.SingleOperatorOutputs;
 import org.onnx4j.tensor.DataType;
 
-public interface GeMMV13 extends AiOnnxOperatorV13 {
+public interface GemmV13 extends AiOnnxOperatorV13 {
 
     String OP_TYPE = "GeMM";
     TypeConstraint TYPE_CONSTRAINT_T = new Field.TypeConstraint(
