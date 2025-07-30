@@ -30,6 +30,9 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.onnx4j.opsets.OperatorSets;
+import java.util.Set;
+import java.util.HashSet;
+
 
 public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
@@ -86,17 +89,39 @@ public class RayExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 	}
 
 
-	private void predecessors(Collection<Node> nodes, Graph graph, Node node) {
-		Collection<Node> set = graph.predecessors(node);
-		// 递归处理所有前驱节点
-		for (Node predecessorNode : set) {
-			this.predecessors(nodes, graph, predecessorNode);
+//	private void predecessors(Collection<Node> nodes, Graph graph, Node node) {
+//		Collection<Node> set = graph.predecessors(node);
+//		// 递归处理所有前驱节点
+//		for (Node predecessorNode : set) {
+//			this.predecessors(nodes, graph, predecessorNode);
+//		}
+//		// 将前驱节点加入列表
+//		for (Node predecessor : set) {
+//			this.addOrderedSequenceNode(nodes, predecessor);
+//		}
+//	}
+
+	public void predecessors(Collection<Node> nodes, Graph graph, Node node) {
+		Set<Node> visited = new HashSet<>();
+		predecessors(nodes, graph, node, visited);
+	}
+
+
+	private void predecessors(Collection<Node> nodes, Graph graph, Node node, Set<Node> visited) {
+		if (visited.contains(node)) {
+			return;
 		}
-		// 将前驱节点加入列表
+		visited.add(node);
+
+		Collection<Node> set = graph.predecessors(node);
+		for (Node predecessorNode : set) {
+			this.predecessors(nodes, graph, predecessorNode, visited);
+		}
 		for (Node predecessor : set) {
 			this.addOrderedSequenceNode(nodes, predecessor);
 		}
 	}
+
 
 
 	private void addOrderedSequenceNode(Collection<Node> nodes, Node node) {
