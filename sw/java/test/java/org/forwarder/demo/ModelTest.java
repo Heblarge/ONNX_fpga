@@ -75,7 +75,7 @@ public class ModelTest extends FWTestCase {
 
         super.testModel(
                 tensorPairPaths,
-                "/mnist/opset_v13/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_ir_version5.onnx",
+                "/mnist/opset_v13/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_ir_version5_v13.onnx",
                 List.of("seq_pc", "seq_pos"), // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
                 new String[] { "DL4J" },

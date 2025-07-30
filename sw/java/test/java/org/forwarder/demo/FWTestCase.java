@@ -38,6 +38,7 @@ import org.forwarder.Config;
 import org.forwarder.Forwarder;
 import org.forwarder.Session;
 import org.forwarder.executor.impls.RayExecutor;
+import org.forwarder.executor.impls.SequentialExecutor;
 import org.onnx4j.Tensor;
 import org.onnx4j.prototypes.OnnxProto3.TensorProto;
 import org.onnx4j.tensor.TensorBuilder;
@@ -85,12 +86,12 @@ public abstract class FWTestCase extends TestCase {
             Config cfg=Config.builder()
                     .setDebug(true)
                     .setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN)
-                    .setExecutor(RayExecutor.class)
+                    .setExecutor(SequentialExecutor.class)
                     .build();
             Forwarder forwarder = new Forwarder();
-            Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(RayExecutor.class);
+            Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class);
 
-            RayExecutor<?> executor = (RayExecutor<?>) loadedModel.getExecutor();
+            SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
             executor.printExecutionSequence();
 
             assert forwarder != null;

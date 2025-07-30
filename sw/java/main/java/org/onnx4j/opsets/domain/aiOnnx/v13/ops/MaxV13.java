@@ -1,12 +1,16 @@
 package org.onnx4j.opsets.domain.aiOnnx.v13.ops;
 
 import java.util.Arrays;
+import java.util.ArrayList; // 引入 ArrayList
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.AiOnnxOperatorV13;
 import org.onnx4j.opsets.operator.OperatorInputs;
+import org.onnx4j.opsets.operator.fields.InputField;
 import org.onnx4j.opsets.operator.output.SingleOperatorOutputs;
 import org.onnx4j.tensor.DataType;
 
@@ -36,17 +40,22 @@ public interface MaxV13 extends AiOnnxOperatorV13 {
      */
     class MaxInputsV13<T_TENSOR> extends OperatorInputs<T_TENSOR> {
 
-        private final List<T_TENSOR> inputTensors;
+        private final List<InputField<T_TENSOR>> inputField; // 应为 List<InputField> 类型
 
-        @SuppressWarnings("unchecked")
         public MaxInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
 
-            this.inputTensors = Arrays.asList((T_TENSOR[]) inputArray);
+            this.inputField = new ArrayList<>();
+            for (org.onnx4j.Inputs.Input rawInput : super.inputArray) {
+                this.inputField.add(new InputField<>(this, TYPE_CONSTRAINT_T, rawInput));
+            }
         }
 
+
         public List<T_TENSOR> getInputTensors() {
-            return this.inputTensors;
+            return this.inputFields.stream()
+                    .map(InputField::getData)
+                    .collect(Collectors.toList());
         }
     }
 
