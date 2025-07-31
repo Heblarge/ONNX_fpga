@@ -130,6 +130,9 @@ public abstract class FWTestCase extends TestCase {
                         for (int i = 0; i < outputNames.size(); i++) {
                             Tensor actual = session.getOutput(outputNames.get(i));
                             Tensor expected = expectedOutputTensors.get(i);
+                            logger.info("======================= Comparing output tensor: {} =======================", outputNames.get(i));
+                            logger.info("  EXPECTED: {}", dumpTensor(expected));
+                            logger.info("    ACTUAL: {}", dumpTensor(actual));
                             this.assertSimilarity(actual, expected, tolerance);
                         }
                     }

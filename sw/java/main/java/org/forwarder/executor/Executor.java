@@ -43,18 +43,26 @@ public abstract class Executor<T_BK_TS> {
 					String.format("Op=%s not supported in this backend", node.getOpType()));
 
 		Executable<T_BK_TS> execOp = Executable.class.cast(op);
+
 		System.out.println(">>> Start executing: " + node.getOpType() + ", name: " + node.getName());
+
 		Outputs outputs;
 		try {
 			outputs = execOp.forward(node, inputs).toOutputs(node);
 		} catch (Exception e) {
 			System.err.println("!!! Failed executing: " + node.getOpType() + ", name: " + node.getName());
+
+			System.err.println("--- Inputs that caused the error ---");
+			for (Inputs.Input input : inputs.get()) {
+				System.err.println(input.getTensor().toString());
+			}
+			System.err.println("------------------------------------");
+
 			e.printStackTrace();
 			throw e;
 		}
 		System.out.println(">>> Finished executing: " + node.getOpType() + ", name: " + node.getName());
-		// 执行当前算子的推理
-		return execOp.forward(node, inputs).toOutputs(node);
+		return outputs;
 	}
 
 }
