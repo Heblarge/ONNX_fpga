@@ -60,11 +60,21 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         // 调用父类中的handle方法，传入session、opsets、node和inputs，获取outputs集合
         Outputs outputs = super.handle(session, opsets, node, inputs);
         //在这里应该可以看到每个算子的输出
+        System.out.println("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----");
         // 遍历outputs集合中的每个输出，将其名称和对应的张量存储回session的中间输出结果中
         for (Output output : outputs.get()) {
             // session.intermediateOutputs 包含节点内静态参数，推理的中间结果在此追加
             session.putIntermediateOutput(output.getName(), output.getTensor());
+            // 打印输出 Tensor（去除换行与 tab，避免输出混乱）
+            String outputStr = output.getTensor().toString().replaceAll("[\\n\\t]", " ");
+            if (outputStr.length() > 1000) {
+                outputStr = outputStr.substring(0, 1000) + " ...";
+            }
+            System.out.println("Output Name: " + output.getName());
+            System.out.println("Output Tensor: " + outputStr);
         }
+        System.out.println("-----------------------------------------------------------\n");
+        // ==========================================
     }
 
     private Collection<Node> toOrderedSequenceNodes(Graph graph) {
