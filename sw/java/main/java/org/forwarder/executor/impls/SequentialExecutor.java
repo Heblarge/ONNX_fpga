@@ -32,6 +32,10 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.onnx4j.opsets.OperatorSets;
+import java.io.PrintWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
 
 public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
@@ -49,6 +53,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         }
     }
 
+    private static final String OUTPUT_LOG_FILE = "/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/opset_v13/operator_outputs.log";
     private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node) {
         Inputs inputs = new Inputs();
         // 遍历当前节点的所有输入名称，并为每个输入创建Input对象并添加到inputs集合中
@@ -60,20 +65,33 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         // 调用父类中的handle方法，传入session、opsets、node和inputs，获取outputs集合
         Outputs outputs = super.handle(session, opsets, node, inputs);
         //在这里应该可以看到每个算子的输出
-        System.out.println("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----");
-        // 遍历outputs集合中的每个输出，将其名称和对应的张量存储回session的中间输出结果中
-        for (Output output : outputs.get()) {
-            // session.intermediateOutputs 包含节点内静态参数，推理的中间结果在此追加
-            session.putIntermediateOutput(output.getName(), output.getTensor());
-            // 打印输出 Tensor（去除换行与 tab，避免输出混乱）
-            String outputStr = output.getTensor().toString().replaceAll("[\\n\\t]", " ");
-            if (outputStr.length() > 1000) {
-                outputStr = outputStr.substring(0, 1000) + " ...";
+        try (PrintWriter writer = new PrintWriter(new FileWriter(OUTPUT_LOG_FILE, true))) {
+            writer.println("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----");
+            for (Output output : outputs.get()) {
+                session.putIntermediateOutput(output.getName(), output.getTensor());
+
+                String outputStr = output.getTensor().toString();
+                writer.println("Output Name: " + output.getName());
+                writer.println("Output Tensor: " + outputStr);
             }
-            System.out.println("Output Name: " + output.getName());
-            System.out.println("Output Tensor: " + outputStr);
+            writer.println("-----------------------------------------------------------\n");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        System.out.println("-----------------------------------------------------------\n");
+//        System.out.println("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----");
+//        // 遍历outputs集合中的每个输出，将其名称和对应的张量存储回session的中间输出结果中
+//        for (Output output : outputs.get()) {
+//            // session.intermediateOutputs 包含节点内静态参数，推理的中间结果在此追加
+//            session.putIntermediateOutput(output.getName(), output.getTensor());
+//            // 打印输出 Tensor（去除换行与 tab，避免输出混乱）
+//            String outputStr = output.getTensor().toString().replaceAll("[\\n\\t]", " ");
+//            if (outputStr.length() > 1000) {
+//                outputStr = outputStr.substring(0, 1000) + " ...";
+//            }
+//            //System.out.println("Output Name: " + output.getName());
+//            System.out.println("Output Tensor: " + outputStr);
+//        }
+//        //System.out.println("-----------------------------------------------------------\n");
         // ==========================================
     }
 
