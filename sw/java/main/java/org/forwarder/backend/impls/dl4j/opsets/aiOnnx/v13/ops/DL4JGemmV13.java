@@ -27,11 +27,6 @@ public class DL4JGemmV13 extends DL4JAiOnnxOperator implements GemmV13 {
     }
 
     protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB) {
-        A = A.dup('c');
-        B = B.dup('c');
-        if (C != null) {
-            C = C.dup('c');
-        }
 
         if (transA != 0L) { A = A.transpose(); }
         if (transB != 0L) { B = B.transpose(); }
