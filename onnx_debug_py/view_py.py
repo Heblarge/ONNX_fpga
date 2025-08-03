@@ -7,7 +7,7 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
 
 if len(sys.argv) < 2:
     print("\n错误: 请提供一个 .npy 文件作为参数。")
-    print("用法示例: python view_py.py golden_outputs/_model1_Transpose_output_0.npy\n")
+    print("用法示例: python view_py.py golden_outputs/_model1_MinGRU_Layers_layers.0_Neg_6_output_0.npy\n")
     sys.exit(1)
 
 # 从命令行参数获取要查看的文件路径
@@ -21,7 +21,8 @@ try:
     print(f"\n张量形状 (Shape): {tensor.shape}")
     print(f"数据类型 (Data Type): {tensor.dtype}")
     print("\n--- 张量内容 (Content): ---\n")
-    print(tensor)
+    print(tensor[0])
+
     print("\n-----------------------------------\n")
 
 except FileNotFoundError:

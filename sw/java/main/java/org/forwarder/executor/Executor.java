@@ -44,7 +44,7 @@ public abstract class Executor<T_BK_TS> {
 
 		Executable<T_BK_TS> execOp = Executable.class.cast(op);
 
-		System.out.println(">>> Start executing: " + node.getOpType() + ", name: " + node.getName());
+		// System.out.println(">>> Start executing: " + node.getOpType() + ", name: " + node.getName());
 
 		Outputs outputs;
 		try {
@@ -61,7 +61,7 @@ public abstract class Executor<T_BK_TS> {
 			e.printStackTrace();
 			throw e;
 		}
-		System.out.println(">>> Finished executing: " + node.getOpType() + ", name: " + node.getName());
+		// System.out.println(">>> Finished executing: " + node.getOpType() + ", name: " + node.getName());
 		return outputs;
 	}
 

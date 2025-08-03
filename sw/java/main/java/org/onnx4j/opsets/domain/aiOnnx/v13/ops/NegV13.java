@@ -13,7 +13,14 @@ import org.onnx4j.tensor.DataType;
 public interface NegV13 extends AiOnnxOperatorV13 {
 
     public static final String OP_TYPE = "Neg";
-    public static final TypeConstraint TPYE_CONSTRAINT_T = new Field.TypeConstraint(DataType.numericTypes());
+    public static final TypeConstraint TPYE_CONSTRAINT_T = new Field.TypeConstraint(DataType.FLOAT,
+            DataType.INT32,
+            DataType.INT8,
+            DataType.INT16,
+            DataType.INT64,
+            DataType.FLOAT16,
+            DataType.DOUBLE,
+            DataType.BFLOAT16);
 
     @Override
     default OperatorStatus getStatus() {

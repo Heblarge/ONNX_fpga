@@ -11,9 +11,10 @@ public class DL4JNegV13 extends DL4JAiOnnxOperator implements NegV13 {
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
-        NegV13.NegInputsV13<INDArray> castedInputs = new NegV13.NegInputsV13<>(node, inputs);
+        NegInputsV13<INDArray> castedInputs = new NegInputsV13<>(node, inputs);
         INDArray x = castedInputs.getX();
-        return new NegV13.NegOutputV13<>(this.neg(x));
+        INDArray result = this.neg(x);
+        return new NegOutputV13<>(result);
     }
 
     public INDArray neg(INDArray x) {

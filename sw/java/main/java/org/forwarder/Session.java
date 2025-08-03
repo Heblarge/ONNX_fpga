@@ -19,6 +19,7 @@ package org.forwarder;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.forwarder.util.TensorUtils;
 import org.forwarder.executor.Executor;
 import org.onnx4j.Outputs;
 import org.onnx4j.Outputs.Output;
@@ -28,6 +29,12 @@ import org.onnx4j.model.graph.exchanges.GraphInput;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Arrays;
 
 public abstract class Session<T_BK_TS> implements AutoCloseable {
 

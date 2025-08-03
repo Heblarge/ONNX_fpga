@@ -15,7 +15,7 @@ import org.onnx4j.tensor.DataType;
 
 public interface GemmV13 extends AiOnnxOperatorV13 {
 
-    String OP_TYPE = "GeMM";
+    String OP_TYPE = "Gemm";
     TypeConstraint TYPE_CONSTRAINT_T = new Field.TypeConstraint(
             DataType.BFLOAT16,
             DataType.FLOAT16,

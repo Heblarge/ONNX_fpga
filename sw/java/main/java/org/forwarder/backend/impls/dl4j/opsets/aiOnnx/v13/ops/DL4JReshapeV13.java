@@ -18,6 +18,7 @@ package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops;
 
 import com.google.common.collect.Lists;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v5.ops.DL4JReshapeV5;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.DL4JAiOnnxOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
@@ -28,7 +29,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class DL4JReshapeV13 extends DL4JReshapeV5 implements ReshapeV13 {
+public class DL4JReshapeV13 extends DL4JAiOnnxOperator  implements ReshapeV13 {
 
 	@Override
 	public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -38,51 +39,25 @@ public class DL4JReshapeV13 extends DL4JReshapeV5 implements ReshapeV13 {
 		return new ReshapeOutputV13<INDArray>(this.reshape(data, shape));
 	}
 
-	protected INDArray reshape(INDArray data, INDArray shape) {
-		return super.reshape(data, Lists.newArrayList(this.calcNewShape(data, shape)), null);
-	}
+	protected INDArray reshape(INDArray data, INDArray shapeTensor) {
+		// 1. 从 shape 张量中获取目标形状
+		long[] newShape = shapeTensor.toLongVector();
+		long[] originalShape = data.shape();
 
-	protected List<Long> calcNewShape(INDArray inputTensor, INDArray shapeTensor) {
-		List<Long> newShape = new LinkedList<Long>();
-		int autoExpandAxis = -1;
-		for (int n = 0; n < shapeTensor.size(0); n++) {
-			long len = shapeTensor.getLong(n);
-			if (len > 0)
-				newShape.add(n, len);
-			else if (len == 0)
-				newShape.add(n, inputTensor.shape()[n]);
-			else if (len == -1) {
-				if (autoExpandAxis != -1)
-					throw new IllegalArgumentException(
-							String.format("New shape can not hava more than one flag to execute auto-expand -> %s",
-									Arrays.toString(inputTensor.shape())));
-
-				autoExpandAxis = n;
-				newShape.add(n, 1L);
+		// 2. 处理 ONNX 规范中 shape dimension 为 0 的特殊情况
+		for (int i = 0; i < newShape.length; i++) {
+			if (newShape[i] == 0) {
+				if (i < originalShape.length) {
+					newShape[i] = originalShape[i];
+				} else {
+					throw new IllegalArgumentException("Invalid shape provided for reshape: Dimension " + i + " is 0 but input has only " + originalShape.length + " dimensions.");
+				}
 			}
 		}
 
-		if (autoExpandAxis != -1) {
-			//
-			// do auto-expand
-			//
-			int sizeOfNewShape = 0;
-			for (int n = 0; n < newShape.size(); n++) {
-				if (sizeOfNewShape == 0)
-					sizeOfNewShape += newShape.get(n);
-				else
-					sizeOfNewShape *= newShape.get(n);
-			}
-			int sizeOfData = 0;
-			for (int n = 0; n < inputTensor.shape().length; n++) {
-				if (sizeOfData == 0)
-					sizeOfData += inputTensor.shape()[n];
-				else
-					sizeOfData *= inputTensor.shape()[n];
-			}
-			newShape.set(autoExpandAxis, (long) (sizeOfData / sizeOfNewShape));
-		}
-		return newShape;
+		// 3. 直接调用 ND4J 自己的 reshape 方法，它会自动处理 -1 的情况
+		return data.reshape(newShape);
+
 	}
 
 }

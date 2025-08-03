@@ -21,7 +21,7 @@ public class DL4JGemmV13 extends DL4JAiOnnxOperator implements GemmV13 {
         long    transA  = castedInputs.getTransA();
         long    transB  = castedInputs.getTransB();
 
-        INDArray result = gemm(A,B,C,alpha,beta,transA,transB);
+        INDArray result = gemm(A, B, C, alpha, beta, transA, transB);
 
         return new GeMMOutputV13<>(result);
     }
@@ -30,14 +30,15 @@ public class DL4JGemmV13 extends DL4JAiOnnxOperator implements GemmV13 {
         if (transA != 0L) { A = A.transpose(); }
         if (transB != 0L) { B = B.transpose(); }
 
-        INDArray Y = A.mmul(B).muli(alpha);
+        INDArray Y = A.mmul(B).mul(alpha);
 
         if (C != null) {
             long[] yShape = Y.shape();
             if (!java.util.Arrays.equals(C.shape(), yShape)) {
                 C = C.broadcast(yShape);
             }
-            Y.addi(C.mul(beta));
+            INDArray betaC = C.mul(beta);
+            Y = Y.add(betaC);
         }
 
         return Y;

@@ -16,13 +16,9 @@
  */
 package org.forwarder.executor.impls;
 
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Set;
-
 import org.forwarder.Session;
 import org.forwarder.executor.Executor;
+import org.nd4j.linalg.api.ndarray.INDArray;
 import org.onnx4j.Inputs;
 import org.onnx4j.Inputs.Input;
 import org.onnx4j.Model;
@@ -32,14 +28,23 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.onnx4j.opsets.OperatorSets;
-import java.io.PrintWriter;
+
+import java.io.BufferedWriter;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Set;
 
 public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     private final Collection<Node> orderedSequenceNodes;
+    private final File JAVA_OUTPUTS_DIR = new File("java_outputs");
+    private static final String OUTPUT_LOG_FILE = "operator_outputs.log"; // 使用相对路径，更灵活
 
     public SequentialExecutor(Model model) {
         super(model);
@@ -48,93 +53,119 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     @Override
     public void execute(Session<T_BK_TS> session, OperatorSets opsets) {
+        // 自动清理旧的输出目录和日志文件
+        if (JAVA_OUTPUTS_DIR.exists()) {
+            for (File file : JAVA_OUTPUTS_DIR.listFiles()) {
+                file.delete();
+            }
+        }
+        JAVA_OUTPUTS_DIR.mkdirs();
+
+        try {
+            // 清空日志文件，准备本次运行的写入
+            new FileWriter(OUTPUT_LOG_FILE, false).close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         for (Node node : this.orderedSequenceNodes) {
             this.handle(session, opsets, node);
         }
     }
 
-    private static final String OUTPUT_LOG_FILE = "/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/opset_v13/operator_outputs.log";
     private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node) {
+        // 1. 准备输入
         Inputs inputs = new Inputs();
-        // 遍历当前节点的所有输入名称，并为每个输入创建Input对象并添加到inputs集合中
         for (String inputName : node.getInputNames()) {
-            // 为当前节点的每个输入名称创建Input对象，使用wrap方法包装inputName、node和从session获取的中间输出结果
             Input input = Input.wrap(inputName, node, session.getIntermediateOutput(inputName));
             inputs.append(input);
         }
-        // 调用父类中的handle方法，传入session、opsets、node和inputs，获取outputs集合
-        Outputs outputs = super.handle(session, opsets, node, inputs);
-        //在这里应该可以看到每个算子的输出
-        try (PrintWriter writer = new PrintWriter(new FileWriter(OUTPUT_LOG_FILE, true))) {
-            writer.println("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----");
-            for (Output output : outputs.get()) {
-                session.putIntermediateOutput(output.getName(), output.getTensor());
 
-                String outputStr = output.getTensor().toString();
-                writer.println("Output Name: " + output.getName());
-                writer.println("Output Tensor: " + outputStr);
+        // 2. 执行计算
+        Outputs outputs = super.handle(session, opsets, node, inputs);
+
+        // 3. 记录日志并更新Session状态
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_LOG_FILE, true))) {
+            writer.write("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----\n");
+
+            for (Output output : outputs.get()) {
+                // 必须先将输出存入session，供后续节点使用
+                session.putIntermediateOutput(output.getName(), (T_BK_TS) output.getTensor());
+
+                String tensorName = output.getName();
+                INDArray tensorData = (INDArray) output.getTensor();
+
+                // 立刻将正确的二进制数据保存到文件
+                String safeFileName = tensorName.replace('/', '_').replace(':', '_') + ".bin";
+                try {
+                    // 确保在调用 toString() 之前保存
+                    saveTensorAsBinary(tensorData, new File(JAVA_OUTPUTS_DIR, safeFileName));
+                } catch (IOException e) {
+                    System.err.println("Failed to save intermediate tensor as binary: " + tensorName);
+                    e.printStackTrace();
+                }
+
+                writer.write("Output Name: " + tensorName + "\n");
+                writer.write("Output Tensor: \n" + tensorData.toString() + "\n");
+
             }
-            writer.println("-----------------------------------------------------------\n");
+
+            writer.write("-----------------------------------------------------------\n\n");
         } catch (IOException e) {
             e.printStackTrace();
         }
-//        System.out.println("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----");
-//        // 遍历outputs集合中的每个输出，将其名称和对应的张量存储回session的中间输出结果中
-//        for (Output output : outputs.get()) {
-//            // session.intermediateOutputs 包含节点内静态参数，推理的中间结果在此追加
-//            session.putIntermediateOutput(output.getName(), output.getTensor());
-//            // 打印输出 Tensor（去除换行与 tab，避免输出混乱）
-//            String outputStr = output.getTensor().toString().replaceAll("[\\n\\t]", " ");
-//            if (outputStr.length() > 1000) {
-//                outputStr = outputStr.substring(0, 1000) + " ...";
-//            }
-//            //System.out.println("Output Name: " + output.getName());
-//            System.out.println("Output Tensor: " + outputStr);
-//        }
-//        //System.out.println("-----------------------------------------------------------\n");
-        // ==========================================
     }
 
+    private void saveTensorAsBinary(INDArray tensor, File file) throws IOException {
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
+            // Write shape info
+            dos.writeInt(tensor.rank());
+            for (long dim : tensor.shape()) {
+                dos.writeLong(dim);
+            }
+
+            // Manually extract data in C-order to bypass potential ND4J bugs
+            long[] shape = tensor.shape();
+            long[] strides = tensor.stride();
+            long length = tensor.length();
+
+            for (int i = 0; i < length; i++) {
+                long[] coords = new long[tensor.rank()];
+                long temp = i;
+                // Calculate coordinates from the linear index (C-order logic)
+                for (int d = tensor.rank() - 1; d >= 0; d--) {
+                    coords[d] = temp % shape[d];
+                    temp /= shape[d];
+                }
+
+                dos.writeFloat(tensor.getFloat(coords));
+            }
+        }
+    }
+
+
     private Collection<Node> toOrderedSequenceNodes(Graph graph) {
-        // Using LinkedList for efficient additions. The result will be a topologically sorted list of nodes.
         LinkedList<Node> orderedNodes = new LinkedList<>();
-        // orderedNodes 最终排好序的节点
-
-        // Set to track all visited nodes to avoid redundant processing.
         Set<Node> visited = new HashSet<>();
-        // visited 用来记录所有已经访问过的节点的集合
-
-        // Set to track nodes currently in the recursion stack to detect cycles in the graph.
         Set<Node> recursionStack = new HashSet<>();
-        // 只记录在当前这一次深度搜索路径上的节点
-
-        // Start the DFS traversal from all output nodes of the graph.
         for (GraphOutput graphOutput : graph.getOutputs()) {
             Node outputNode = graphOutput.getNode();
             if (!visited.contains(outputNode)) {
                 topologicalSortUtil(outputNode, graph, orderedNodes, visited, recursionStack);
             }
         }
-
         return orderedNodes;
     }
 
-
     private void topologicalSortUtil(Node node, Graph graph, LinkedList<Node> orderedNodes, Set<Node> visited, Set<Node> recursionStack) {
-
         visited.add(node);
         recursionStack.add(node);
-        // 标记当前节点
-
-        // 递归访问所有前驱节点
         Collection<Node> predecessors = graph.predecessors(node);
         if (predecessors != null) {
             for (Node predecessor : predecessors) {
-                // 如果前驱节点在当前路径上，说明有环
                 if (recursionStack.contains(predecessor)) {
-                    throw new IllegalStateException("Graph has a cycle, topological sort not possible. Cycle detected at node: " + predecessor.getName());
+                    throw new IllegalStateException("Graph has a cycle, topological sort not possible.");
                 }
-                // 如果前驱节点还未被访问过，则对它进行递归
                 if (!visited.contains(predecessor)) {
                     topologicalSortUtil(predecessor, graph, orderedNodes, visited, recursionStack);
                 }
@@ -144,9 +175,22 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         orderedNodes.add(node);
     }
 
-
     public void printExecutionSequence() {
+        // ... (此方法保持不变，但为了完整性，我们把它也放进来) ...
         System.out.println("==== Execution Sequence of Nodes (Topological Order) ====");
+        String fileName = "execution_order.txt";
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+            for (Node node : this.orderedSequenceNodes) {
+                for (String outputName : node.getOutputNames()) {
+                    writer.write(outputName);
+                    writer.newLine();
+                }
+            }
+            System.out.println("Successfully saved execution order to: " + new File(fileName).getAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("Failed to save execution_order.txt");
+            e.printStackTrace();
+        }
         int idx = 0;
         for (Node node : this.orderedSequenceNodes) {
             String opType = node.getOpType();
