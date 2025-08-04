@@ -4,6 +4,7 @@ import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.DL4JAiOnnxOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.onnx4j.Inputs;
+import org.nd4j.linalg.ops.transforms.Transforms;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReluV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
@@ -19,6 +20,7 @@ public class DL4JReluV13 extends DL4JAiOnnxOperator implements ReluV13 {
 
 
     public INDArray relu(INDArray x) {
-        return Nd4j.nn.relu(x,0.0);
+        // 直接调用一个返回新结果的函数
+        return Transforms.relu(x);
     }
 }

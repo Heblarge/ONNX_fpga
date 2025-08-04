@@ -8,7 +8,7 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
 
 if len(sys.argv) < 2:
     print("\n错误: 请提供一个 .bin 文件作为参数。")
-    print("用法示例: python view_bin.py java_outputs/_model1_MinGRU_Layers_layers.0_Neg_6_output_0.bin\n")
+    print("用法示例: python view_bin.py java_outputs/_model1_MinGRU_Layers_layers.0_Add_36_output_0.bin\n")
 
     sys.exit(1)
 
@@ -41,7 +41,7 @@ try:
         print(f"数据类型 (Data Type): {tensor.dtype}")
 
         print("tensor[0]: \n")
-        print(tensor[0])
+        print(tensor[0][0][271])
         print("\n----------------------------------------------------\n")
 
 

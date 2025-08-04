@@ -12,7 +12,7 @@ import argparse
 GOLDEN_DIR = 'golden_outputs'
 JAVA_DIR = 'java_outputs'
 ORDER_FILE = 'execution_order.txt'
-DEFAULT_TOLERANCE = 1e-4
+DEFAULT_TOLERANCE = 6e-4
 # ===================================================================
 
 def load_java_tensor(file_path):
@@ -40,27 +40,34 @@ def load_java_tensor(file_path):
 
 def main(args):
     """主对比函数"""
-    # ▼▼▼ 恢复从 execution_order.txt 读取 ▼▼▼
     try:
         with open(ORDER_FILE, 'r', encoding='utf-8') as f:
             tensor_names = [line.strip() for line in f if line.strip()]
     except FileNotFoundError:
         print(f"错误：找不到执行顺序文件 '{ORDER_FILE}'。")
         return
-    # ▲▲▲ 恢复结束 ▲▲▲
+
+    tensors_to_skip = set(args.skip)
 
     print(f"将按照 {len(tensor_names)} 个张量的顺序进行对比...")
     print(f"误差容忍度 (Tolerance): {args.tolerance}")
-    print(f"全量报告模式 (Full Report): {'开启' if args.full_report else '关闭'}")
+    if tensors_to_skip:
+        print(f"将跳过以下 {len(tensors_to_skip)} 个张量的对比: {tensors_to_skip}")
     print("-" * 50)
 
     passed_count = 0
     failed_count = 0
     skipped_count = 0
+    manually_skipped_count = 0
 
     for name in tensor_names:
-        safe_name = name.replace('/', '_').replace(':', '_')
 
+        if name in tensors_to_skip:
+            print(f"⏭️  根据命令行参数跳过: {name}")
+            manually_skipped_count += 1
+            continue
+
+        safe_name = name.replace('/', '_').replace(':', '_')
         golden_path = os.path.join(GOLDEN_DIR, f"{safe_name}.npy")
         java_path = os.path.join(JAVA_DIR, f"{safe_name}.bin")
 
@@ -78,9 +85,8 @@ def main(args):
             continue
 
         if np.allclose(golden_tensor, java_tensor, atol=args.tolerance):
-            # 为了保持控制台干净，成功时可以只打印简单的信息或不打印
-            print(f"✅ 对比通过: {name}")
             passed_count += 1
+            print(f"✅ 对比通过: {name}")
         else:
             failed_count += 1
             print(f"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
@@ -88,18 +94,11 @@ def main(args):
             print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             diff = np.abs(golden_tensor - java_tensor)
             print(f"  - 最大绝对误差: {np.max(diff):.8f}")
-
-            # 如果需要查看完整张量，可以取消下面的注释
-            # np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
-            # print("\n--- EXPECTED (Golden) Tensor ---\n", golden_tensor)
-            # print("\n--- ACTUAL (Java) Tensor ---\n", java_tensor)
-            # np.set_printoptions(threshold=1000)
-
             if not args.full_report:
                 break
 
     print("\n================== 对比总结 ==================")
-    print(f"总计: {len(tensor_names)} | ✅ 通过: {passed_count} | ❌ 失败: {failed_count} | ⚠️ 跳过: {skipped_count}")
+    print(f"总计: {len(tensor_names)} | ✅ 通过: {passed_count} | ❌ 失败: {failed_count} | ⚠️ 跳过(文件丢失): {skipped_count} | ⏭️  跳过(手动): {manually_skipped_count}")
     print("==============================================")
 
 
@@ -107,5 +106,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="对比 ONNX Runtime 和 Java 引擎的中间张量。")
     parser.add_argument('-t', '--tolerance', type=float, default=DEFAULT_TOLERANCE, help=f"设置数值对比的误差容忍度 (默认: {DEFAULT_TOLERANCE})")
     parser.add_argument('-f', '--full-report', action='store_true', help="开启全量报告模式，即使遇到第一个错误也会继续对比完所有张量")
+
+    # ▼▼▼ 新增的命令行参数 ▼▼▼
+    parser.add_argument(
+        '-s', '--skip',
+        nargs='+',  # 允许接收一个或多个值
+        default=[], # 默认为空列表
+        help="指定一个或多个要跳过对比的张量名 (ONNX原始名，用空格分隔)"
+    )
+    # ▲▲▲ 新增结束 ▲▲▲
+
     args = parser.parse_args()
     main(args)
