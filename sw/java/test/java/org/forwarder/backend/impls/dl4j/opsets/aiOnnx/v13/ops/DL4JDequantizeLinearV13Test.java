@@ -140,4 +140,18 @@ public class DL4JDequantizeLinearV13Test extends DL4JTestCase {
                 0
         );
     }
+
+    @Test
+    public void test7_Int32FromImage() {
+        // NEW: Test case that matches the node properties from your image
+        // y = (x - 0) * 2.3841858e-7
+        INDArray x = Nd4j.createFromArray(new int[]{1, -2, 10});
+        INDArray xScale = Nd4j.scalar(2.3841858e-7f);
+        INDArray xZeroPoint = Nd4j.scalar(0).castTo(DataType.INT);
+
+        // Manually calculate expected result
+        INDArray expected = x.castTo(DataType.FLOAT).mul(xScale);
+
+        testDequantize(expected, x, xScale, xZeroPoint, 0);
+    }
 }

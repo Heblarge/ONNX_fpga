@@ -1,23 +1,9 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.forwarder.executor.impls;
 
+import com.google.protobuf.ByteString;
 import org.forwarder.Session;
 import org.forwarder.executor.Executor;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.onnx4j.Inputs;
 import org.onnx4j.Inputs.Input;
@@ -28,13 +14,13 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.onnx4j.opsets.OperatorSets;
+import org.onnx4j.prototypes.OnnxProto3.TensorProto;
 
-import java.io.BufferedWriter;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -44,7 +30,9 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     private final Collection<Node> orderedSequenceNodes;
     private final File JAVA_OUTPUTS_DIR = new File("java_outputs");
-    private static final String OUTPUT_LOG_FILE = "operator_outputs.log"; // 使用相对路径，更灵活
+
+    // 新增一个执行计数器，用于创建 data1, data2, ... 目录
+    private int executionCount = 0;
 
     public SequentialExecutor(Model model) {
         super(model);
@@ -53,97 +41,101 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     @Override
     public void execute(Session<T_BK_TS> session, OperatorSets opsets) {
-        // 自动清理旧的输出目录和日志文件
-        if (JAVA_OUTPUTS_DIR.exists()) {
-            for (File file : JAVA_OUTPUTS_DIR.listFiles()) {
+        // 每次执行时，计数器加一
+        this.executionCount++;
+
+        // 根据当前执行次数创建独立的子目录，例如 "java_outputs/data1"
+        File currentOutputDataDir = new File(JAVA_OUTPUTS_DIR, "data" + this.executionCount);
+        if (currentOutputDataDir.exists()) {
+            for (File file : currentOutputDataDir.listFiles()) {
                 file.delete();
             }
         }
-        JAVA_OUTPUTS_DIR.mkdirs();
+        currentOutputDataDir.mkdirs();
+        System.out.println("输出将被保存到: " + currentOutputDataDir.getAbsolutePath());
 
-        try {
-            // 清空日志文件，准备本次运行的写入
-            new FileWriter(OUTPUT_LOG_FILE, false).close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        // 1. 依次执行图中的所有节点
         for (Node node : this.orderedSequenceNodes) {
             this.handle(session, opsets, node);
         }
+
+        // 2. 所有节点执行完毕后，保存模型的最终输出到当前执行的子目录
+        System.out.println("--- 推理完成，正在保存最终输出... ---");
+        for (GraphOutput graphOutput : this.model.getGraph().getOutputs()) {
+            String outputName = graphOutput.getName();
+            INDArray tensorData = (INDArray) session.getIntermediateOutput(outputName);
+
+            if (tensorData != null) {
+                String sanitizedName = outputName.replace('/', '_').replace(':', '_');
+                String finalFileName = "output_" + sanitizedName + ".pb";
+
+                // 将文件保存到新建的 dataN 子目录中
+                File outputFile = new File(currentOutputDataDir, finalFileName);
+                try {
+                    saveTensorAsPb(tensorData, outputFile);
+                    System.out.println("  - 已保存: " + outputFile.getName());
+                } catch (IOException e) {
+                    System.err.println("保存最终输出张量失败: " + outputName);
+                    e.printStackTrace();
+                }
+            } else {
+                System.err.println("警告：在会话中找不到最终输出张量: " + outputName);
+            }
+        }
+        System.out.println("--- 所有最终输出保存完毕 ---");
     }
 
     private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node) {
-        // 1. 准备输入
         Inputs inputs = new Inputs();
         for (String inputName : node.getInputNames()) {
             Input input = Input.wrap(inputName, node, session.getIntermediateOutput(inputName));
             inputs.append(input);
         }
 
-        // 2. 执行计算
         Outputs outputs = super.handle(session, opsets, node, inputs);
 
-        // 3. 记录日志并更新Session状态
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(OUTPUT_LOG_FILE, true))) {
-            writer.write("---- Executed Node: " + node.getName() + " (OpType: " + node.getOpType() + ") ----\n");
-
-            for (Output output : outputs.get()) {
-                // 必须先将输出存入session，供后续节点使用
-                session.putIntermediateOutput(output.getName(), (T_BK_TS) output.getTensor());
-
-                String tensorName = output.getName();
-                INDArray tensorData = (INDArray) output.getTensor();
-
-                // 立刻将正确的二进制数据保存到文件
-                String safeFileName = tensorName.replace('/', '_').replace(':', '_') + ".bin";
-                try {
-                    // 确保在调用 toString() 之前保存
-                    saveTensorAsBinary(tensorData, new File(JAVA_OUTPUTS_DIR, safeFileName));
-                } catch (IOException e) {
-                    System.err.println("Failed to save intermediate tensor as binary: " + tensorName);
-                    e.printStackTrace();
-                }
-
-                writer.write("Output Name: " + tensorName + "\n");
-                writer.write("Output Tensor: \n" + tensorData.toString() + "\n");
-
-            }
-
-            writer.write("-----------------------------------------------------------\n\n");
-        } catch (IOException e) {
-            e.printStackTrace();
+        for (Output output : outputs.get()) {
+            session.putIntermediateOutput(output.getName(), (T_BK_TS) output.getTensor());
         }
     }
 
-    private void saveTensorAsBinary(INDArray tensor, File file) throws IOException {
-        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
-            // Write shape info
-            dos.writeInt(tensor.rank());
-            for (long dim : tensor.shape()) {
-                dos.writeLong(dim);
-            }
-
-            // Manually extract data in C-order to bypass potential ND4J bugs
-            long[] shape = tensor.shape();
-            long[] strides = tensor.stride();
-            long length = tensor.length();
-
-            for (int i = 0; i < length; i++) {
-                long[] coords = new long[tensor.rank()];
-                long temp = i;
-                // Calculate coordinates from the linear index (C-order logic)
-                for (int d = tensor.rank() - 1; d >= 0; d--) {
-                    coords[d] = temp % shape[d];
-                    temp /= shape[d];
-                }
-
-                dos.writeFloat(tensor.getFloat(coords));
-            }
+    /**
+     * 将 INDArray 转换为 ONNX TensorProto 并保存为 .pb 文件。
+     */
+    private void saveTensorAsPb(INDArray tensor, File file) throws IOException {
+        TensorProto.Builder builder = TensorProto.newBuilder();
+        for (long dim : tensor.shape()) {
+            builder.addDims(dim);
+        }
+        builder.setDataType(mapDl4jDataTypeToOnnx(tensor.dataType()).getNumber());
+        ByteBuffer byteBuffer = ByteBuffer.allocate((int) (tensor.length() * tensor.dataType().width()))
+                .order(ByteOrder.LITTLE_ENDIAN);
+        switch(tensor.dataType()) {
+            case FLOAT:
+                byteBuffer.asFloatBuffer().put(tensor.data().asNioFloat().rewind());
+                break;
+            default:
+                byteBuffer.asFloatBuffer().put(tensor.data().asNioFloat().rewind());
+                break;
+        }
+        builder.setRawData(ByteString.copyFrom(byteBuffer));
+        TensorProto tensorProto = builder.build();
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            tensorProto.writeTo(fos);
         }
     }
 
+    private TensorProto.DataType mapDl4jDataTypeToOnnx(DataType dl4jType) {
+        switch (dl4jType) {
+            case FLOAT: return TensorProto.DataType.FLOAT;
+            case DOUBLE: return TensorProto.DataType.DOUBLE;
+            case INT: return TensorProto.DataType.INT32;
+            case LONG: return TensorProto.DataType.INT64;
+            default: return TensorProto.DataType.UNDEFINED;
+        }
+    }
 
+    // ... toOrderedSequenceNodes, topologicalSortUtil, printExecutionSequence 方法保持不变 ...
     private Collection<Node> toOrderedSequenceNodes(Graph graph) {
         LinkedList<Node> orderedNodes = new LinkedList<>();
         Set<Node> visited = new HashSet<>();
@@ -176,21 +168,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
     }
 
     public void printExecutionSequence() {
-        // ... (此方法保持不变，但为了完整性，我们把它也放进来) ...
         System.out.println("==== Execution Sequence of Nodes (Topological Order) ====");
-        String fileName = "execution_order.txt";
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
-            for (Node node : this.orderedSequenceNodes) {
-                for (String outputName : node.getOutputNames()) {
-                    writer.write(outputName);
-                    writer.newLine();
-                }
-            }
-            System.out.println("Successfully saved execution order to: " + new File(fileName).getAbsolutePath());
-        } catch (IOException e) {
-            System.err.println("Failed to save execution_order.txt");
-            e.printStackTrace();
-        }
         int idx = 0;
         for (Node node : this.orderedSequenceNodes) {
             String opType = node.getOpType();

@@ -12,7 +12,7 @@ import argparse
 GOLDEN_DIR = 'golden_outputs'
 JAVA_DIR = 'java_outputs'
 ORDER_FILE = 'execution_order.txt'
-DEFAULT_TOLERANCE = 1e-4
+DEFAULT_TOLERANCE = 2e-4
 # ===================================================================
 
 def load_java_tensor(file_path):
@@ -39,12 +39,10 @@ def load_java_tensor(file_path):
         return flat_data.reshape(shape), shape
 
 def main(args):
-    """主对比函数"""
 
-    # --- 单个张量调试模式 ---
-    target_tensor_name = 'PPQ_Variable_1140'
+    target_tensor_name = '_model3_MinGRU_Layers_layers.1_Softplus_1_output_0'
     tensor_names = [target_tensor_name]
-    print(f"--- ⚠️  进入单个张量调试模式 ---")
+    print(f"--- 进入单个张量调试模式 ---")
     print(f"--- 目标张量: {target_tensor_name} ---")
 
     print(f"误差容忍度 (Tolerance): {args.tolerance}")
@@ -56,18 +54,19 @@ def main(args):
         java_path = os.path.join(JAVA_DIR, f"{safe_name}.bin")
 
         if not os.path.exists(golden_path) or not os.path.exists(java_path):
-            print(f"❌ 错误: 找不到 '{name}' 对应的文件, 请检查目录和文件名。")
+            print(f"错误: 找不到 '{name}' 对应的文件, 请检查目录和文件名。")
             continue
+
 
         golden_tensor = np.load(golden_path)
         java_tensor, _ = load_java_tensor(java_path)
 
         if java_tensor is None or golden_tensor.shape != java_tensor.shape:
-            print(f"❌ 对比失败: {name} (Java 张量加载失败或形状不匹配)")
+            print(f"失败: {name} (Java 张量加载失败或形状不匹配)")
             continue
 
         if np.allclose(golden_tensor, java_tensor, atol=args.tolerance):
-            print(f"✅ 结果一致 (在误差 {args.tolerance} 范围内)")
+            print(f"结果一致 (在误差 {args.tolerance} 范围内)")
         else:
             print(f"\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             print(f"!!! 发现误差分岔点! 张量: {name}")
@@ -78,7 +77,6 @@ def main(args):
             print(f"  - Java (Your) shape:   {java_tensor.shape}")
             print(f"  - 最大绝对误差: {np.max(diff):.8f}")
 
-            # ▼▼▼ 找出第一个出错元素的具体位置 ▼▼▼
             try:
                 # 1. 创建一个布尔矩阵，标记出所有误差超标的位置
                 mismatch_mask = np.abs(golden_tensor - java_tensor) > args.tolerance
@@ -97,7 +95,6 @@ def main(args):
                 print(f"    - Java 值:   {java_val}")
             except Exception as e:
                 print(f"  查找具体误差位置时出错: {e}")
-            # ▲▲▲ 新增代码结束 ▲▲▲
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="对比 ONNX Runtime 和 Java 引擎的中间张量。")

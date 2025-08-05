@@ -60,26 +60,26 @@ public class ModelTest extends FWTestCase {
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new HashMap<>();
-        for (int n = 0; n < 1; n++) {
+        for (int n = 1; n < 2119; n++) {
             List<String> inputs = List.of(
-                    "/mnist/opset_v13/data_" + n + "/input_seq_pc.pb",
-                    "/mnist/opset_v13/data_" + n + "/input_seq_pos.pb"
+                    "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
+                    "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/opset_v13/data_" + n + "/output_pre_tran.pb",
-                    "/mnist/opset_v13/data_" + n + "/output_rot.pb",
-                    "/mnist/opset_v13/data_" + n + "/output_trj.pb"
+                    "/mnist/Quantized/data" + n + "/output_pre_tran.pb",
+                    "/mnist/Quantized/data" + n + "/output_rot.pb",
+                    "/mnist/Quantized/data" + n + "/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
 
         super.testModel(
                 tensorPairPaths,
-                "/mnist/opset_v13/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_ir_version5_v13.onnx",
+                "/mnist/before_quantized/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_ir_version5.onnx",
                 List.of("seq_pc", "seq_pos"), // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
                 new String[] { "DL4J" },
-                0.001f
+                0.0001f
         );
     }
 

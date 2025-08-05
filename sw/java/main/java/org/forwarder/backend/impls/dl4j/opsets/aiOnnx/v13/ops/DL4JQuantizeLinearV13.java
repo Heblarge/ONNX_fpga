@@ -43,7 +43,7 @@ public class DL4JQuantizeLinearV13 extends DL4JAiOnnxOperator implements Quantiz
         if (yScale.minNumber().doubleValue() == 0.0) {
             throw new IllegalArgumentException("Scale cannot be zero.");
         }
-        if (yScale.rank() == 1) {
+        if (yScale.rank() > 0 && yScale.isVector()) {
             yScale = reshapeForBroadcast(yScale, x.rank(), axis);
         }
         if (yZeroPoint != null && yZeroPoint.rank() == 1) {
@@ -79,11 +79,19 @@ public class DL4JQuantizeLinearV13 extends DL4JAiOnnxOperator implements Quantiz
     private INDArray applySaturation(INDArray quantized, DataType dataType) {
         switch (dataType) {
             case UBYTE:
-                return Nd4j.getExecutioner().exec(new ClipByValue(quantized, 0, 255))[0];
+                // Clip and ensure the final data type is UBYTE
+                return Nd4j.getExecutioner().exec(new ClipByValue(quantized, 0, 255))[0].castTo(DataType.UBYTE);
             case BYTE:
-                return Nd4j.getExecutioner().exec(new ClipByValue(quantized, -128, 127))[0];
+                // Clip and ensure the final data type is BYTE
+                return Nd4j.getExecutioner().exec(new ClipByValue(quantized, -128, 127))[0].castTo(DataType.BYTE);
+            //
+            // CORRECTED: Added case for INT32 output.
+            // ONNX spec does not require saturation for int32, just casting.
+            //
+            case INT:
+                return quantized.castTo(DataType.INT);
             default:
-                throw new UnsupportedOperationException("Unsupported data type: " + dataType);
+                throw new UnsupportedOperationException("Unsupported output data type for QuantizeLinear: " + dataType);
         }
     }
 

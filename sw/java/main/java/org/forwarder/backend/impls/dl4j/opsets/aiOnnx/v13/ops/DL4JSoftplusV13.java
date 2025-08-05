@@ -1,6 +1,7 @@
 package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops;
 
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.DL4JAiOnnxOperator;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.ops.transforms.Transforms;
 import org.nd4j.linalg.factory.Nd4j;
@@ -21,6 +22,10 @@ public class DL4JSoftplusV13 extends DL4JAiOnnxOperator implements SoftplusV13 {
 
     public INDArray softplus(INDArray x) {
 
-        return Transforms.log(Transforms.exp(x).add(1.0));
+        INDArray x_double = x.castTo(DataType.DOUBLE);
+
+        INDArray result_double = Transforms.log(Transforms.exp(x_double).add(1.0));
+
+        return result_double.castTo(DataType.FLOAT);
     }
 }

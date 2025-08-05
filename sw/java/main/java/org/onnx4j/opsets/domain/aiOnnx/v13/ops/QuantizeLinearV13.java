@@ -21,7 +21,7 @@ public interface QuantizeLinearV13 extends AiOnnxOperatorV13 {
 
     public static final String OP_TYPE = "QuantizeLinear";
     public static final TypeConstraint TYPE_CONSTRAINT_T1 = new Field.TypeConstraint(DataType.FLOAT, DataType.INT32);
-    public static final TypeConstraint TYPE_CONSTRAINT_T2 = new Field.TypeConstraint(DataType.INT8, DataType.UINT8);
+    public static final TypeConstraint TYPE_CONSTRAINT_T2 = new Field.TypeConstraint(DataType.INT8, DataType.UINT8, DataType.INT32);
 
     @Override
     default OperatorStatus getStatus() {

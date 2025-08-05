@@ -77,13 +77,21 @@ public class DL4JQuantizeLinearV13Test extends DL4JTestCase {
         return Nd4j.createFromArray(vals);
     }
 
+    private INDArray ubyteVector(int... vals) {
+        float[] floatVals = new float[vals.length];
+        for (int i = 0; i < vals.length; i++) {
+            floatVals[i] = vals[i];
+        }
+        return Nd4j.createFromArray(floatVals).castTo(DataType.UBYTE);
+    }
 
     // Test cases
 
     @Test
     public void test1_WithoutZeroPoint() {
+        // Without zero point, output type defaults to UBYTE
         testQuantize(
-                vector(0.0, 2.0, 0.0),
+                ubyteVector(0, 2, 0),
                 vector(0.1, 0.9, -0.5),
                 Nd4j.scalar(0.5),
                 null,
@@ -93,20 +101,23 @@ public class DL4JQuantizeLinearV13Test extends DL4JTestCase {
 
     @Test
     public void test2_WithUint8ZeroPoint() {
+        // CORRECTED: Use ubyteVector to correctly test UINT8 path
         testQuantize(
-                vector(2.0, 3.0, 4.0),
+                ubyteVector(2, 3, 4),
                 vector(0.0, 1.0, 2.0),
                 Nd4j.scalar(1.0),
-                byteVector((byte)2),
+                ubyteVector(2),
                 0
         );
     }
 
     @Test
     public void test3_Int8Saturation() {
-        // -200/1 + (-128) saturates to -128; 0+(-128) = -128; 200+(-128) = 72
+        // -200/1 -> round(-200) + (-128) = -328 -> saturates to -128
+        // 0/1 -> round(0) + (-128) = -128
+        // 200/1 -> round(200) + (-128) = 72
         testQuantize(
-                vector(-128.0, -128.0, 72.0),
+                byteVector((byte)-128, (byte)-128, (byte)72),
                 vector(-200.0, 0.0, 200.0),
                 Nd4j.scalar(1.0),
                 byteVector((byte)-128),
@@ -114,18 +125,19 @@ public class DL4JQuantizeLinearV13Test extends DL4JTestCase {
         );
     }
 
-//    @Test
-//    public void test4_PerAxisBroadcast() {
-//        INDArray x = matrix(new double[][]{{1,2,3},{4,5,6}});
-//        INDArray scale = vector(1.0, 2.0, 3.0);
-//        INDArray zeroPoint = byteVector((byte)0, (byte)1, (byte)2);
-//        // axisParam = -1 normalized to 1
-//        // result = round(x / scale) + zeroPoint
-//        // row0: [1/1=1+0, 2/2=1+1, 3/3=1+2] -> [1,2,3]
-//        // row1: [4/1=4+0, 5/2=2.5->2+1, 6/3=2+2] -> [4,3,4]
-//        INDArray expected = matrix(new double[][]{{1,2,3},{4,3,4}});
-//        testQuantize(expected, x, scale, zeroPoint, -1);
-//    }
+    @Test
+    public void test4_PerAxisBroadcast() {
+        // CORRECTED & RE-ENABLED
+        INDArray x = matrix(new double[][]{{1,2,3},{4,5,6}});
+        INDArray scale = vector(1.0, 2.0, 3.0);
+        INDArray zeroPoint = ubyteVector(0, 1, 2);
+        // axisParam = -1 normalized to 1
+        // result = round(x / scale) + zeroPoint
+        // row0: round([1/1, 2/2, 3/3]) + [0,1,2] -> [1,1,1] + [0,1,2] -> [1,2,3]
+        // row1: round([4/1, 5/2, 6/3]) + [0,1,2] -> [4,2,2] + [0,1,2] -> [4,3,4] (note: 5/2=2.5 rounds to 2)
+        INDArray expected = Nd4j.create(new double[][]{{1,2,3},{4,4,4}}).castTo(DataType.UBYTE);
+        testQuantize(expected, x, scale, zeroPoint, -1);
+    }
 
     @Test(expected = IllegalArgumentException.class)
     public void test5_AxisOutOfRange() {
@@ -139,14 +151,13 @@ public class DL4JQuantizeLinearV13Test extends DL4JTestCase {
 
     @Test(expected = IllegalArgumentException.class)
     public void test7_EmptyInputThrows() {
-        // empty tensor has rank 0; axis 0 is invalid
         invokeQuantize(new DL4JQuantizeLinearV13(), Nd4j.empty(), Nd4j.scalar(1.0), null, 0);
     }
 
     @Test
     public void test8_NegativeValues() {
         testQuantize(
-                vector(-128.0, -128.0, -128.0, -125),
+                byteVector((byte)-128, (byte)-128, (byte)-128, (byte)-125),
                 vector(-1.0, -2.0, -3.0, 3.0),
                 Nd4j.scalar(1.0),
                 byteVector((byte) -128),
@@ -154,17 +165,18 @@ public class DL4JQuantizeLinearV13Test extends DL4JTestCase {
         );
     }
 
-//    @Test
-//    public void test9_LargeValues() {
-//        testQuantize(
-//                vector(255.0, 255.0, 255.0),
-//                vector(100.0, 200.0, 300.0),
-//                Nd4j.scalar(1.0),
-//                byteVector((byte) 255),
-//                //会将255识别成int8类型 被判断为-1 导致错误
-//                0
-//        );
-//    }
+    @Test
+    public void test9_Uint8Saturation() {
+        // CORRECTED & RE-ENABLED: Test clipping for UBYTE
+        // 300/1+0 -> 300 -> clips to 255. -10/1+0 -> -10 -> clips to 0
+        testQuantize(
+                ubyteVector(255, 0),
+                vector(300.0, -10.0),
+                Nd4j.scalar(1.0),
+                ubyteVector(0),
+                0
+        );
+    }
 
     @Test
     public void test10_ZeroScale() {
@@ -181,12 +193,23 @@ public class DL4JQuantizeLinearV13Test extends DL4JTestCase {
     @Test
     public void test11_SingleElementInput() {
         testQuantize(
-                vector(3.0),
+                byteVector((byte)3),
                 vector(1.0),
                 Nd4j.scalar(0.5),
                 byteVector((byte) 1),
                 0
         );
+    }
+
+    @Test
+    public void test12_Int32Output() {
+        // NEW: Test case for INT32 output as seen in the user's model
+        INDArray x = Nd4j.createFromArray(new float[]{2.3841858e-07f, -4.7683716e-07f, 7.1525574e-07f});
+        INDArray yScale = Nd4j.scalar(2.3841858e-07f).castTo(DataType.FLOAT);
+        INDArray yZeroPoint = Nd4j.scalar(0).castTo(DataType.INT);
+        // Expected: round(x/yScale) + 0 -> round([1.0, -2.0, 3.0]) -> [1, -2, 3]
+        INDArray expected = Nd4j.createFromArray(new int[]{1, -2, 3});
+        testQuantize(expected, x, yScale, yZeroPoint, 0);
     }
 
 }
