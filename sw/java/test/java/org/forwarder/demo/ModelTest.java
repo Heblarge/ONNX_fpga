@@ -20,6 +20,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 import javax.naming.OperationNotSupportedException;
@@ -59,7 +60,7 @@ public class ModelTest extends FWTestCase {
     public void testModelWithOpsetV13() throws FileNotFoundException, NoSuchMethodException,
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException, IOException {
-        Map<List<String>, List<String>> tensorPairPaths = new HashMap<>();
+        Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
         for (int n = 1; n < 2119; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",

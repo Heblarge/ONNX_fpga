@@ -32,7 +32,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
     private final File JAVA_OUTPUTS_DIR = new File("java_outputs");
 
     // 新增一个执行计数器，用于创建 data1, data2, ... 目录
-    private int executionCount = 0;
+    private static int executionCount = 0;
 
     public SequentialExecutor(Model model) {
         super(model);
