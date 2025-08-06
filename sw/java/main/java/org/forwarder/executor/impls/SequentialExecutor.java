@@ -33,7 +33,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
     private final File JAVA_OUTPUTS_DIR = new File("java_outputs");
 
     // 新增一个执行计数器，用于创建 data1, data2, ... 目录
-    private static int executionCount = 0;
+    private int executionCount = 0;
 
     public SequentialExecutor(Model model) {
         super(model);
@@ -100,7 +100,9 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         }
     }
 
-
+    /**
+     * 将 INDArray 转换为 ONNX TensorProto 并保存为 .pb 文件。
+     */
 //    private void saveTensorAsPb(INDArray tensor, File file) throws IOException {
 //        TensorProto.Builder builder = TensorProto.newBuilder();
 //        for (long dim : tensor.shape()) {
@@ -123,7 +125,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 //            tensorProto.writeTo(fos);
 //        }
 //    }
-    // 强制按行保存结果
+
     private void saveTensorAsPb(INDArray tensor, File file) throws IOException {
         TensorProto.Builder builder = TensorProto.newBuilder();
         for (long dim : tensor.shape()) {
@@ -166,6 +168,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
             tensorProto.writeTo(fos);
         }
     }
+
 
     private TensorProto.DataType mapDl4jDataTypeToOnnx(DataType dl4jType) {
         switch (dl4jType) {

@@ -92,15 +92,15 @@ public abstract class FWTestCase extends TestCase {
                     .setExecutor(SequentialExecutor.class)
                     .build();
             Forwarder forwarder = new Forwarder();
+            Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class);
 
-            //Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class);
+            //SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
+            //executor.printExecutionSequence();
 
-            // 遍历待测试的所有输入
+            assert forwarder != null;
+            assert loadedModel!=null;
+            //遍历待测试的所有输入
             for (Entry<List<String>, List<String>> tensorPairPath : tensorPairPaths.entrySet()) {
-
-                Model loadedModel = forwarder.load(absoluteModelPath, cfg);
-                assert loadedModel != null;
-
                 List<Tensor> inputTensors = new ArrayList<>();
                 List<Tensor> expectedOutputTensors = new ArrayList<>();
 
@@ -114,13 +114,15 @@ public abstract class FWTestCase extends TestCase {
                     expectedOutputTensors.add(this.loadTensor(loadedModel, outputNames.get(i), tensorPairPath.getValue().get(i)));
                 }
 
+                // 遍历后端
                 for (String backendName : backendNames) {
                     Backend<?> backend = loadedModel.backend(backendName);
                     try (Session<?> session = backend.newSession()) {
+
+                        // 输入全部 feed
                         for (Tensor input : inputTensors) {
                             session.feed(input, false);
                         }
-
                         // 执行推理
                         session.forward();
 
@@ -136,6 +138,7 @@ public abstract class FWTestCase extends TestCase {
                     }
                 }
             }
+
         } catch (Exception e) {
             logger.error("Failed to close forwarder instance", e);
         }
