@@ -52,3 +52,5 @@ simWorkspace/
 tmp/
 null
 *Zone.Identifier
+java_outputs/*
+sw/java/test/resources/mnist/*
