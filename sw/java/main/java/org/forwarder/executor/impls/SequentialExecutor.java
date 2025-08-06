@@ -21,6 +21,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -99,25 +100,66 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         }
     }
 
-    /**
-     * 将 INDArray 转换为 ONNX TensorProto 并保存为 .pb 文件。
-     */
+
+//    private void saveTensorAsPb(INDArray tensor, File file) throws IOException {
+//        TensorProto.Builder builder = TensorProto.newBuilder();
+//        for (long dim : tensor.shape()) {
+//            builder.addDims(dim);
+//        }
+//        builder.setDataType(mapDl4jDataTypeToOnnx(tensor.dataType()).getNumber());
+//        ByteBuffer byteBuffer = ByteBuffer.allocate((int) (tensor.length() * tensor.dataType().width()))
+//                .order(ByteOrder.LITTLE_ENDIAN);
+//        switch(tensor.dataType()) {
+//            case FLOAT:
+//                byteBuffer.asFloatBuffer().put(tensor.data().asNioFloat().rewind());
+//                break;
+//            default:
+//                byteBuffer.asFloatBuffer().put(tensor.data().asNioFloat().rewind());
+//                break;
+//        }
+//        builder.setRawData(ByteString.copyFrom(byteBuffer));
+//        TensorProto tensorProto = builder.build();
+//        try (FileOutputStream fos = new FileOutputStream(file)) {
+//            tensorProto.writeTo(fos);
+//        }
+//    }
+    // 强制按行保存结果
     private void saveTensorAsPb(INDArray tensor, File file) throws IOException {
         TensorProto.Builder builder = TensorProto.newBuilder();
         for (long dim : tensor.shape()) {
             builder.addDims(dim);
         }
         builder.setDataType(mapDl4jDataTypeToOnnx(tensor.dataType()).getNumber());
-        ByteBuffer byteBuffer = ByteBuffer.allocate((int) (tensor.length() * tensor.dataType().width()))
-                .order(ByteOrder.LITTLE_ENDIAN);
-        switch(tensor.dataType()) {
-            case FLOAT:
-                byteBuffer.asFloatBuffer().put(tensor.data().asNioFloat().rewind());
-                break;
-            default:
-                byteBuffer.asFloatBuffer().put(tensor.data().asNioFloat().rewind());
-                break;
+
+        // 按行优先顺序逐个读取元素
+        int length = (int) tensor.length();
+        long[] shape = tensor.shape();
+        int rank = tensor.rank();
+
+        // 创建一个保证小端序（ONNX raw_data 标准）的 ByteBuffer
+        ByteBuffer byteBuffer = ByteBuffer.allocate(length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        FloatBuffer floatBuffer = byteBuffer.asFloatBuffer();
+
+        // 按照标准的行优先（C-order）顺序遍历所有元素
+        for (int i = 0; i < length; i++) {
+            // 从行优先的线性索引 i，反向计算出逻辑坐标 coords
+            long[] coords = new long[rank];
+            long temp = i;
+            for (int d = rank - 1; d >= 0; d--) {
+                if (shape[d] > 0) {
+                    coords[d] = temp % shape[d];
+                    temp /= shape[d];
+                } else {
+                    coords[d] = 0;
+                }
+            }
+
+            // 使用 getFloat(coords) 方法，该方法可以智能地处理C序或F序的内部布局
+            float value = tensor.getFloat(coords);
+            // 将正确顺序的元素放入新的 buffer
+            floatBuffer.put(value);
         }
+
         builder.setRawData(ByteString.copyFrom(byteBuffer));
         TensorProto tensorProto = builder.build();
         try (FileOutputStream fos = new FileOutputStream(file)) {
