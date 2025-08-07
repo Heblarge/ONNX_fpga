@@ -1,12 +1,12 @@
 package Accelerator
 
-import Interface._
 import Util._
+import Interface._
 
 import spinal.core._
 import spinal.core.sim._
-import spinal.sim.VCSFlags
 import spinal.lib.sim.StreamDriver
+import spinal.sim.VCSFlags
 
 import scala.math._
 import scala.util.Random
@@ -21,39 +21,33 @@ object AcceleratorTb extends App {
   val random = new Random(seed)
   var testNum = 100
   // var testNum = 1
-  val acceleratorCfg = Accelerator_Config(
-    UIDWidth = 32,
-    ShiftWidth = 6,
-    AddressWidth = 20,
-    ShapeWidth = 16,
-    matSubRowNum = 32,
-    activationRowNum = 32,
-    elementWidth = 24,
-    intWidth = 12,
-    in_Length_Max = 32,
-    systolicArrayInFifoDepth = 16,
-    systolicArrayOutFifoDepth = 8,
+  val acceleratorCfg = AcceleratorCfg(
+    UIDWidth = 19,
+    AddressWidth = 17,
+    ShapeWidth = 15,
+    systolicArraySideNum = 32,
+    elementWidth = 25,
+    intWidth = 13,
+    systolicArrayInFifoDepth = 32,
+    systolicArrayOutFifoDepth = 32,
     systolicArrayInstFifoDepth = 32,
-    activationOutFifoDepth = 32,
-    slicedInstFifoDepth = 32,
-    numCores = 4
+    activationOutFifoDepth = 33,
+    slicedInstFifoDepth = 31,
+    numCores = 3
   )
-  // val acceleratorCfg = Accelerator_Config(
-  //   UIDWidth = 32,
-  //   ShiftWidth = 6,
-  //   AddressWidth = 20,
+  // val acceleratorCfg = AcceleratorCfg(
+  //   UIDWidth = 16,
+  //   AddressWidth = 16,
   //   ShapeWidth = 16,
-  //   matSubRowNum = 2,
-  //   activationRowNum = 2,
+  //   systolicArraySideNum = 2,
   //   elementWidth = 24,
   //   intWidth = 12,
-  //   in_Length_Max = 32,
-  //   systolicArrayInFifoDepth = 16,
-  //   systolicArrayOutFifoDepth = 8,
+  //   systolicArrayInFifoDepth = 32,
+  //   systolicArrayOutFifoDepth = 32,
   //   systolicArrayInstFifoDepth = 32,
   //   activationOutFifoDepth = 32,
   //   slicedInstFifoDepth = 32,
-  //   numCores = 1
+  //   numCores = 2
   // )
   testNum += acceleratorCfg.numCores // This is magic
   val compiled = SimConfig.withFsdbWave
@@ -74,7 +68,7 @@ object AcceleratorTb extends App {
       dut.sdpramA.mem.simPublic()
       dut.sdpramB.mem.simPublic()
       dut.sdpramZ.mem.simPublic()
-      dut.collector.inst_finish.simPublic()
+      dut.collector.instFinish.simPublic()
       dut
     }
 
@@ -98,7 +92,7 @@ object AcceleratorTb extends App {
   val matBs = ArrayBuffer[Array[Array[Int]]]()
   val matZs = ArrayBuffer[Array[Array[Int]]]()
   for (i <- 0 until testNum) {
-    val instSim = InstSim(random, acceleratorCfg.matSubRowNum)
+    val instSim = InstSim(random, acceleratorCfg.systolicArraySideNum)
     instSims += instSim
     val (matA, matB) = genMat(instSim)
     matAs += matA
@@ -117,7 +111,7 @@ object AcceleratorTb extends App {
       instSims,
       true,
       matAs,
-      acceleratorCfg.matSubRowNum,
+      acceleratorCfg.systolicArraySideNum,
       acceleratorCfg.elementWidth
     )
     InstSim.memSetInstSims(
@@ -125,12 +119,12 @@ object AcceleratorTb extends App {
       instSims,
       false,
       matBs,
-      acceleratorCfg.matSubRowNum,
+      acceleratorCfg.systolicArraySideNum,
       acceleratorCfg.elementWidth
     )
 
     var m = 0
-    StreamDriver(dut.io.ComputeInstruction_Stream, dut.clockDomain) { payload =>
+    StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
       if (m < testNum) {
         instSims(m).driveSim(payload)
         m += 1
@@ -143,7 +137,7 @@ object AcceleratorTb extends App {
     var n = 0
     fork {
       while (true) {
-        dut.clockDomain.waitSamplingWhere(dut.collector.inst_finish.toBoolean == true)
+        dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean == true)
         dut.clockDomain.waitSampling()
         dut.clockDomain.waitSampling()
         val instSim = instSims(n)
@@ -153,7 +147,7 @@ object AcceleratorTb extends App {
         val matZResult = memGetMat(
           dut.sdpramZ.mem,
           instSim.outputAddress,
-          acceleratorCfg.matSubRowNum,
+          acceleratorCfg.systolicArraySideNum,
           acceleratorCfg.elementWidth,
           instSim.outputShape0,
           instSim.outputShape1

@@ -181,4 +181,13 @@ package object Util {
   def TODO() = assert(false, "This code is not finished yet".red)
 
   def debugCheck() = println("If see this message, the bug may have been fixed, please let me know".green)
+
+  implicit class VecExtend[T <: Data](val vec: Vec[T]) {
+    def mapVec[B <: Data](f: T => B) = Vec(vec.map(f))
+  }
+
+  implicit class VecSIntExtend(val vec: Vec[SInt]) {
+    def #=(arr: Array[Int]) = vec.zip(arr).foreach(p => p._1 #= p._2)
+    def toArrayInt = vec.map(_.toInt).toArray
+  }
 }

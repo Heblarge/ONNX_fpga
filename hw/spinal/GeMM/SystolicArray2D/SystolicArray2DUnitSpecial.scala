@@ -3,6 +3,7 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.tools
 import spinal.core
+import Interface.MatrixOperation_TypeDef
 /** **************************************************************
  *
  *    SystolicArray2DUnitSpecial
@@ -11,27 +12,10 @@ import spinal.core
  *
  * *************************************************************/
 
-case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends BaseSystolicArray2DUnit(cfg) {
+case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends SystolicArray2DUnit_io(cfg) {
 
-  // 定义组件的输入和输出接口
-//  val io = new Bundle {
-//
-//    val inA = in SInt(cfg.inA_Width bits)
-//    val inA_Final = in Bool()
-//    val inB = in SInt(cfg.inB_Width bits)
-//    val inB_Final = in Bool()
-//    val Go = in Bool()
-//
-//    val outA= out(Reg(SInt(cfg.inA_Width bits))) init 0
-//    val outA_Final = out(Reg(Bool())) init False
-//    val outB= out(Reg(SInt(cfg.inB_Width bits))) init 0
-//    val outB_Final = out(Reg(Bool())) init False
-//
-//    val outZ = out(Reg(SInt(cfg.outZ_Width bits))) init 0
-//
-//    val in_mode = in Bits(2 bits) //00: MatMul; 10: element-wise add; 11: element-wise multiply; 01: reserved
-//    val out_mode = out(Reg(Bits(2 bits))) init 0
-//  }
+  //io定义从SystolicArray2DUnit_io继承
+
   val ABProduct=SInt(cfg.ABProduct_Width bits)
   val ProductSum=Reg(SInt(cfg.ProductSum_Width bits)) init 0
   val ProductSum_Next=  SInt(cfg.ProductSum_Width bits)
@@ -47,7 +31,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends B
   val comp_2 = SInt(cfg.inB_Width bits)
   val greater = SInt(cfg.ProductSum_Width bits)
   //信号切换
-  when(io.in_mode===0){//matmul
+  when(io.inMode === MatrixOperation_TypeDef.MatMul){//matmul
     comp_1 := S(0)
     comp_2 := S(0)
     addend_1:=ProductSum
@@ -55,7 +39,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends B
     factor_1:=io.inA
     factor_2:=io.inB
     ProductSum_Next := sum
-  }.elsewhen(io.in_mode===1){//element-wise max
+  }.elsewhen(io.inMode === MatrixOperation_TypeDef.ElementMax){//element-wise max
     comp_1 := io.inA
     comp_2 := io.inB
     factor_1:=S(0)
@@ -63,7 +47,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends B
     addend_1 := S(0)
     addend_2 := S(0)
     ProductSum_Next := greater
-  }.elsewhen(io.in_mode===2) {//element-wise add
+  }.elsewhen(io.inMode === MatrixOperation_TypeDef.ElementAdd) {//element-wise add
     comp_1 := S(0)
     comp_2 := S(0)
     factor_1:=S(0)
@@ -71,7 +55,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends B
     addend_1:=io.inA.resized
     addend_2:=io.inB.resized
     ProductSum_Next := sum
-  }.elsewhen(io.in_mode===3) { //element-wise multiply
+  }.elsewhen(io.inMode === MatrixOperation_TypeDef.ElementMul) { //element-wise multiply
     comp_1 := S(0)
     comp_2 := S(0)
     addend_1 := S(0)
@@ -96,47 +80,31 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends B
     io.outA_Final:=io.inA_Final
     io.outB_Final:=io.inB_Final
   }
-//    .otherwise{
-//    io.outA_Final:= False
-//    io.outB_Final:= False
-//  }
-
-//  io.outA:=io.inA
-//  io.outB:=io.inB
-//  io.out_mode := io.in_mode
   when(io.Go===True){
     io.outA := io.inA
     io.outB := io.inB
-    io.out_mode := io.in_mode
-    io.out_Transpose := io.in_Transpose
-    io.out_Shift := io.in_Shift
-
-    //    when(!io.in_mode(1).asBits.asBool){
-//      io.outA:=io.inA
-//      io.outB:=io.inB
-//    }.otherwise{
-//      io.outA:=S(0)
-//      io.outB:=S(0)
-//
+    io.outMode := io.inMode
+    io.outTranspose := io.inTranspose
+    io.outShift := io.inShift
     //输出逻辑
     val instSIntShifter = new SIntShifter(inWidth = cfg.ProductSum_Width, outWidth = cfg.outZ_Width)
     instSIntShifter.io.input := ProductSum_Next
-    instSIntShifter.io.shiftAmount := io.in_Shift
+    instSIntShifter.io.shiftAmount := io.inShift
     val ShiftedResult = instSIntShifter.io.output
 
-    when(io.in_mode === 0){
+    when(io.inMode === MatrixOperation_TypeDef.MatMul){
       ProductSum := ProductSum_Next
       when((io.inA_Final===True)&&(io.inB_Final===True)){
         io.outZ := ShiftedResult.resize(cfg.outZ_Width)
         ProductSum:=0
       }
-    }.elsewhen(io.in_mode === 1){
+    }.elsewhen(io.inMode === MatrixOperation_TypeDef.ElementMax){
       ProductSum := S(0)
       io.outZ:= ShiftedResult.resize(cfg.outZ_Width)
-    }.elsewhen(io.in_mode === 2){//element-wise add
+    }.elsewhen(io.inMode === MatrixOperation_TypeDef.ElementAdd){//element-wise add
       ProductSum := S(0)
       io.outZ:= ShiftedResult.resize(cfg.outZ_Width)
-    }.elsewhen(io.in_mode === 3){//element-wise multiply
+    }.elsewhen(io.inMode === MatrixOperation_TypeDef.ElementMul){//element-wise multiply
       ProductSum := S(0)
       io.outZ:= ShiftedResult.resize(cfg.outZ_Width)
     }.otherwise{
@@ -207,11 +175,13 @@ object SystolicArray2DUnitSpecial_Sim extends App {
     val dut_array = Array.ofDim[Int](testLength*10)
     dut.io.inA #= 0
     dut.io.inB #= 0
-    dut.io.in_mode #= 2
+    dut.io.inMode #= MatrixOperation_TypeDef.ElementAdd
     dut.io.inA_Final #= false
     dut.io.inB_Final #= false
-    var idx=0
+    dut.io.inTranspose#= false
+    dut.io.inShift#=0
     dut.io.Go #= true
+    var idx=0
     val rand = new Random()
     rand.setSeed(1234)
     while(idx<(testLength*10))
@@ -234,24 +204,27 @@ object SystolicArray2DUnitSpecial_Sim extends App {
       inB=dut.io.inB.toInt
       if(dut.io.Go.toBoolean)
       {
-        if(dut.io.in_mode.toInt == 0){
+        if(dut.io.inMode==MatrixOperation_TypeDef.MatMul){
           product=(inA * inB)
           sumproduct=sumproduct+product
           if(idx % testLength == (testLength-1)){
             xout_ref=sumproduct
             sumproduct=0
           }
-        }else if(dut.io.in_mode.toInt == 2){
+        }else if(dut.io.inMode==MatrixOperation_TypeDef.ElementMax){
+          ref_array(idx)= if(inA > inB) inA else inB
+        }
+        else if(dut.io.inMode == MatrixOperation_TypeDef.ElementAdd){
           ref_array(idx)=inA + inB
-        }else if(dut.io.in_mode.toInt == 3){
+        }else if(dut.io.inMode == MatrixOperation_TypeDef.ElementMul){
           ref_array(idx)=inA * inB
         }
-        if((dut.io.in_mode.toInt == 2 || dut.io.in_mode.toInt == 3) && idx > 0){
+        if((dut.io.inMode == MatrixOperation_TypeDef.ElementAdd|| dut.io.inMode == MatrixOperation_TypeDef.ElementMul) && idx > 0){
           dut_array(idx-1) = dut.io.outZ.toInt//-1因为计算输出有一级寄存器
         }
       }
 
-      if(dut.io.in_mode.toInt == 0)
+      if(dut.io.inMode==MatrixOperation_TypeDef.MatMul)
       {
         println(s"${idx}:inA:${dut.io.inA.toInt};inB:${dut.io.inB.toInt};sumproduct=${sumproduct};xout_ref=${xout_ref}")
         // Wait a rising edge on the clock
@@ -260,17 +233,13 @@ object SystolicArray2DUnitSpecial_Sim extends App {
           assert(dut.io.outZ.toInt == xout_ref)
         }
       }
-//      else if ((dut.io.mode.toInt == 2 || dut.io.mode.toInt == 3) && (dut.io.Go.toBoolean)){
-//        dut_array(idx) = dut.io.outZ.toInt
-//      }
-      //println(dut.io.xout.toInt)
 
       if(dut.io.Go.toBoolean)
       {
         idx=idx+1
       }
     }
-    if(dut.io.in_mode.toInt == 2){
+    if(dut.io.inMode == MatrixOperation_TypeDef.ElementAdd){
       for(idx <- 0 until (testLength*10)-1){
         println(s"${idx}:ref_array:${ref_array(idx)};dut_array:${dut_array(idx)}")
         assert(dut_array(idx)==ref_array(idx))

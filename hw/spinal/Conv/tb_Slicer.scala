@@ -7,9 +7,9 @@ import DataPump._
 
 import spinal.core._
 import spinal.core.sim._
-import spinal.sim.VCSFlags
 import spinal.lib.{Stream, master, slave}
 import spinal.lib.sim.{StreamDriver, StreamReadyRandomizer, StreamMonitor}
+import spinal.sim.VCSFlags
 
 import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
@@ -35,22 +35,22 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
   val sdpramB = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthB)
   val slicer = Slicer(slicerCfg)
   val io = new Bundle {
-    val ComputeInstruction_Stream = slave Stream (slicer.InstType)
-    val Sliced_ComputeInstruction_Stream = master Stream (slicer.SlicedInstType)
-    val Mats_to_Cores_Streams = Vec.fill(slicerCfg.numCores)(master Stream (slicer.InMatsType))
+    val inst = slave Stream slicer.InstType
+    val slicedInst = master Stream slicer.SlicedInstType
+    val Mats_to_Cores_Streams = Vec.fill(slicerCfg.numCores)(master Stream slicer.MatAfterSlicerType)
   }
 
-  slicer.io.ComputeInstruction_Stream <> io.ComputeInstruction_Stream
-  slicer.io.Sliced_ComputeInstruction_Stream <> io.Sliced_ComputeInstruction_Stream
-  slicer.io.Mats_to_Cores_Streams <> io.Mats_to_Cores_Streams
-  slicer.io.TaskA_Stream <> dataPumpA.io.TaskStream
-  slicer.io.DataA_Stream <> dataPumpA.io.DataStream
-  slicer.io.TaskB_Stream <> dataPumpB.io.TaskStream
-  slicer.io.DataB_Stream <> dataPumpB.io.DataStream
+  slicer.io.inst <> io.inst
+  slicer.io.slicedInst <> io.slicedInst
+  slicer.io.matAfterSlicers <> io.Mats_to_Cores_Streams
+  slicer.io.readAddrA <> dataPumpA.io.TaskStream
+  slicer.io.readDataA <> dataPumpA.io.DataStream
+  slicer.io.readAddrB <> dataPumpB.io.TaskStream
+  slicer.io.readDataB <> dataPumpB.io.DataStream
   sdpramA.io.read <> dataPumpA.io.MemoryReadPort
-  sdpramA.noWrite
+  sdpramA.noWrite()
   sdpramB.io.read <> dataPumpB.io.MemoryReadPort
-  sdpramB.noWrite
+  sdpramB.noWrite()
 }
 
 object SlicerTb extends App {
@@ -63,26 +63,26 @@ object SlicerTb extends App {
   val testNum = 100
   // val testNum = 1
   val slicerCfg = SlicerCfg(
-    UIDWidth = 33,
-    ShiftWidth = 7,
+    UIDWidth = 19,
+    ShiftWidth = 6,
     AddressWidth = 17,
     ShapeWidth = 15,
     SlicecntWidth = 13,
-    matSubRowNum = 3,
-    elementWidthA = 11,
-    elementWidthB = 9,
-    numCores = 4
+    systolicArraySideNum = 5,
+    elementWidthA = 9,
+    elementWidthB = 7,
+    numCores = 3
   )
   // val slicerCfg = SlicerCfg(
-  //   UIDWidth = 32,
-  //   ShiftWidth = 6,
+  //   UIDWidth = 16,
+  //   ShiftWidth = 16,
   //   AddressWidth = 16,
   //   ShapeWidth = 16,
   //   SlicecntWidth = 16,
-  //   matSubRowNum = 2,
+  //   systolicArraySideNum = 2,
   //   elementWidthA = 8,
   //   elementWidthB = 8,
-  //   numCores = 1
+  //   numCores = 2
   // )
   val compiled = SimConfig.withFsdbWave
     .withConfig(
@@ -109,7 +109,7 @@ object SlicerTb extends App {
   val matBs = ArrayBuffer[Array[Array[Int]]]()
   val testRefs = ArrayBuffer[ArrayBuffer[ArrayBuffer[(Array[Int], Array[Int])]]]()
   for (m <- 0 until testNum) {
-    val instSim = InstSim(random, slicerCfg.matSubRowNum)
+    val instSim = InstSim(random, slicerCfg.systolicArraySideNum)
     instSims += instSim
     val matA = random.nextMat(instSim.input0Shape0, instSim.input0Shape1)
     val matB = random.nextMat(instSim.input1Shape0, instSim.input1Shape1)
@@ -117,25 +117,25 @@ object SlicerTb extends App {
     matBs += matB
     val testRefs2 = ArrayBuffer[ArrayBuffer[(Array[Int], Array[Int])]]()
     for (
-      i <- 0 until instSim.input0Shape0 / slicerCfg.matSubRowNum;
-      j <- 0 until instSim.input1Shape1 / slicerCfg.matSubRowNum
+      i <- 0 until instSim.input0Shape0 / slicerCfg.systolicArraySideNum;
+      j <- 0 until instSim.input1Shape1 / slicerCfg.systolicArraySideNum
     ) {
       val testRefs3 = ArrayBuffer[(Array[Int], Array[Int])]()
       val isMatMul = instSim.matrixOperation == MatrixOperation_TypeDef.MatMul
-      for (k <- 0 until (if (isMatMul) instSim.input0Shape1 / slicerCfg.matSubRowNum else 1)) {
+      for (k <- 0 until (if (isMatMul) instSim.input0Shape1 / slicerCfg.systolicArraySideNum else 1)) {
         val matASub = matGetSub(
           matA,
-          i * slicerCfg.matSubRowNum,
-          if (isMatMul) k * slicerCfg.matSubRowNum else j * slicerCfg.matSubRowNum,
-          slicerCfg.matSubRowNum,
-          slicerCfg.matSubRowNum
+          i * slicerCfg.systolicArraySideNum,
+          if (isMatMul) k * slicerCfg.systolicArraySideNum else j * slicerCfg.systolicArraySideNum,
+          slicerCfg.systolicArraySideNum,
+          slicerCfg.systolicArraySideNum
         ).transpose
         var matBSub = matGetSub(
           matB,
-          if (isMatMul) k * slicerCfg.matSubRowNum else i * slicerCfg.matSubRowNum,
-          j * slicerCfg.matSubRowNum,
-          slicerCfg.matSubRowNum,
-          slicerCfg.matSubRowNum
+          if (isMatMul) k * slicerCfg.systolicArraySideNum else i * slicerCfg.systolicArraySideNum,
+          j * slicerCfg.systolicArraySideNum,
+          slicerCfg.systolicArraySideNum,
+          slicerCfg.systolicArraySideNum
         )
         if (!isMatMul) matBSub = matRotateCw(matBSub)
         matASub.zip(matBSub).foreach(testRefs3 += _)
@@ -148,11 +148,25 @@ object SlicerTb extends App {
   compiled.doSimUntilVoid { dut =>
     SimTimeout(1000000 * period)
     dut.clockDomain.forkStimulus(period)
-    InstSim.memSetInstSims(dut.sdpramA.mem, instSims, true, matAs, slicerCfg.matSubRowNum, slicerCfg.elementWidthA)
-    InstSim.memSetInstSims(dut.sdpramB.mem, instSims, false, matBs, slicerCfg.matSubRowNum, slicerCfg.elementWidthB)
+    InstSim.memSetInstSims(
+      dut.sdpramA.mem,
+      instSims,
+      true,
+      matAs,
+      slicerCfg.systolicArraySideNum,
+      slicerCfg.elementWidthA
+    )
+    InstSim.memSetInstSims(
+      dut.sdpramB.mem,
+      instSims,
+      false,
+      matBs,
+      slicerCfg.systolicArraySideNum,
+      slicerCfg.elementWidthB
+    )
 
     var m = 0
-    StreamDriver(dut.io.ComputeInstruction_Stream, dut.clockDomain) { payload =>
+    StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
       if (m < testNum) {
         instSims(m).driveSim(payload)
         m += 1
@@ -163,17 +177,17 @@ object SlicerTb extends App {
     }.setFactor(instDriveSpeed)
 
     var i, j, k = 0
-    StreamReadyRandomizer(dut.io.Sliced_ComputeInstruction_Stream, dut.clockDomain).setFactor(slicedInstReceiveSpeed)
+    StreamReadyRandomizer(dut.io.slicedInst, dut.clockDomain).setFactor(slicedInstReceiveSpeed)
     dut.io.Mats_to_Cores_Streams.foreach(StreamReadyRandomizer(_, dut.clockDomain).setFactor(dataReceiveSpeed))
     dut.io.Mats_to_Cores_Streams.foreach(StreamMonitor(_, dut.clockDomain) { payload =>
       val instSim = instSims(i)
-      val matColSliceNum = instSim.input1Shape1 * slicerCfg.matSubRowNum
+      val matColSliceNum = instSim.input1Shape1 * slicerCfg.systolicArraySideNum
       val matA = matAs(i)
       val matB = matBs(i)
       val testRef = testRefs(i)(j)(k)
       val finalRef = k == testRefs(i)(j).length - 1
-      val outputAResult = payload.A.map(_.toInt).toArray
-      val outputBResult = payload.B.map(_.toInt).toArray
+      val outputAResult = payload.A.toArrayInt
+      val outputBResult = payload.B.toArrayInt
       val finalResult = payload.Final.toBoolean
       vecZipForeach(testRef._1, outputAResult)((aRef, aResult, l) =>
         assert(

@@ -1,6 +1,7 @@
 package Interface
 
 import spinal.core._
+import spinal.lib.{Stream, Fragment}
 
 import scala.util.Random
 
@@ -64,16 +65,6 @@ case class Data_s2mm_TypeDef(mem_data_width: Int) extends Bundle {
 
 object MatrixOperation_TypeDef extends SpinalEnum(defaultEncoding = binarySequential) {
   val MatMul, ElementAdd, ElementMul, ElementMax = newElement() // 定义矩阵操作类型：矩阵乘法、元素加法、元素乘法
-
-  def randomSpinalEnum(random: Random): MatrixOperation_TypeDef.E = { // 别用这个函数了，试试这个random.nextSpinalEnum
-    val ret = random.nextInt(4) match {
-      case 0 => MatMul
-      case 1 => ElementAdd
-      case 2 => ElementMul
-      case 3 => ElementMax
-    }
-    ret
-  }
 }
 
 object Activation_TypeDef extends SpinalEnum(defaultEncoding = binarySequential) {
@@ -112,6 +103,13 @@ case class Sliced_ComputeInstruction_TypeDef(UIDWidth: Int, AddressWidth: Int, S
   val doTranspose = Bool() // 是否进行转置操作
   val outputAddress = UInt(AddressWidth bits) // 输出的地址
   val outputShape = Vec(UInt(ShapeWidth bits), 2) // 输出的形状
+
+  def assignFromInst(inst: ComputeInstruction_TypeDef) = {
+    UID := inst.UID
+    doTranspose := inst.doTranspose
+    outputAddress := inst.outputAddress
+    outputShape := inst.outputShape
+  }
 }
 
 case class SystolicArray2D_CC_Instruction_TypeDef(ShiftWidth: Int) extends Bundle {
@@ -135,6 +133,17 @@ case class CoreInstruction_TypeDef(ShiftWidth: Int, UIDWidth: Int, SlicecntWidth
   val SystolicArray2D_CC_Instruction = SystolicArray2D_CC_Instruction_TypeDef(ShiftWidth) // 矩阵操作指令
   val Activation_Instruction = Activation_Instruction_TypeDef(ShiftWidth) // 激活函数指令
   val Collector_Instruction = Collector_Instruction_TypeDef(UIDWidth, SlicecntWidth) // 数据收集指令
+
+  def assignFromInst(inst: ComputeInstruction_TypeDef, matARowSliceCnt: UInt, matBColSliceCnt: UInt) = {
+    SystolicArray2D_CC_Instruction.matrixOperation := inst.matrixOperation
+    SystolicArray2D_CC_Instruction.shiftLeft_AfterMatrixOperation := inst.shiftLeft_AfterMatrixOperation
+    SystolicArray2D_CC_Instruction.doTranspose := inst.doTranspose
+    Activation_Instruction.activationFunction := inst.activationFunction
+    Activation_Instruction.shiftLeft_AfterActivation := inst.shiftLeft_AfterActivation
+    Collector_Instruction.UID := inst.UID
+    Collector_Instruction.MatA_row_slice_cnt := matARowSliceCnt
+    Collector_Instruction.MatB_col_slice_cnt := matBColSliceCnt
+  }
 }
 
 case class CoreInstruction_AfterMatrixOperation_TypeDef(ShiftWidth: Int, UIDWidth: Int, SlicecntWidth: Int)
@@ -162,6 +171,68 @@ case class in_Mats_TypeDef(
   val Final = Bool() // 是否为最后一个数据包的标志
 }
 
+case class in_Mats_ForFragment(
+    in_MatA_row_num: Int,
+    in_MatA_element_Width: Int,
+    in_MatB_col_num: Int,
+    in_MatB_element_Width: Int,
+    ShiftWidth: Int,
+    UIDWidth: Int,
+    SlicecntWidth: Int
+) extends Bundle {
+  val A = Vec.fill(in_MatA_row_num)(SInt(in_MatA_element_Width bits)) // 矩阵A的行数据
+  val B = Vec.fill(in_MatB_col_num)(SInt(in_MatB_element_Width bits)) // 矩阵B的列数据
+  val CoreInstruction = CoreInstruction_TypeDef(ShiftWidth, UIDWidth, SlicecntWidth) // 核心指令
+}
+
+object in_Mats_Converter {
+  def withFragment(input: Stream[in_Mats_TypeDef]) = {
+    val output =
+      Stream(
+        Fragment(
+          in_Mats_ForFragment(
+            in_MatA_row_num = input.in_MatA_row_num,
+            in_MatA_element_Width = input.in_MatA_element_Width,
+            in_MatB_col_num = input.in_MatB_col_num,
+            in_MatB_element_Width = input.in_MatB_element_Width,
+            ShiftWidth = input.ShiftWidth,
+            UIDWidth = input.UIDWidth,
+            SlicecntWidth = input.SlicecntWidth
+          )
+        )
+      )
+    output.A := input.A
+    output.B := input.B
+    output.CoreInstruction := input.CoreInstruction
+    output.last := input.Final
+    output.valid := input.valid
+    input.ready := output.ready
+    output
+  }
+
+  def withoutFragment(input: Stream[Fragment[in_Mats_ForFragment]]) = {
+    val output =
+      Stream(
+        in_Mats_TypeDef(
+          in_MatA_row_num = input.in_MatA_row_num,
+          in_MatA_element_Width = input.in_MatA_element_Width,
+          in_MatB_col_num = input.in_MatB_col_num,
+          in_MatB_element_Width = input.in_MatB_element_Width,
+          ShiftWidth = input.ShiftWidth,
+          UIDWidth = input.UIDWidth,
+          SlicecntWidth = input.SlicecntWidth
+        )
+      )
+    output.A := input.A
+    output.B := input.B
+    output.CoreInstruction := input.CoreInstruction
+    output.Final := input.last
+    output.valid := input.valid
+    input.ready := output.ready
+    output
+  }
+}
+
 case class out_Mats_AfterMatrixOperation_TypeDef(
     out_MatZ_Width: Int,
     out_MatZ_element_Width: Int,
@@ -180,4 +251,54 @@ case class out_Mats_AfterActivation_TypeDef(MatX_Width: Int, Activation_x_Width:
   val Activation_x = Vec.fill(MatX_Width)(SInt(Activation_x_Width bits)) // 激活函数的输出数据
   val CoreInstruction_AfterActivation = CoreInstruction_AfterActivation_TypeDef(UIDWidth, SlicecntWidth) // 激活后的核心指令
   val Final = Bool() // 是否为最后一个数据包的标志
+}
+
+case class out_Mats_AfterActivation_ForFragment(
+    MatX_Width: Int,
+    Activation_x_Width: Int,
+    UIDWidth: Int,
+    SlicecntWidth: Int
+) extends Bundle {
+  val Activation_x = Vec.fill(MatX_Width)(SInt(Activation_x_Width bits)) // 激活函数的输出数据
+  val CoreInstruction_AfterActivation = CoreInstruction_AfterActivation_TypeDef(UIDWidth, SlicecntWidth) // 激活后的核心指令
+}
+
+object out_Mats_AfterActivation_Converter {
+  def withFragment(input: Stream[out_Mats_AfterActivation_TypeDef], UID: UInt, lock: Bool) = {
+    val output =
+      Stream(
+        Fragment(
+          out_Mats_AfterActivation_ForFragment(
+            MatX_Width = input.MatX_Width,
+            Activation_x_Width = input.Activation_x_Width,
+            UIDWidth = input.UIDWidth,
+            SlicecntWidth = input.SlicecntWidth
+          )
+        )
+      )
+    output.Activation_x := input.Activation_x
+    output.CoreInstruction_AfterActivation := input.CoreInstruction_AfterActivation
+    output.last := input.Final
+    output.valid := input.valid && (input.CoreInstruction_AfterActivation.Collector_Instruction.UID === UID || lock)
+    input.ready := output.ready && (input.CoreInstruction_AfterActivation.Collector_Instruction.UID === UID || lock)
+    output
+  }
+
+  def withoutFragment(input: Stream[Fragment[out_Mats_AfterActivation_ForFragment]]) = {
+    val output =
+      Stream(
+        out_Mats_AfterActivation_TypeDef(
+          MatX_Width = input.MatX_Width,
+          Activation_x_Width = input.Activation_x_Width,
+          UIDWidth = input.UIDWidth,
+          SlicecntWidth = input.SlicecntWidth
+        )
+      )
+    output.Activation_x := input.Activation_x
+    output.CoreInstruction_AfterActivation := input.CoreInstruction_AfterActivation
+    output.Final := input.last
+    output.valid := input.valid
+    input.ready := output.ready
+    output
+  }
 }

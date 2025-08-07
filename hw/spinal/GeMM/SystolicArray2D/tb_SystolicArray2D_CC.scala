@@ -9,6 +9,7 @@ import spinal.core.sim.SimConfig
 import spinal.lib.sim.{StreamMonitor, StreamDriver, StreamReadyRandomizer, ScoreboardInOrder_matrix}
 import scala.util.Random
 import scala.collection.mutable
+import Interface.MatrixOperation_TypeDef
 /**
   * 仿真中的DUT(design under test)调用者，主要功能是用StreamWidthAdapter将DUT的输出调整为一个时间步输出所有的结果，方便自动化验证结果是否正确
   *
@@ -109,7 +110,7 @@ object SystolicArray2D_CC_Sim extends App {
   def generateRandomMatrix(rows: Int, cols: Int,seed: Int): Array[Array[Int]] = {
     val rand = new Random()
     rand.setSeed(seed)
-    Array.fill(rows, cols)(rand.nextInt(16)) // 随机生成0到9之间的整数
+    Array.fill(rows, cols)(rand.nextInt(16)) // 随机生成0到15之间的整数
   }
   // 随机生成移位量
   def generateRandomShiftAmount(shiftAmount: Int, seed: Int): Int = {
@@ -119,16 +120,16 @@ object SystolicArray2D_CC_Sim extends App {
     0
   }
 
-  //随机生成工作模式
+  //生成工作模式
   def generateRandomMode(bool: Boolean, do_transpose:Boolean): Array[Boolean] = {
 //    val rand = new Random()
 //    rand.setSeed(seed)
     val result = Array.fill(5)(false) // 随机生成0到1之间的整数
     result(0) = do_transpose//do_PostTranspose
     result(1) = false//bool//bool//do_MatMul
-    result(2) = false//!bool//(!bool)//do_ElementWiseMul
+    result(2) = false//(!bool)//do_ElementWiseMul
     result(3) = false//do_ElementWiseAdd
-    result(4) = true//!bool//do_ElementWiseMax
+    result(4) = true//(!bool)//do_ElementWiseMax
     result
   }
 
@@ -493,11 +494,8 @@ object SystolicArray2D_CC_Sim extends App {
     }
 
     fork{
-      dut.io.in_Mats.payload.mode.do_MatMul #= true
+      dut.io.in_Mats.payload.mode.MatrixOperation #= MatrixOperation_TypeDef.MatMul
       dut.io.in_Mats.payload.mode.do_PostTranspose #= false
-      dut.io.in_Mats.payload.mode.do_ElementWiseAdd #= false
-      dut.io.in_Mats.payload.mode.do_ElementWiseMul #= false
-      dut.io.in_Mats.payload.mode.do_ElementWiseMax #= false
       dut.io.in_Mats.payload.mode.post_Shift #= 0
     }
 
@@ -514,11 +512,19 @@ object SystolicArray2D_CC_Sim extends App {
         false
       } else {
       payload.mode.do_PostTranspose #= mode_sending(0)
-      payload.mode.do_MatMul #= mode_sending(1)
-      payload.mode.do_ElementWiseMul #= mode_sending(2)
-      payload.mode.do_ElementWiseAdd #= mode_sending(3)
-      payload.mode.do_ElementWiseMax #= mode_sending(4)
       payload.mode.post_Shift #= shift_sending
+      if((mode_sending(1)==true) && (mode_sending(2)==false) && (mode_sending(3)==false) && (mode_sending(4)==false))
+        payload.mode.MatrixOperation #= MatrixOperation_TypeDef.MatMul // 矩阵乘法
+      else if(mode_sending(1)==false && mode_sending(2)==true && mode_sending(3)==false && mode_sending(4)==false)
+        payload.mode.MatrixOperation #= MatrixOperation_TypeDef.ElementMul // 按元素乘
+      else if(mode_sending(1)==false && mode_sending(2)==false && mode_sending(3)==true&& mode_sending(4)==false)
+        payload.mode.MatrixOperation #= MatrixOperation_TypeDef.ElementAdd // 按元素加
+      else if(mode_sending(1)==false && mode_sending(2)==false && mode_sending(3)==false&& mode_sending(4)==true)
+        payload.mode.MatrixOperation #= MatrixOperation_TypeDef.ElementMax // 按元素最大值
+      else {
+        println("Invalid mode.")
+        assert(false)
+      }
 
       //确保按元素操作的矩阵均为正方形（由于输出buffer的尺寸限制）
       if (mode_sending(1)==false){

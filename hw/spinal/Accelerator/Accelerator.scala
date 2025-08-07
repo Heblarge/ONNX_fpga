@@ -1,14 +1,5 @@
 package Accelerator
 
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
-import spinal.lib.sim._
-import spinal.sim._
-import scala.util._
-import scala.math._
-import scala.collection.mutable._
-
 import Slicer._
 import DataPump._
 import GeMM.SystolicArray2D._
@@ -18,16 +9,18 @@ import LogarithmFunction._
 import ReLUFunction._
 import SoftplusFunction._
 
-case class Accelerator_Config(
+import spinal.core._
+import spinal.lib.{Stream, slave}
+
+import scala.math._
+
+case class AcceleratorCfg(
     UIDWidth: Int,
-    ShiftWidth: Int,
     AddressWidth: Int,
     ShapeWidth: Int,
-    matSubRowNum: Int,
-    activationRowNum: Int,
+    systolicArraySideNum: Int,
     elementWidth: Int,
     intWidth: Int,
-    in_Length_Max: Int,
     systolicArrayInFifoDepth: Int,
     systolicArrayOutFifoDepth: Int,
     systolicArrayInstFifoDepth: Int,
@@ -35,10 +28,11 @@ case class Accelerator_Config(
     slicedInstFifoDepth: Int,
     numCores: Int
 ) {
-  require(systolicArrayInFifoDepth == 16, "This is magic")
-  require(systolicArrayOutFifoDepth == 8, "This is magic")
-  val SlicecntWidth = log2Up(round(ceil((pow(2, ShapeWidth) - 1) / matSubRowNum)))
-  val dataWidth = matSubRowNum * elementWidth
+  require(systolicArrayInFifoDepth == 32, "This is magic")
+  require(systolicArrayOutFifoDepth == 32, "This is magic")
+  val SlicecntWidth = log2Up(round(ceil((pow(2, ShapeWidth) - 1) / systolicArraySideNum)))
+  val ShiftWidth = log2Up(elementWidth + 1) + 1
+  val dataWidth = systolicArraySideNum * elementWidth
   val fracWidth = elementWidth - intWidth
   val slicerCfg = SlicerCfg(
     UIDWidth = UIDWidth,
@@ -46,7 +40,7 @@ case class Accelerator_Config(
     AddressWidth = AddressWidth,
     ShapeWidth = ShapeWidth,
     SlicecntWidth = SlicecntWidth,
-    matSubRowNum = matSubRowNum,
+    systolicArraySideNum = systolicArraySideNum,
     elementWidthA = elementWidth,
     elementWidthB = elementWidth,
     numCores = numCores
@@ -58,10 +52,10 @@ case class Accelerator_Config(
     Enable_Padding_logic = false
   )
   val systolicArray2DWrapCfg = SystolicArray2D_Wrap_Config(
-    in_Length_Max = in_Length_Max,
-    in_Length_Min = matSubRowNum * matSubRowNum / activationRowNum,
-    in_MatA_row_num = matSubRowNum,
-    in_MatB_col_num = matSubRowNum,
+    in_Length_Max = systolicArraySideNum,
+    in_Length_Min = systolicArraySideNum,
+    in_MatA_row_num = systolicArraySideNum,
+    in_MatB_col_num = systolicArraySideNum,
     in_MatA_element_Width = elementWidth,
     in_MatB_element_Width = elementWidth,
     out_MatZ_element_Width = elementWidth,
@@ -75,8 +69,8 @@ case class Accelerator_Config(
     SlicecntWidth = SlicecntWidth
   )
   val activationCfg = Activation_Config(
-    Matx_Width = activationRowNum,
-    MatX_Width = activationRowNum,
+    Matx_Width = systolicArraySideNum,
+    MatX_Width = systolicArraySideNum,
     element_in_Width = elementWidth,
     element_out_Width = elementWidth,
     max_indepth = activationOutFifoDepth,
@@ -88,15 +82,15 @@ case class Accelerator_Config(
     ShiftWidth = ShiftWidth,
     SlicecntWidth = SlicecntWidth
   )
-  val collectorCfg = Collector_Config(
+  val collectorCfg = CollectorCfg(
     UIDWidth = UIDWidth,
     AddressWidth = AddressWidth,
     ShapeWidth = ShapeWidth,
     SlicecntWidth = SlicecntWidth,
-    in_MatA_row_num = matSubRowNum,
-    in_MatB_col_num = matSubRowNum,
-    MatX_Width = activationRowNum,
-    Activation_x_Width = elementWidth,
+    slicedInstFifoDepth = slicedInstFifoDepth,
+    systolicArraySideNum = systolicArraySideNum,
+    activationUnitNum = systolicArraySideNum,
+    elementWidthZ = elementWidth,
     numCores = numCores
   )
   val dataPumpS2mmCfg = DataPump_s2mm_Config(
@@ -108,35 +102,7 @@ case class Accelerator_Config(
   )
 }
 
-case class Sdpram(addrWidth: Int, dataWidth: Int) extends Component {
-  def MemoryReadPortType = MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth)
-  def MemoryWritePortType = MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth)
-  def noRead = {
-    io.read.Valid := False
-    io.read.Address := 0
-  }
-  def noWrite = {
-    io.write.Valid := False
-    io.write.Address := 0
-    io.write.Data := 0
-  }
-  val io = new Bundle {
-    val read = slave(MemoryReadPortType)
-    val write = slave(MemoryWritePortType)
-  }
-  val mem = Mem(Bits(dataWidth bits), wordCount = 1 << addrWidth)
-  io.read.Data := mem.readSync(
-    enable = io.read.Valid,
-    address = io.read.Address
-  )
-  mem.write(
-    enable = io.write.Valid,
-    address = io.write.Address,
-    data = io.write.Data
-  )
-}
-
-case class Accelerator(acceleratorCfg: Accelerator_Config) extends Component {
+case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
   val slicer = Slicer(acceleratorCfg.slicerCfg)
   val dataPumpA = DataPump_mm2s(acceleratorCfg.dataPumpMm2sCfg)
   val dataPumpB = DataPump_mm2s(acceleratorCfg.dataPumpMm2sCfg)
@@ -147,24 +113,22 @@ case class Accelerator(acceleratorCfg: Accelerator_Config) extends Component {
   val sdpramZ = Sdpram(acceleratorCfg.AddressWidth, acceleratorCfg.dataWidth)
 
   val io = new Bundle {
-    val ComputeInstruction_Stream = slave Stream (slicer.InstType)
+    val inst = slave Stream slicer.InstType
   }
 
-  slicer.io.ComputeInstruction_Stream <> io.ComputeInstruction_Stream
-  slicer.io.Sliced_ComputeInstruction_Stream.queue(
-    acceleratorCfg.slicedInstFifoDepth
-  ) <> collector.io.Sliced_ComputeInstruction_Stream
-  slicer.io.TaskA_Stream <> dataPumpA.io.TaskStream
-  slicer.io.DataA_Stream <> dataPumpA.io.DataStream
-  slicer.io.TaskB_Stream <> dataPumpB.io.TaskStream
-  slicer.io.DataB_Stream <> dataPumpB.io.DataStream
+  slicer.io.inst <> io.inst
+  slicer.io.slicedInst <> collector.io.slicedInst
+  slicer.io.readAddrA <> dataPumpA.io.TaskStream
+  slicer.io.readDataA <> dataPumpA.io.DataStream
+  slicer.io.readAddrB <> dataPumpB.io.TaskStream
+  slicer.io.readDataB <> dataPumpB.io.DataStream
   sdpramA.io.read <> dataPumpA.io.MemoryReadPort
-  sdpramA.noWrite
+  sdpramA.noWrite()
   sdpramB.io.read <> dataPumpB.io.MemoryReadPort
-  sdpramB.noWrite
+  sdpramB.noWrite()
 
   val clkCore = ClockDomain.external("SystolicArray2D_CC_core")
-  for (i <- 0 until acceleratorCfg.numCores) {
+  slicer.io.matAfterSlicers.zip(collector.io.matAfterActivations).foreach { case (matAfterSlicer, matAfterActivation) =>
     val systolicArray2DWrapper =
       SystolicArray2D_Wrapper(
         cfg = acceleratorCfg.systolicArray2DWrapCfg,
@@ -173,13 +137,13 @@ case class Accelerator(acceleratorCfg: Accelerator_Config) extends Component {
         clk_core = clkCore
       )
     val activation = Activation(acceleratorCfg.activationCfg)
-    slicer.io.Mats_to_Cores_Streams(i) <> systolicArray2DWrapper.io.in_Mats_with_Core_Instruction
+    systolicArray2DWrapper.io.in_Mats_with_Core_Instruction <> matAfterSlicer
     systolicArray2DWrapper.io.out_Mats_with_Core_Instruction <> activation.io.in_Mats
-    collector.io.Mats_from_Cores_Streams(i) <> activation.io.out_Mats
+    matAfterActivation <> activation.io.out_Mats
   }
 
-  collector.io.Task_Stream <> datapumpZ.io.TaskStream
-  collector.io.Data_Stream <> datapumpZ.io.DataStream
+  collector.io.writeAddr <> datapumpZ.io.TaskStream
+  collector.io.writeData <> datapumpZ.io.DataStream
   sdpramZ.io.write <> datapumpZ.io.MemoryWritePort
-  sdpramZ.noRead
+  sdpramZ.noRead()
 }

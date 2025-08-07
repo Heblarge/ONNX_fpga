@@ -94,7 +94,7 @@ object SystolicArray2D_CC {
   case class in_Mats_TypeDef(cfg: SystolicArray2D_CC_Config) extends Bundle {
     val A = Vec.fill(cfg.in_MatA_row_num)(SInt(cfg.in_MatA_element_Width bits))
     val B = Vec.fill(cfg.in_MatB_col_num)(SInt(cfg.in_MatB_element_Width bits))
-    val mode = opmode(cfg.SystolicArray2D_Cfg)
+    val mode = OpMode_TypeDef(cfg.SystolicArray2D_Cfg)
     val Final = Bool()
   }
 
@@ -117,7 +117,7 @@ case class SystolicArray2D_CC(
 //  case class in_Mats_TypeDef(cfg: SystolicArray2D_CC_Config) extends Bundle {
 //    val A = Vec.fill(cfg.in_MatA_row_num)(SInt(cfg.in_MatA_element_Width bits))
 //    val B = Vec.fill(cfg.in_MatB_col_num)(SInt(cfg.in_MatB_element_Width bits))
-//    val mode = opmode(cfg.SystolicArray2D_Cfg)
+//    val mode = OpMode_TypeDef(cfg.SystolicArray2D_Cfg)
 //    val Final = Bool()
 //  }
 //  def in_Mats_Type():in_Mats_TypeDef={new in_Mats_TypeDef(cfg)}
@@ -143,8 +143,8 @@ case class SystolicArray2D_CC(
     Fifo.io.pop.ready <> SystolicArray2D_Instance.io.in_Mats.ready
     Fifo.io.pop.valid <> SystolicArray2D_Instance.io.in_Mats.valid
 
-    //一组输入矩阵只有一个对应的mode
-    Fifo.io.pop.payload.mode <> SystolicArray2D_Instance.io.in_Mats.mode
+    //一组输入矩阵只有一个对应的OpMode
+    Fifo.io.pop.payload.mode <> SystolicArray2D_Instance.io.in_Mats.OpMode
     for (row_index <- 0 until cfg.in_MatA_row_num) {
       Fifo.io.pop.payload.A(row_index) <> SystolicArray2D_Instance.io.in_Mats.A(row_index).data
       // 所有的数据线原样连接到SystolicArray2D

@@ -6,37 +6,37 @@ import DataPump._
 
 import spinal.core._
 import spinal.core.sim._
-import spinal.sim.VCSFlags
 import spinal.lib.{Stream, slave}
 import spinal.lib.sim.{StreamDriver, StreamMonitor}
+import spinal.sim.VCSFlags
 
 import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 
-case class CollectorTest(collectorCfg: Collector_Config) extends Component {
+case class CollectorTest(collectorCfg: CollectorCfg) extends Component {
   val dataPumpZ = DataPump_s2mm(
     DataPump_s2mm_Config(
-      mem_data_width = collectorCfg.mem_data_widthZ,
+      mem_data_width = collectorCfg.dataWidthZ,
       mem_addr_width = collectorCfg.AddressWidth,
       RepeatNum_Max = 1,
       Enable_UnPadding_logic = false,
       Enable_Error_Port_logic = false
     )
   )
-  val sdpramZ = Sdpram(addrWidth = collectorCfg.AddressWidth, dataWidth = collectorCfg.mem_data_widthZ)
+  val sdpramZ = Sdpram(addrWidth = collectorCfg.AddressWidth, dataWidth = collectorCfg.dataWidthZ)
   val collector = Collector(collectorCfg)
   val io = new Bundle {
-    val Sliced_ComputeInstruction_Stream = slave Stream (collector.Sliced_ComputeInstruction_Type())
-    val Mats_from_Cores_Streams =
-      Vec.fill(collectorCfg.numCores)(slave Stream (collector.out_Mats_AfterActivation_Type()))
+    val slicedInst = slave Stream collector.SlicedInstType
+    val matAfterActivations =
+      Vec.fill(collectorCfg.numCores)(slave Stream collector.MatAfterActivationType)
   }
 
-  collector.io.Sliced_ComputeInstruction_Stream <> io.Sliced_ComputeInstruction_Stream
-  collector.io.Mats_from_Cores_Streams <> io.Mats_from_Cores_Streams
-  collector.io.Task_Stream <> dataPumpZ.io.TaskStream
-  collector.io.Data_Stream <> dataPumpZ.io.DataStream
+  collector.io.slicedInst <> io.slicedInst
+  collector.io.matAfterActivations <> io.matAfterActivations
+  collector.io.writeAddr <> dataPumpZ.io.TaskStream
+  collector.io.writeData <> dataPumpZ.io.DataStream
   sdpramZ.io.write <> dataPumpZ.io.MemoryWritePort
-  sdpramZ.noRead
+  sdpramZ.noRead()
 }
 
 object CollectorTb extends App {
@@ -48,27 +48,27 @@ object CollectorTb extends App {
   val random = new Random(seed)
   val testNum = 100
   // val testNum = 1
-  val collectorCfg = Collector_Config(
-    UIDWidth = 33,
+  val collectorCfg = CollectorCfg(
+    UIDWidth = 19,
     AddressWidth = 17,
     ShapeWidth = 15,
     SlicecntWidth = 13,
-    in_MatA_row_num = 6,
-    in_MatB_col_num = 6,
-    MatX_Width = 4,
-    Activation_x_Width = 9,
-    numCores = 4
+    slicedInstFifoDepth = 33,
+    systolicArraySideNum = 6,
+    activationUnitNum = 4,
+    elementWidthZ = 9,
+    numCores = 3
   )
-  // val collectorCfg = Collector_Config(
-  //   UIDWidth = 32,
+  // val collectorCfg = CollectorCfg(
+  //   UIDWidth = 16,
   //   AddressWidth = 16,
   //   ShapeWidth = 16,
   //   SlicecntWidth = 16,
-  //   in_MatA_row_num = 2,
-  //   in_MatB_col_num = 2,
-  //   MatX_Width = 2,
-  //   Activation_x_Width = 8,
-  //   numCores = 1
+  //   slicedInstFifoDepth = 32,
+  //   systolicArraySideNum = 2,
+  //   activationUnitNum = 2,
+  //   elementWidthZ = 8,
+  //   numCores = 2
   // )
   val compiled = SimConfig.withFsdbWave
     .withConfig(
@@ -86,7 +86,7 @@ object CollectorTb extends App {
     .compile {
       val dut = CollectorTest(collectorCfg)
       dut.sdpramZ.mem.simPublic()
-      dut.collector.inst_finish.simPublic()
+      dut.collector.instFinish.simPublic()
       dut
     }
 
@@ -96,29 +96,29 @@ object CollectorTb extends App {
   val testInputs =
     Array.fill(collectorCfg.numCores)(ArrayBuffer[ArrayBuffer[ArrayBuffer[(Array[Int], Int, Int, Int)]]]())
   for (m <- 0 until testNum) {
-    val instSim = InstSim(random, collectorCfg.MatAsub_row_num)
+    val instSim = InstSim(random, collectorCfg.systolicArraySideNum)
     instSims += instSim
     val matZ = random.nextMat(instSim.input0Shape0, instSim.input1Shape1)
     matZs += matZ
     val testInputs2 = Array.fill(collectorCfg.numCores)(ArrayBuffer[ArrayBuffer[(Array[Int], Int, Int, Int)]]())
     for (
-      i <- 0 until instSim.input0Shape0 / collectorCfg.MatAsub_row_num;
-      j <- 0 until instSim.input1Shape1 / collectorCfg.MatBsub_col_num
+      i <- 0 until instSim.input0Shape0 / collectorCfg.systolicArraySideNum;
+      j <- 0 until instSim.input1Shape1 / collectorCfg.systolicArraySideNum
     ) {
       val MatZsub = instSim
         .transposeSim(
           matGetSub(
             matZ,
-            i * collectorCfg.MatAsub_row_num,
-            j * collectorCfg.MatBsub_col_num,
-            collectorCfg.MatAsub_row_num,
-            collectorCfg.MatBsub_col_num
+            i * collectorCfg.systolicArraySideNum,
+            j * collectorCfg.systolicArraySideNum,
+            collectorCfg.systolicArraySideNum,
+            collectorCfg.systolicArraySideNum
           )
         )
         .flatten
-      val testInputs3 = ArrayBuffer.tabulate(collectorCfg.Matin_row_num)(k =>
+      val testInputs3 = ArrayBuffer.tabulate(collectorCfg.activationRowNum)(k =>
         (
-          Array.tabulate(collectorCfg.Matin_col_num)(l => MatZsub(k * collectorCfg.Matin_col_num + l)),
+          Array.tabulate(collectorCfg.activationUnitNum)(l => MatZsub(k * collectorCfg.activationUnitNum + l)),
           random.validNumWhen(instSim.UID, k == 0),
           random.validNumWhen(i, k == 0),
           random.validNumWhen(j, k == 0)
@@ -135,7 +135,7 @@ object CollectorTb extends App {
     dut.clockDomain.forkStimulus(period)
 
     var m = 0
-    StreamDriver(dut.io.Sliced_ComputeInstruction_Stream, dut.clockDomain) { payload =>
+    StreamDriver(dut.io.slicedInst, dut.clockDomain) { payload =>
       if (m < testNum) {
         instSims(m).driveSim(payload)
         m += 1
@@ -145,14 +145,13 @@ object CollectorTb extends App {
       }
     }.setFactor(instDriveSpeed)
 
-    dut.io.Mats_from_Cores_Streams.zipWithIndex.foreach { Mats_from_Core_StreamWithIndex =>
+    dut.io.matAfterActivations.zipWithIndex.foreach { case (matAfterActivation, l) =>
       var i, j, k = 0
-      var l = Mats_from_Core_StreamWithIndex._2
       while (if (i < testNum) testInputs(l)(i).length == 0 else false) i += 1
-      val streamDriver = StreamDriver(Mats_from_Core_StreamWithIndex._1, dut.clockDomain) { payload =>
+      val streamDriver = StreamDriver(matAfterActivation, dut.clockDomain) { payload =>
         if (i < testNum) {
           val testInput = testInputs(l)(i)(j)(k)
-          payload.Activation_x.zip(testInput._1).foreach { case (x, y) => x #= y }
+          payload.Activation_x #= testInput._1
           payload.CoreInstruction_AfterActivation.Collector_Instruction.UID #= testInput._2
           payload.CoreInstruction_AfterActivation.Collector_Instruction.MatA_row_slice_cnt #= testInput._3
           payload.CoreInstruction_AfterActivation.Collector_Instruction.MatB_col_slice_cnt #= testInput._4
@@ -173,7 +172,7 @@ object CollectorTb extends App {
           false
         }
       }
-      StreamMonitor(Mats_from_Core_StreamWithIndex._1, dut.clockDomain) { payload =>
+      StreamMonitor(matAfterActivation, dut.clockDomain) { payload =>
         if (payload.Final.toBoolean) {
           streamDriver.setFactor(dataDriveSpeedBetweenSlice)
         } else {
@@ -185,7 +184,7 @@ object CollectorTb extends App {
     var n = 0
     fork {
       while (true) {
-        dut.clockDomain.waitSamplingWhere(dut.collector.inst_finish.toBoolean)
+        dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
         dut.clockDomain.waitSampling()
         dut.clockDomain.waitSampling()
         val instSim = instSims(n)
@@ -193,8 +192,8 @@ object CollectorTb extends App {
         val matZResult = memGetMat(
           dut.sdpramZ.mem,
           instSim.outputAddress,
-          collectorCfg.MatBsub_col_num,
-          collectorCfg.Activation_x_Width,
+          collectorCfg.systolicArraySideNum,
+          collectorCfg.elementWidthZ,
           instSim.outputShape0,
           instSim.outputShape1
         )

@@ -1,5 +1,6 @@
 package Slicer
 
+import Util._
 import Interface._
 
 import spinal.core._
@@ -11,13 +12,14 @@ case class SlicerCfg(
     AddressWidth: Int,
     ShapeWidth: Int,
     SlicecntWidth: Int,
-    matSubRowNum: Int,
+    systolicArraySideNum: Int,
     elementWidthA: Int,
     elementWidthB: Int,
     numCores: Int
 ) {
-  val dataWidthA = matSubRowNum * elementWidthA
-  val dataWidthB = matSubRowNum * elementWidthB
+  val dataWidthA = systolicArraySideNum * elementWidthA
+  val dataWidthB = systolicArraySideNum * elementWidthB
+  val matABSubReadRowCntWidth = log2Up(systolicArraySideNum)
   val CoreSelectWidth = log2Up(numCores)
 }
 
@@ -44,11 +46,11 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
       SlicecntWidth = slicerCfg.SlicecntWidth
     )
 
-  def InMatsType =
+  def MatAfterSlicerType =
     in_Mats_TypeDef(
-      in_MatA_row_num = slicerCfg.matSubRowNum,
+      in_MatA_row_num = slicerCfg.systolicArraySideNum,
       in_MatA_element_Width = slicerCfg.elementWidthA,
-      in_MatB_col_num = slicerCfg.matSubRowNum,
+      in_MatB_col_num = slicerCfg.systolicArraySideNum,
       in_MatB_element_Width = slicerCfg.elementWidthB,
       ShiftWidth = slicerCfg.ShiftWidth,
       UIDWidth = slicerCfg.UIDWidth,
@@ -68,274 +70,160 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   def ReadDataTypeB = Data_mm2s_TypeDef(slicerCfg.dataWidthB)
 
   val io = new Bundle {
-    val ComputeInstruction_Stream = slave Stream (InstType)
-    val Sliced_ComputeInstruction_Stream = master Stream (SlicedInstType)
-    val TaskA_Stream = master Stream (ReadAddrType)
-    val DataA_Stream = slave Stream (ReadDataTypeA)
-    val TaskB_Stream = master Stream (ReadAddrType)
-    val DataB_Stream = slave Stream (ReadDataTypeB)
-    val Mats_to_Cores_Streams = Vec.fill(slicerCfg.numCores)(master Stream (InMatsType))
+    val inst = slave Stream InstType
+    val slicedInst = master Stream SlicedInstType
+    val readAddrA = master Stream ReadAddrType
+    val readDataA = slave Stream ReadDataTypeA
+    val readAddrB = master Stream ReadAddrType
+    val readDataB = slave Stream ReadDataTypeB
+    val matAfterSlicers = Vec.fill(slicerCfg.numCores)(master Stream MatAfterSlicerType)
   }
 
-  val ComputeInstruction_Reg = Reg(InstType)
-  val ComputeInstruction_Stream_ready = Reg(Bool()) init (True)
-  io.ComputeInstruction_Stream.ready := ComputeInstruction_Stream_ready
-  val is_MatMul = ComputeInstruction_Reg.matrixOperation === MatrixOperation_TypeDef.MatMul
-  val inst_finish = Bool()
-  val inst_finish_Reg = Reg(Bool, init = False)
-  when(io.ComputeInstruction_Stream.fire) {
-    inst_finish_Reg := False
-  } elsewhen (inst_finish) {
-    inst_finish_Reg := True
-  }
-  val Sliced_ComputeInstruction_Stream_valid = Reg(Bool()) init (False)
-  when(io.ComputeInstruction_Stream.fire) {
-    ComputeInstruction_Reg := io.ComputeInstruction_Stream.payload
-    ComputeInstruction_Stream_ready := False
-  } elsewhen (inst_finish_Reg && !Sliced_ComputeInstruction_Stream_valid) {
-    ComputeInstruction_Stream_ready := True
+  io.inst.ready.setAsReg().init(True)
+  val instReg = Reg(InstType)
+  val isMatMul = instReg.matrixOperation === MatrixOperation_TypeDef.MatMul
+  val instFinish = Bool()
+  when(io.inst.fire) {
+    io.inst.ready := False
+    instReg := io.inst.payload
+  } elsewhen (instFinish) {
+    io.inst.ready := True
   }
 
-  val Sliced_ComputeInstruction_Reg = Reg(SlicedInstType)
-  io.Sliced_ComputeInstruction_Stream.payload := Sliced_ComputeInstruction_Reg
-  Sliced_ComputeInstruction_Reg.UID := ComputeInstruction_Reg.UID
-  Sliced_ComputeInstruction_Reg.doTranspose := ComputeInstruction_Reg.doTranspose
-  Sliced_ComputeInstruction_Reg.outputAddress := ComputeInstruction_Reg.outputAddress
-  Sliced_ComputeInstruction_Reg.outputShape := ComputeInstruction_Reg.outputShape
-  io.Sliced_ComputeInstruction_Stream.valid := Sliced_ComputeInstruction_Stream_valid
-  when(io.Sliced_ComputeInstruction_Stream.fire) {
-    Sliced_ComputeInstruction_Stream_valid := False
-  } elsewhen (RegNext(io.ComputeInstruction_Stream.fire, init = False)) {
-    Sliced_ComputeInstruction_Stream_valid := True
+  io.slicedInst.valid.setAsReg().init(False)
+  io.slicedInst.assignFromInst(instReg)
+  when(io.slicedInst.fire) {
+    io.slicedInst.valid := False
+  } elsewhen (io.inst.fire) {
+    io.slicedInst.valid := True
   }
 
-  val MatA_row_slice_num = ComputeInstruction_Reg.input0Shape(0) / slicerCfg.matSubRowNum
-  val MatB_col_slice_num = ComputeInstruction_Reg.input1Shape(1) / slicerCfg.matSubRowNum
-  val MatA_col_slice_num = is_MatMul ? (ComputeInstruction_Reg.input0Shape(1) / slicerCfg.matSubRowNum) | 1
-  val MatA_row_slice_cnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
-  val MatB_col_slice_cnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
-  val MatA_col_slice_cnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
-  val Matinsub_send_finish = Bool()
-  val Matoutsub_send_finish = Bool()
-  when(io.ComputeInstruction_Stream.fire) {
-    MatA_row_slice_cnt := 0
-    MatB_col_slice_cnt := 0
-  } elsewhen (is_MatMul ? Matoutsub_send_finish | Matinsub_send_finish) {
-    when(MatA_row_slice_cnt === MatA_row_slice_num - 1 && MatB_col_slice_cnt === MatB_col_slice_num - 1) {
-      MatA_row_slice_cnt := 0
-      MatB_col_slice_cnt := 0
-    } elsewhen (MatB_col_slice_cnt === MatB_col_slice_num - 1) {
-      MatA_row_slice_cnt := MatA_row_slice_cnt + 1
-      MatB_col_slice_cnt := 0
+  val matARowSliceNum = instReg.input0Shape(0) / slicerCfg.systolicArraySideNum
+  val matBColSliceNum = instReg.input1Shape(1) / slicerCfg.systolicArraySideNum
+  val matAColSliceNum = Mux(isMatMul, instReg.input0Shape(1) / slicerCfg.systolicArraySideNum, U(1))
+  val matARowSliceCnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
+  val matBColSliceCnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
+  val matAColSliceCnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
+  val matABSubSendFinish = Bool()
+  when(io.inst.fire) {
+    matARowSliceCnt := 0
+    matBColSliceCnt := 0
+    matAColSliceCnt := 0
+  } elsewhen (matABSubSendFinish) {
+    when(matAColSliceCnt =/= matAColSliceNum - 1) {
+      matAColSliceCnt := matAColSliceCnt + 1
     } otherwise {
-      MatB_col_slice_cnt := MatB_col_slice_cnt + 1
+      matAColSliceCnt := 0
+      when(matBColSliceCnt =/= matBColSliceNum - 1) {
+        matBColSliceCnt := matBColSliceCnt + 1
+      } otherwise {
+        matBColSliceCnt := 0
+        when(matARowSliceCnt =/= matARowSliceNum - 1) {
+          matARowSliceCnt := matARowSliceCnt + 1
+        } otherwise {
+          matARowSliceCnt := 0
+        }
+      }
     }
   }
 
-  val MatAsub_row_cnt = Reg(UInt(slicerCfg.ShapeWidth bits))
-  when(io.ComputeInstruction_Stream.fire) {
-    MatAsub_row_cnt := 0
-  } elsewhen (io.DataA_Stream.fire) {
-    when(MatAsub_row_cnt === slicerCfg.matSubRowNum - 1) {
-      MatAsub_row_cnt := 0
+  case class SlicerReader(ReadDataType: Data_mm2s_TypeDef, elementWidth: Int) extends Component {
+    val io = new Bundle {
+      val instFire = in port Bool()
+      val matABSubReadRowCnt = out(Reg(UInt((slicerCfg.matABSubReadRowCntWidth bits))))
+      val readStart = in port Bool()
+      val matABSub =
+        out(Vec.fill(slicerCfg.systolicArraySideNum, slicerCfg.systolicArraySideNum)(Reg(Bits(elementWidth bits))))
+      val matInSubReadFinish = in port Bool()
+      val matABSubReadFinish = out port Bool()
+      val readAddr = master Stream ReadAddrType
+      val readData = slave Stream ReadDataType
+    }
+
+    when(io.instFire) {
+      io.matABSubReadRowCnt := 0
+    } elsewhen (io.readData.fire) {
+      io.matABSubReadRowCnt :=
+        Mux(io.matABSubReadRowCnt === slicerCfg.systolicArraySideNum - 1, U(0), io.matABSubReadRowCnt + 1)
+    }
+
+    io.readAddr.valid.setAsReg().init(False)
+    io.readAddr.StartAddr := 0
+    io.readAddr.RepeatNum := 1
+    io.readAddr.Offset := 0
+    when(io.readAddr.fire) {
+      io.readAddr.valid := False
+    } elsewhen (io.readStart || io.readData.fire && io.matABSubReadRowCnt =/= slicerCfg.systolicArraySideNum - 1) {
+      io.readAddr.valid := True
+    }
+
+    io.readData.ready.setAsReg().init(False)
+    when(io.readData.fire) {
+      io.readData.ready := False
+      io.matABSub(io.matABSubReadRowCnt) := io.readData.data.subdivideIn(elementWidth bits)
+    } elsewhen (io.readAddr.fire) {
+      io.readData.ready := True
+    }
+
+    io.matABSubReadFinish.setAsReg().init(False)
+    when(io.matInSubReadFinish) {
+      io.matABSubReadFinish := False
     } otherwise {
-      MatAsub_row_cnt := MatAsub_row_cnt + 1
+      when(io.readData.fire && io.matABSubReadRowCnt === slicerCfg.systolicArraySideNum - 1) {
+        io.matABSubReadFinish := True
+      }
     }
   }
 
-  val TaskA_Reg = Reg(ReadAddrType)
-  io.TaskA_Stream.payload := TaskA_Reg
-  TaskA_Reg.StartAddr := is_MatMul ?
-    (ComputeInstruction_Reg.input0Address + ((MatA_row_slice_cnt * slicerCfg.matSubRowNum + MatAsub_row_cnt) * ComputeInstruction_Reg
-      .input0Shape(1) + (MatA_col_slice_cnt * slicerCfg.matSubRowNum)) / slicerCfg.matSubRowNum)
-      .resize(slicerCfg.AddressWidth) |
-    (ComputeInstruction_Reg.input0Address + ((MatA_row_slice_cnt * slicerCfg.matSubRowNum + MatAsub_row_cnt) * ComputeInstruction_Reg
-      .input0Shape(1) + (MatB_col_slice_cnt * slicerCfg.matSubRowNum)) / slicerCfg.matSubRowNum)
-      .resize(slicerCfg.AddressWidth)
-  TaskA_Reg.RepeatNum := 1
-  TaskA_Reg.Offset := 0
-  val TaskA_Stream_valid = Reg(Bool()) init (False)
-  io.TaskA_Stream.valid := TaskA_Stream_valid
-  when(io.TaskA_Stream.fire) {
-    TaskA_Stream_valid := False
-  } elsewhen (RegNext(io.ComputeInstruction_Stream.fire, init = False)) {
-    TaskA_Stream_valid := True
-  } elsewhen (RegNext(Matinsub_send_finish, init = False) && !RegNext(inst_finish, init = False)) {
-    TaskA_Stream_valid := True
-  } elsewhen (RegNext(io.DataA_Stream.fire, init = False) && RegNext(MatAsub_row_cnt) =/= slicerCfg.matSubRowNum - 1) {
-    TaskA_Stream_valid := True
+  val slicerReaderA = SlicerReader(ReadDataTypeA, slicerCfg.elementWidthA)
+  val slicerReaderB = SlicerReader(ReadDataTypeB, slicerCfg.elementWidthB)
+  val matInSubReadFinish = slicerReaderA.io.matABSubReadFinish && slicerReaderB.io.matABSubReadFinish
+
+  slicerReaderA.io.instFire := io.inst.fire
+  slicerReaderA.io.readStart := io.slicedInst.fire || matABSubSendFinish && !instFinish
+  slicerReaderA.io.matInSubReadFinish := matInSubReadFinish
+  slicerReaderA.io.readAddr <> io.readAddrA
+  slicerReaderA.io.readData <> io.readDataA
+  io.readAddrA.StartAddr.allowOverride()
+  io.readAddrA.StartAddr := instReg.input0Address + ((matARowSliceCnt * slicerCfg.systolicArraySideNum +
+    slicerReaderA.io.matABSubReadRowCnt) * instReg.input0Shape(1) / slicerCfg.systolicArraySideNum).resized +
+    Mux(isMatMul, matAColSliceCnt, matBColSliceCnt)
+
+  slicerReaderB.io.instFire := io.inst.fire
+  slicerReaderB.io.readStart := io.slicedInst.fire || matABSubSendFinish && !instFinish
+  slicerReaderB.io.matInSubReadFinish := matInSubReadFinish
+  slicerReaderB.io.readAddr <> io.readAddrB
+  slicerReaderB.io.readData <> io.readDataB
+  io.readAddrB.StartAddr.allowOverride()
+  io.readAddrB.StartAddr := instReg.input1Address + ((Mux(isMatMul, matAColSliceCnt, matARowSliceCnt) *
+    slicerCfg.systolicArraySideNum + slicerReaderB.io.matABSubReadRowCnt) * instReg.input1Shape(1) /
+    slicerCfg.systolicArraySideNum).resized + matBColSliceCnt
+
+  val matAfterSlicer = Stream(MatAfterSlicerType)
+  val matABSubSendRowCnt = Reg(UInt(slicerCfg.matABSubReadRowCntWidth bits))
+  matABSubSendFinish := matAfterSlicer.fire && matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1
+  instFinish := matABSubSendFinish && matAColSliceCnt === matAColSliceNum - 1 && matBColSliceCnt === matBColSliceNum - 1 && matARowSliceCnt === matARowSliceNum - 1
+  when(io.inst.fire) {
+    matABSubSendRowCnt := 0
+  } elsewhen (matAfterSlicer.fire) {
+    matABSubSendRowCnt := Mux(matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1, U(0), matABSubSendRowCnt + 1)
   }
 
-  val DataA_Reg = Reg(ReadDataTypeA)
-  val DataA_Stream_ready = Reg(Bool()) init (False)
-  io.DataA_Stream.ready := DataA_Stream_ready
-  when(io.DataA_Stream.fire) {
-    DataA_Reg := io.DataA_Stream.payload
-    DataA_Stream_ready := False
-  } elsewhen (io.TaskA_Stream.fire) {
-    DataA_Stream_ready := True
+  matAfterSlicer.A := slicerReaderA.io.matABSub.mapVec(_(matABSubSendRowCnt).asSInt)
+  matAfterSlicer.B := Mux(
+    isMatMul,
+    slicerReaderB.io.matABSub(matABSubSendRowCnt).mapVec(_.asSInt),
+    slicerReaderB.io.matABSub.shuffle(slicerCfg.systolicArraySideNum - 1 - _).mapVec(_(matABSubSendRowCnt).asSInt)
+  )
+  matAfterSlicer.CoreInstruction.assignFromInst(instReg, matARowSliceCnt, matBColSliceCnt)
+  matAfterSlicer.Final := matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1 && matAColSliceCnt === matAColSliceNum - 1
+  matAfterSlicer.valid.setAsReg().init(False)
+  when(matInSubReadFinish) {
+    matAfterSlicer.valid := True
+  } elsewhen (matAfterSlicer.fire && matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1) {
+    matAfterSlicer.valid := False
   }
 
-  val MatAsub_buffer =
-    Vec.fill(slicerCfg.matSubRowNum)(Vec.fill(slicerCfg.matSubRowNum)(Reg(Bits(slicerCfg.elementWidthA bits))))
-  when(RegNext(io.DataA_Stream.fire, init = False)) {
-    MatAsub_buffer(RegNext(MatAsub_row_cnt).resized) := DataA_Reg.data.subdivideIn(slicerCfg.elementWidthA bits)
-  }
-
-  val MatBsub_row_cnt = Reg(UInt(slicerCfg.ShapeWidth bits))
-  when(io.ComputeInstruction_Stream.fire) {
-    MatBsub_row_cnt := 0
-  } elsewhen (io.DataB_Stream.fire) {
-    when(MatBsub_row_cnt === slicerCfg.matSubRowNum - 1) {
-      MatBsub_row_cnt := 0
-    } otherwise {
-      MatBsub_row_cnt := MatBsub_row_cnt + 1
-    }
-  }
-
-  val TaskB_Reg = Reg(ReadAddrType)
-  io.TaskB_Stream.payload := TaskB_Reg
-  TaskB_Reg.StartAddr := is_MatMul ?
-    (ComputeInstruction_Reg.input1Address + ((MatA_col_slice_cnt * slicerCfg.matSubRowNum + MatBsub_row_cnt) * ComputeInstruction_Reg
-      .input1Shape(1) + (MatB_col_slice_cnt * slicerCfg.matSubRowNum)) / slicerCfg.matSubRowNum)
-      .resize(slicerCfg.AddressWidth) |
-    (ComputeInstruction_Reg.input1Address + ((MatA_row_slice_cnt * slicerCfg.matSubRowNum + MatBsub_row_cnt) * ComputeInstruction_Reg
-      .input1Shape(1) + (MatB_col_slice_cnt * slicerCfg.matSubRowNum)) / slicerCfg.matSubRowNum)
-      .resize(slicerCfg.AddressWidth)
-  TaskB_Reg.RepeatNum := 1
-  TaskB_Reg.Offset := 0
-  val TaskB_Stream_valid = Reg(Bool()) init (False)
-  io.TaskB_Stream.valid := TaskB_Stream_valid
-  when(io.TaskB_Stream.fire) {
-    TaskB_Stream_valid := False
-  } elsewhen (RegNext(io.ComputeInstruction_Stream.fire, init = False)) {
-    TaskB_Stream_valid := True
-  } elsewhen (RegNext(Matinsub_send_finish, init = False) && !RegNext(inst_finish, init = False)) {
-    TaskB_Stream_valid := True
-  } elsewhen (RegNext(io.DataB_Stream.fire, init = False) && RegNext(MatBsub_row_cnt) =/= slicerCfg.matSubRowNum - 1) {
-    TaskB_Stream_valid := True
-  }
-
-  val DataB_Reg = Reg(ReadDataTypeB)
-  val DataB_Stream_ready = Reg(Bool()) init (False)
-  io.DataB_Stream.ready := DataB_Stream_ready
-  when(io.DataB_Stream.fire) {
-    DataB_Reg := io.DataB_Stream.payload
-    DataB_Stream_ready := False
-  } elsewhen (io.TaskB_Stream.fire) {
-    DataB_Stream_ready := True
-  }
-
-  val MatBsub_buffer =
-    Vec.fill(slicerCfg.matSubRowNum)(Vec.fill(slicerCfg.matSubRowNum)(Reg(Bits(slicerCfg.elementWidthB bits))))
-  when(RegNext(io.DataB_Stream.fire, init = False)) {
-    MatBsub_buffer(RegNext(MatBsub_row_cnt).resized) := DataB_Reg.data.subdivideIn(slicerCfg.elementWidthB bits)
-  }
-
-  val MatAsub_read_finish = Reg(Bool()) init (False)
-  val MatBsub_read_finish = Reg(Bool()) init (False)
-  when(MatAsub_read_finish && MatBsub_read_finish) {
-    MatAsub_read_finish := False
-    MatBsub_read_finish := False
-  } otherwise {
-    when(RegNext(io.DataA_Stream.fire, init = False) && RegNext(MatAsub_row_cnt) === slicerCfg.matSubRowNum - 1) {
-      MatAsub_read_finish := True
-    }
-    when(RegNext(io.DataB_Stream.fire, init = False) && RegNext(MatBsub_row_cnt) === slicerCfg.matSubRowNum - 1) {
-      MatBsub_read_finish := True
-    }
-  }
-  val Matinsub_read_finish = MatAsub_read_finish && MatBsub_read_finish
-
-  val Mats_Stream = Stream(InMatsType)
-  val Matinsub_row_cnt = Reg(UInt(slicerCfg.ShapeWidth bits))
-  when(io.ComputeInstruction_Stream.fire) {
-    Matinsub_row_cnt := 0
-  } elsewhen (Mats_Stream.fire) {
-    when(Matinsub_row_cnt === slicerCfg.matSubRowNum - 1) {
-      Matinsub_row_cnt := 0
-    } otherwise {
-      Matinsub_row_cnt := Matinsub_row_cnt + 1
-    }
-  }
-  Matinsub_send_finish := Mats_Stream.fire && Matinsub_row_cnt === slicerCfg.matSubRowNum - 1
-
-  val Mats_Reg = Reg(InMatsType)
-  Mats_Stream.payload := Mats_Reg
-  for (i <- 0 until slicerCfg.matSubRowNum) {
-    Mats_Reg.A(i) := MatAsub_buffer(i)(Matinsub_row_cnt.resized).asSInt
-  }
-  for (i <- 0 until slicerCfg.matSubRowNum) {
-    when(is_MatMul) {
-      Mats_Reg.B(i) := MatBsub_buffer(Matinsub_row_cnt.resized)(i).asSInt
-    } otherwise {
-      Mats_Reg.B(i) := MatBsub_buffer(slicerCfg.matSubRowNum - 1 - i)(Matinsub_row_cnt.resized).asSInt
-    }
-  }
-  Mats_Reg.Final := is_MatMul ?
-    (Matinsub_row_cnt === slicerCfg.matSubRowNum - 1 && MatA_col_slice_cnt === MatA_col_slice_num - 1) |
-    Matinsub_row_cnt === slicerCfg.matSubRowNum - 1
-  Mats_Reg.CoreInstruction.SystolicArray2D_CC_Instruction.matrixOperation := ComputeInstruction_Reg.matrixOperation
-  Mats_Reg.CoreInstruction.SystolicArray2D_CC_Instruction.shiftLeft_AfterMatrixOperation := ComputeInstruction_Reg.shiftLeft_AfterMatrixOperation
-  Mats_Reg.CoreInstruction.SystolicArray2D_CC_Instruction.doTranspose := ComputeInstruction_Reg.doTranspose
-  Mats_Reg.CoreInstruction.Activation_Instruction.activationFunction := ComputeInstruction_Reg.activationFunction
-  Mats_Reg.CoreInstruction.Activation_Instruction.shiftLeft_AfterActivation := ComputeInstruction_Reg.shiftLeft_AfterActivation
-  Mats_Reg.CoreInstruction.Collector_Instruction.UID := ComputeInstruction_Reg.UID
-  Mats_Reg.CoreInstruction.Collector_Instruction.MatA_row_slice_cnt := MatA_row_slice_cnt
-  Mats_Reg.CoreInstruction.Collector_Instruction.MatB_col_slice_cnt := MatB_col_slice_cnt
-  val Mats_Stream_valid = Reg(Bool()) init (False)
-  Mats_Stream.valid := Mats_Stream_valid
-  when(Mats_Stream.fire) {
-    Mats_Stream_valid := False
-  } elsewhen (Matinsub_read_finish) {
-    Mats_Stream_valid := True
-  } elsewhen (RegNext(Mats_Stream.fire, init = False) && RegNext(Matinsub_row_cnt) =/= slicerCfg.matSubRowNum - 1) {
-    Mats_Stream_valid := True
-  }
-
-  when(io.ComputeInstruction_Stream.fire) {
-    MatA_col_slice_cnt := 0
-  } elsewhen (Matinsub_send_finish) {
-    when(MatA_col_slice_cnt === MatA_col_slice_num - 1) {
-      MatA_col_slice_cnt := 0
-    } otherwise {
-      MatA_col_slice_cnt := MatA_col_slice_cnt + 1
-    }
-  }
-  Matoutsub_send_finish :=
-    Mats_Stream.fire && Matinsub_row_cnt === slicerCfg.matSubRowNum - 1 && MatA_col_slice_cnt === MatA_col_slice_num - 1
-  inst_finish := is_MatMul ?
-    (Matoutsub_send_finish && MatB_col_slice_cnt === MatB_col_slice_num - 1 && MatA_row_slice_cnt === MatA_row_slice_num - 1) |
-    (Matinsub_send_finish && MatB_col_slice_cnt === MatB_col_slice_num - 1 && MatA_row_slice_cnt === MatA_row_slice_num - 1)
-
-  val lock = Reg(Bool(), init = False)
-  when(Mats_Stream.fire && !Mats_Stream.payload.Final) {
-    lock := True
-  } elsewhen (Mats_Stream.fire && Mats_Stream.payload.Final) {
-    lock := False
-  }
-
-  val request = UInt(slicerCfg.numCores bits)
-  for (i <- 0 until slicerCfg.numCores) {
-    request(i) := io.Mats_to_Cores_Streams(i).ready
-  }
-  val priority = Reg(UInt(slicerCfg.numCores bits), init = U(1))
-  when(!lock && request.orR) {
-    priority := priority.rotateLeft(1)
-  }
-  val double_request = Cat(request, request).asUInt
-  val request_sub_priority = double_request - priority
-  val double_grant = double_request & ~request_sub_priority
-  val grant = double_grant(0, slicerCfg.numCores bits) | double_grant(slicerCfg.numCores, slicerCfg.numCores bits)
-
-  var select_nolock = UInt(slicerCfg.CoreSelectWidth bits)
-  select_nolock := 0
-  for (i <- 0 until slicerCfg.numCores) {
-    when(grant(i)) {
-      select_nolock \= U(i, slicerCfg.CoreSelectWidth bits)
-    }
-  }
-  val select_lock = RegNextWhen(select_nolock, !lock)
-  val select = lock ? select_lock | select_nolock
-  io.Mats_to_Cores_Streams <> StreamDemux(Mats_Stream, select, slicerCfg.numCores)
+  val matAfterSlicers = StreamDispatcher(in_Mats_Converter.withFragment(matAfterSlicer), slicerCfg.numCores)
+  io.matAfterSlicers <> matAfterSlicers.mapVec(in_Mats_Converter.withoutFragment(_))
 }

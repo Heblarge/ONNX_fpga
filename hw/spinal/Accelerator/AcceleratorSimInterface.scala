@@ -15,18 +15,15 @@ object AcceleratorSimInterface {
   val instDriveSpeed = 0.5f
   val seed = 114514
   val random = new Random(seed)
-  val acceleratorCfg = Accelerator_Config(
-    UIDWidth = 32,
-    ShiftWidth = 6,
-    AddressWidth = 20,
+  val acceleratorCfg = AcceleratorCfg(
+    UIDWidth = 16,
+    AddressWidth = 16,
     ShapeWidth = 16,
-    matSubRowNum = 32,
-    activationRowNum = 32,
+    systolicArraySideNum = 32,
     elementWidth = 24,
     intWidth = 12,
-    in_Length_Max = 32,
-    systolicArrayInFifoDepth = 16,
-    systolicArrayOutFifoDepth = 8,
+    systolicArrayInFifoDepth = 32,
+    systolicArrayOutFifoDepth = 32,
     systolicArrayInstFifoDepth = 32,
     activationOutFifoDepth = 32,
     slicedInstFifoDepth = 32,
@@ -50,7 +47,7 @@ object AcceleratorSimInterface {
       dut.sdpramA.mem.simPublic()
       dut.sdpramB.mem.simPublic()
       dut.sdpramZ.mem.simPublic()
-      dut.collector.inst_finish.simPublic()
+      dut.collector.instFinish.simPublic()
       dut
     }
 
@@ -65,19 +62,19 @@ object AcceleratorSimInterface {
         dut.sdpramA.mem,
         instSim.input0Address,
         matA,
-        acceleratorCfg.matSubRowNum,
+        acceleratorCfg.systolicArraySideNum,
         acceleratorCfg.elementWidth
       )
       memSetMat(
         dut.sdpramB.mem,
         instSim.input1Address,
         matB,
-        acceleratorCfg.matSubRowNum,
+        acceleratorCfg.systolicArraySideNum,
         acceleratorCfg.elementWidth
       )
 
       var m = 0
-      StreamDriver(dut.io.ComputeInstruction_Stream, dut.clockDomain) { payload =>
+      StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
         if (m < 2) {
           instSim.driveSim(payload)
           m += 1
@@ -89,13 +86,13 @@ object AcceleratorSimInterface {
 
       fork {
         while (true) {
-          dut.clockDomain.waitSamplingWhere(dut.collector.inst_finish.toBoolean == true)
+          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean == true)
           dut.clockDomain.waitSampling()
           dut.clockDomain.waitSampling()
           matZ = memGetMat(
             dut.sdpramZ.mem,
             instSim.outputAddress,
-            acceleratorCfg.matSubRowNum,
+            acceleratorCfg.systolicArraySideNum,
             acceleratorCfg.elementWidth,
             instSim.outputShape0,
             instSim.outputShape1
