@@ -13,22 +13,52 @@ import static org.junit.Assert.assertTrue;
 public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
 
     @Test
-    public void testWithRandomFloatMatrix() throws Exception {
-        int matrixSize = 32;
-        int rowsA = 16;
-        int colsA = 8;
-        int colsB = 12;
+    public void testMatMul2D() throws Exception {
+        System.out.println("\n--- Testing 2D MatMul ---");
+        int rowsA = 32;
+        int colsA = 32;
+        int colsB = 32;
         int minValue = -10;
         int maxValue = 10;
 
         float[][] randomMatrixA = generateRandomIntegerMatrix(rowsA, colsA, minValue, maxValue);
         float[][] randomMatrixB = generateRandomIntegerMatrix(colsA, colsB, minValue, maxValue);
-        INDArray MatrixA = Nd4j.create(randomMatrixA);
-        INDArray MatrixB = Nd4j.create(randomMatrixB);
+        INDArray matrixA = Nd4j.create(randomMatrixA);
+        INDArray matrixB = Nd4j.create(randomMatrixB);
 
-        INDArray expectedMatrix = MatrixA.mmul(MatrixB);
+        INDArray expectedMatrix = matrixA.mmul(matrixB);
 
-        this.testMatMul(expectedMatrix, MatrixA, MatrixB);
+        this.testMatMul(expectedMatrix, matrixA, matrixB);
+    }
+
+    /**
+     * Tests 3D (batched) matrix multiplication.
+     */
+    @Test
+    public void testMatMul3D() throws Exception {
+        System.out.println("\n--- Testing 3D (Batched) MatMul ---");
+        int batchSize = 2;
+        int rowsA = 4;
+        int colsA = 4;
+        int colsB = 4;
+        int minValue = -10;
+        int maxValue = 10;
+
+        // Create random 3D tensors with integer values for batched multiplication
+        INDArray matrixA = Nd4j.create(batchSize, rowsA, colsA);
+        INDArray matrixB = Nd4j.create(batchSize, colsA, colsB);
+        for (int i = 0; i < batchSize; i++) {
+            matrixA.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(rowsA, colsA, minValue, maxValue)));
+            matrixB.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(colsA, colsB, minValue, maxValue)));
+        }
+
+        // Calculate the expected result by multiplying each slice individually
+        INDArray expectedMatrix = Nd4j.create(batchSize, rowsA, colsB);
+        for (int i = 0; i < batchSize; i++) {
+            expectedMatrix.putSlice(i, matrixA.slice(i).mmul(matrixB.slice(i)));
+        }
+
+        this.testMatMul(expectedMatrix, matrixA, matrixB);
     }
 
 

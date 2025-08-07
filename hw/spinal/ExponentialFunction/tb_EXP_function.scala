@@ -34,8 +34,8 @@ object sim_EXP_function_test extends App {
 //    runFlags = List("-l ./run.log")
 //  )
   val cfg = EXP_function_cfg(
-    bit_int = 8,
-    bit_frac = 12,
+    bit_int = 16,
+    bit_frac = 16,
     x_max = 3
   )
   val report = SpinalConfig(

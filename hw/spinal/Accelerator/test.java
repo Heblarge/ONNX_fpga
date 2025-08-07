@@ -12,17 +12,17 @@ public class test {
 		// 调用Scala的矩阵加法
 		InstJavaTODO instJava = new InstJavaTODO(
 				0,
-				"elementmax",
+				"matmul",
 				0,
 				false,
-				"none",
+				"relu",
 				0,
 				0,
 				0,
 				0,
-				4,
-				4,
-				4
+				8,
+				8,
+				8
 		);
 		int[][] result = AcceleratorSimInterface.runSimOneInst(matrixA, matrixB, instJava);
 
@@ -32,7 +32,7 @@ public class test {
 		System.out.println("\nMatrix B:");
 		printMatrix(matrixB);
 
-		System.out.println("\nResult of A B elementMax:");
+		System.out.println("\nResult of A + B:");
 		printMatrix(result);
 
 	}

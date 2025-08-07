@@ -20,8 +20,8 @@ object AcceleratorSimInterface {
     ShiftWidth = 6,
     AddressWidth = 20,
     ShapeWidth = 16,
-    matSubRowNum = 2,
-    activationRowNum = 2,
+    matSubRowNum = 32,
+    activationRowNum = 32,
     elementWidth = 24,
     intWidth = 12,
     in_Length_Max = 32,
@@ -30,7 +30,7 @@ object AcceleratorSimInterface {
     systolicArrayInstFifoDepth = 32,
     activationOutFifoDepth = 32,
     slicedInstFifoDepth = 32,
-    numCores = 1
+    numCores = 4
   )
   lazy val compiled = SimConfig.withFsdbWave // This is magic
     .withConfig(

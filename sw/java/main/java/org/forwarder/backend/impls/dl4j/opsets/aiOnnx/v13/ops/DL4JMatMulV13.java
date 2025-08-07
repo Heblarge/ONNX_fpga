@@ -69,13 +69,7 @@ public class DL4JMatMulV13 extends DL4JAiOnnxOperator implements MatMulV13 {
             for (int i = 0; i < (int) batch; i++) {
                 INDArray a_i = aCalc.slice(i); // (m,k)
                 INDArray b_i = bCalc.slice(i); // (k,n)
-//                System.out.println("Batch " + i + " a_i shape: " + Arrays.toString(a_i.shape()));
-//                System.out.println("Batch " + i + " b_i shape: " + Arrays.toString(b_i.shape()));
-//                System.out.println("Batch " + i + " a_i:\n" + a_i);
-//                System.out.println("Batch " + i + " b_i:\n" + b_i);
-
                 INDArray product = a_i.mmul(b_i);
-//                System.out.println("Batch " + i + " product:\n" + product);
                 result.putSlice(i, product);
             }
 
