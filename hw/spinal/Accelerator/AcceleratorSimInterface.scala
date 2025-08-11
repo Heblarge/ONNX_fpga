@@ -75,7 +75,7 @@ object AcceleratorSimInterface {
 
       var m = 0
       StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
-        if (m < 2) {
+        if (m < 20) {
           instSim.driveSim(payload)
           m += 1
           true

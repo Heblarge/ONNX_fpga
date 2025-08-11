@@ -140,4 +140,20 @@ public class HWAcceleratedDequantizeLinearV13Test extends HWAcceleratedTestCase 
                 0
         );
     }
+
+    @Test
+    public void test7_ProvidedData() {
+
+        INDArray x = Nd4j.createFromArray(new int[]{233745, -46906, 29230}).castTo(DataType.INT);
+        INDArray xScale = Nd4j.scalar(9.5367431640625e-7f);
+        INDArray xZeroPoint = Nd4j.scalar(0).castTo(DataType.INT);
+
+        // Expected result: y = (x - x_zero_point) * x_scale
+        INDArray expected = x.castTo(DataType.FLOAT)
+                .sub(xZeroPoint.castTo(DataType.FLOAT))
+                .mul(xScale);
+
+        testDequantize(expected, x, xScale, xZeroPoint, 0);
+    }
+
 }

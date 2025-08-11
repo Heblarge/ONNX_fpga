@@ -5,6 +5,8 @@ import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MatMulV13;
@@ -12,6 +14,8 @@ import org.onnx4j.opsets.operator.OperatorOutputs;
 
 
 public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements MatMulV13 {
+
+    private final int HW_DIM_MULTIPLE = 32;
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -32,21 +36,44 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         }
     }
 
+    private int ceilToMultiple(int value, int multiple) {
+        if (multiple == 0) return value;
+        return ((value + multiple - 1) / multiple) * multiple;
+    }
+
     private INDArray matmul2D(INDArray a, INDArray b) {
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
-        int rowsA = (int) shapeA[0]; // m
-        int colsA = (int) shapeA[1]; // k
-        int colsB = (int) shapeB[1]; // n
+        int originalRowsA = (int) shapeA[0];
+        int originalColsA = (int) shapeA[1];
+        int originalRowsB = (int) shapeB[0];
+        int originalColsB = (int) shapeB[1];
 
-        if (colsA != shapeB[0]) {
+        if (originalColsA != originalRowsB) {
             throw new IllegalArgumentException(
-                    String.format("Matrix shape mismatch for 2D MatMul: A's columns (%d) must equal B's rows (%d).", colsA, shapeB[0])
+                    String.format("Matrix shape mismatch for 2D MatMul: A's columns (%d) must equal B's rows (%d).", originalColsA, originalRowsB)
             );
         }
 
-        return matMulOnAccelerator(a, b, rowsA, colsA, colsB);
+        // 1. 计算填充后的尺寸 (向上取整到32的倍数)
+        int paddedRowsA = ceilToMultiple(originalRowsA, HW_DIM_MULTIPLE);
+        int paddedColsA = ceilToMultiple(originalColsA, HW_DIM_MULTIPLE);
+        int paddedColsB = ceilToMultiple(originalColsB, HW_DIM_MULTIPLE);
+
+        // 2. 创建一个全零的、更大尺寸的矩阵，用于填充
+        INDArray paddedA = Nd4j.zeros(paddedRowsA, paddedColsA);
+        // 将原始矩阵的数据复制到新矩阵的左上角
+        paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsA)}, a);
+
+        INDArray paddedB = Nd4j.zeros(paddedColsA, paddedColsB);
+        paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsB), NDArrayIndex.interval(0, originalColsB)}, b);
+
+        // 3. 将填充后的矩阵送入硬件进行计算
+        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB);
+
+        // 4. 从硬件返回的结果中，切片出我们需要的原始尺寸部分
+        return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
     }
 
     private INDArray matmul3D(INDArray a, INDArray b) {
@@ -95,14 +122,14 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
                 // 将浮点数转换为定点数
-                fixedPointA[i][j] = (int) (a.getFloat(i, j));
+                fixedPointA[i][j] = Math.round(a.getFloat(i, j));
 
             }
         }
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
                 // 将浮点数转换为定点数
-                fixedPointB[i][j] = (int) (b.getFloat(i, j));
+                fixedPointB[i][j] = Math.round(b.getFloat(i, j));
             }
         }
 

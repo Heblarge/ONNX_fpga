@@ -1,65 +1,79 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
-import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.ops.transforms.Transforms;
 
 import java.util.Random;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * This test class validates the HWAcceleratedReluV13 operator for
+ * both 2D and 3D (batched) tensors using floating-point inputs.
+ */
 public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
 
+    /**
+     * Tests standard 2D Relu operation with random floats.
+     */
     @Test
-    public void testWithRandomFloatMatrix() throws Exception {
-        int matrixSize = 32;
-        int rows = 16;
+    public void testRelu2D() throws Exception {
+        System.out.println("\n--- Testing 2D Relu ---");
+        int rows = 32;
         int cols = 32;
-        float minValue = -16.0f;
-        float maxValue = 16.0f;
+        float minValue = -10.0f;
+        float maxValue = 10.0f;
 
-        float[][] randomMatrix = generateRandomFloatMatrix(rows, cols, minValue, maxValue);
-        INDArray input = Nd4j.create(randomMatrix);
-
-        float[][] expectedMatrix = new float[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                expectedMatrix[i][j] = (float) Math.max(0, randomMatrix[i][j]);
-            }
-        }
-        INDArray expected = Nd4j.create(expectedMatrix);
+        INDArray input = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
+        INDArray expected = Transforms.relu(input.dup()); // Use dup to avoid modifying the input
 
         this.testRelu(expected, input);
     }
 
+    /**
+     * Tests 3D (batched) Relu operation with random floats.
+     */
+    @Test
+    public void testRelu3D() throws Exception {
+        System.out.println("\n--- Testing 3D (Batched) Relu ---");
+        int batchSize = 2;
+        int rows = 28;
+        int cols = 65;
+        float minValue = -10.0f;
+        float maxValue = 10.0f;
 
+        INDArray input = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
+        INDArray expected = Transforms.relu(input.dup()); // Use dup to avoid modifying the input
+
+        this.testRelu(expected, input);
+    }
+
+    /**
+     * Helper method to run the operator, print matrices, and assert correctness.
+     */
     private void testRelu(INDArray expected, INDArray input) throws Exception {
         HWAcceleratedReluV13 operator = new HWAcceleratedReluV13();
+        INDArray actualOutput = operator.relu(input);
 
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        double factor = Math.pow(2, fracWidth);
-        INDArray inputForHardware = input.mul(factor);
-
-        INDArray rawActualOutput = operator.relu(inputForHardware);
-        INDArray actualOutput = rawActualOutput.div(factor);
-
-        System.out.println("\ninput:");
+        System.out.println("\ninputA shape: " + java.util.Arrays.toString(input.shape()));
         System.out.print(input);
-        System.out.println("\nexpectedMatrix:");
+        System.out.println("\n\nexpectedMatrix shape: " + java.util.Arrays.toString(expected.shape()));
         System.out.print(expected);
-        System.out.println("\nactualOutput:");
+        System.out.println("\n\nactualOutput shape: " + java.util.Arrays.toString(actualOutput.shape()));
         System.out.print(actualOutput);
 
-        assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
+        assertArrayEquals("The output shape must match the expected shape.", expected.shape(), actualOutput.shape());
 
-        float[] expectedVector = expected.data().asFloat();
-        float[] actualVector = actualOutput.data().asFloat();
+        float[] expectedVector = expected.dup('c').data().asFloat();
+        float[] actualVector = actualOutput.dup('c').data().asFloat();
 
         int errorCount = 0;
-        double relativeErrorTolerance = 0.02; // 允许 2% 的相对误差
+        double relativeErrorTolerance = 0.02; // Allow 2% relative error
+        double absoluteErrorTolerance = 1e-3;
 
         System.out.println("\n");
         System.out.println(new String(new char[110]).replace('\0', '-'));
@@ -72,20 +86,13 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
         for (int i = 0; i < expectedVector.length; i++) {
             double expectedVal = expectedVector[i];
             double actualVal = actualVector[i];
-
-            double absoluteError = actualVal - expectedVal;
+            double absoluteError = Math.abs(actualVal - expectedVal);
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
-
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance) || (Math.abs(absoluteError) < 1e-3);
+            boolean pass = (relativeError < relativeErrorTolerance) || (absoluteError < absoluteErrorTolerance);
 
             System.out.printf(
-                        "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
-                        i,
-                        expectedVal,
-                        actualVal,
-                        absoluteError,
-                        relativeError * 100,
-                        pass ? "Pass" : "Fail"
+                    "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
+                    i, expectedVal, actualVal, absoluteError, relativeError * 100, pass ? "Pass" : "Fail"
             );
 
             if (!pass) {
@@ -95,23 +102,34 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
         System.out.println(new String(new char[110]).replace('\0', '-'));
 
         assertTrue(
-                "计算结果超出允许的误差范围。共发现 " + errorCount + " 个错误。",
+                "The calculation result exceeds the allowable error range. " + errorCount + " errors found.",
                 errorCount == 0
         );
 
         System.out.println("\nCongratulations! All tests pass!");
-}
+    }
 
-
+    /**
+     * Generates a 2D matrix of floats with random float values.
+     */
     private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
-
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 生成一个在 [min, max) 区间内的随机浮点数
                 matrix[i][j] = min + random.nextFloat() * (max - min);
             }
+        }
+        return matrix;
+    }
+
+    /**
+     * Generates a 3D matrix of floats with random float values.
+     */
+    private INDArray createRandom3DMatrix(int batch, int rows, int cols, float min, float max) {
+        INDArray matrix = Nd4j.create(batch, rows, cols);
+        for (int i = 0; i < batch; i++) {
+            matrix.putSlice(i, Nd4j.create(generateRandomFloatMatrix(rows, cols, min, max)));
         }
         return matrix;
     }

@@ -13,47 +13,54 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * This test class validates the HWAcceleratedMaxV13 operator for
+ * both 2D and 3D (batched) element-wise maximum using floating-point inputs.
+ */
 public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
 
+    /**
+     * Tests standard 2D element-wise max.
+     */
     @Test
-    public void testWithRandomFloatMatrix() throws Exception {
-        int rows = 32;
-        int cols = 8;
-        int minValue = -10;
-        int maxValue = 10;
+    public void testMax2D() throws Exception {
+        System.out.println("\n--- Testing 2D Max ---");
+        int rows = 30;
+        int cols = 32;
+        float minValue = -10.0f;
+        float maxValue = 10.0f;
 
-        float[][] randomMatrixA = generateRandomIntegerMatrix(rows, cols, minValue, maxValue);
-        float[][] randomMatrixB = generateRandomIntegerMatrix(rows, cols, minValue, maxValue);
-        INDArray MatrixA = Nd4j.create(randomMatrixA);
-        INDArray MatrixB = Nd4j.create(randomMatrixB);
+        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
+        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
 
-        INDArray expectedMatrix = Transforms.max(MatrixA, MatrixB);
+        INDArray expectedMatrix = Transforms.max(matrixA, matrixB);
 
-        this.testMax(expectedMatrix, MatrixA, MatrixB);
-    }
-
-    @Test
-    public void test1() throws Exception {
-        INDArray matrixA = Nd4j.create(new float[][]{
-                {1.0f, 5.0f},
-                {4.0f, 2.0f}
-        });
-        INDArray matrixB = Nd4j.create(new float[][]{
-                {3.0f, 1.0f},
-                {2.0f, 6.0f}
-        });
-
-        // 2. 定义用户指定的期望结果
-        INDArray expectedMatrix = Nd4j.create(new float[][]{
-                {3.0f, 5.0f},
-                {4.0f, 6.0f}
-        });
-
-        // 3. 调用核心测试方法进行验证
         this.testMax(expectedMatrix, matrixA, matrixB);
     }
 
+    /**
+     * Tests 3D (batched) element-wise max.
+     */
+    @Test
+    public void testMax3D() throws Exception {
+        System.out.println("\n--- Testing 3D (Batched) Max ---");
+        int batchSize = 1;
+        int rows = 30;
+        int cols = 512;
+        float minValue = -10.0f;
+        float maxValue = 10.0f;
 
+        INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
+        INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
+
+        INDArray expectedMatrix = Transforms.max(matrixA, matrixB);
+
+        this.testMax(expectedMatrix, matrixA, matrixB);
+    }
+
+    /**
+     * Helper method to run the operator, print matrices, and assert correctness.
+     */
     private void testMax(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
         HWAcceleratedMaxV13 operator = new HWAcceleratedMaxV13();
         List<INDArray> inputs = Arrays.asList(inputA, inputB);
@@ -71,10 +78,11 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
         assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
 
         float[] expectedVector = expected.dup('c').data().asFloat();
-        float[] actualVector = actualOutput.data().asFloat();
+        float[] actualVector = actualOutput.dup('c').data().asFloat();
 
         int errorCount = 0;
-        double relativeErrorTolerance = 0.02; // 允许 2% 的相对误差
+        double relativeErrorTolerance = 0.02; // Allow 2% relative error
+        double absoluteErrorTolerance = 1e-3;
 
         System.out.println("\n");
         System.out.println(new String(new char[110]).replace('\0', '-'));
@@ -87,20 +95,18 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
         for (int i = 0; i < expectedVector.length; i++) {
             double expectedVal = expectedVector[i];
             double actualVal = actualVector[i];
-
-            double absoluteError = actualVal - expectedVal;
+            double absoluteError = Math.abs(actualVal - expectedVal);
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
-
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance) || (Math.abs(absoluteError) < 1e-3);
+            boolean pass = (relativeError < relativeErrorTolerance) || (absoluteError < absoluteErrorTolerance);
 
             System.out.printf(
-                        "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
-                        i,
-                        expectedVal,
-                        actualVal,
-                        absoluteError,
-                        relativeError * 100,
-                        pass ? "Pass" : "Fail"
+                    "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
+                    i,
+                    expectedVal,
+                    actualVal,
+                    absoluteError,
+                    relativeError * 100,
+                    pass ? "Pass" : "Fail"
             );
 
             if (!pass) {
@@ -110,22 +116,34 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
         System.out.println(new String(new char[110]).replace('\0', '-'));
 
         assertTrue(
-                "计算结果超出允许的误差范围。共发现 " + errorCount + " 个错误。",
+                "The calculation result exceeds the allowable error range. " + errorCount + " errors found.",
                 errorCount == 0
         );
 
         System.out.println("\nCongratulations! All tests pass!");
-}
+    }
 
-
-    private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
+    /**
+     * Generates a 2D matrix of floats with random float values.
+     */
+    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 生成一个在 [min, max) 区间内的随机整数
-                matrix[i][j] = random.nextInt(max - min + 1) + min;
+                matrix[i][j] = min + random.nextFloat() * (max - min);
             }
+        }
+        return matrix;
+    }
+
+    /**
+     * Generates a 3D matrix of floats with random float values.
+     */
+    private INDArray createRandom3DMatrix(int batch, int rows, int cols, float min, float max) {
+        INDArray matrix = Nd4j.create(batch, rows, cols);
+        for (int i = 0; i < batch; i++) {
+            matrix.putSlice(i, Nd4j.create(generateRandomFloatMatrix(rows, cols, min, max)));
         }
         return matrix;
     }

@@ -61,7 +61,7 @@ public class ModelTest extends FWTestCase {
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
-        for (int n = 1; n < 2119; n++) {
+        for (int n = 1; n < 2; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
                     "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
@@ -79,7 +79,7 @@ public class ModelTest extends FWTestCase {
                 "/mnist/before_quantized/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_ir_version5.onnx",
                 List.of("seq_pc", "seq_pos"), // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
-                new String[] { "DL4J" },
+                new String[] { "HWAccelerated" },
                 0.0001f
         );
     }

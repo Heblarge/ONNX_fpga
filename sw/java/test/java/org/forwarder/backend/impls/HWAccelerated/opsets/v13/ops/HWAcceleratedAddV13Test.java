@@ -12,7 +12,7 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * This test class validates the HWAcceleratedAddV13 operator for
- * both 2D and 3D (batched) element-wise addition.
+ * both 2D and 3D (batched) element-wise addition using floating-point inputs.
  */
 public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
 
@@ -22,13 +22,13 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
     @Test
     public void testAdd2D() throws Exception {
         System.out.println("\n--- Testing 2D Add ---");
-        int rows = 4;
-        int cols = 4;
-        int minValue = -10;
-        int maxValue = 10;
+        int rows = 32;
+        int cols = 32;
+        float minValue = -10.0f;
+        float maxValue = 10.0f;
 
-        INDArray matrixA = Nd4j.create(generateRandomIntegerMatrix(rows, cols, minValue, maxValue));
-        INDArray matrixB = Nd4j.create(generateRandomIntegerMatrix(rows, cols, minValue, maxValue));
+        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
+        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
 
         INDArray expectedMatrix = matrixA.add(matrixB);
 
@@ -41,18 +41,14 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
     @Test
     public void testAdd3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) Add ---");
-        int batchSize = 2;
-        int rows = 4;
-        int cols = 4;
-        int minValue = -10;
-        int maxValue = 10;
+        int batchSize = 1;
+        int rows = 30;
+        int cols = 512;
+        float minValue = -10.0f;
+        float maxValue = 10.0f;
 
-        INDArray matrixA = Nd4j.create(batchSize, rows, cols);
-        INDArray matrixB = Nd4j.create(batchSize, rows, cols);
-        for (int i = 0; i < batchSize; i++) {
-            matrixA.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(rows, cols, minValue, maxValue)));
-            matrixB.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(rows, cols, minValue, maxValue)));
-        }
+        INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
+        INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
 
         INDArray expectedMatrix = matrixA.add(matrixB);
 
@@ -82,6 +78,7 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
 
         int errorCount = 0;
         double relativeErrorTolerance = 0.02; // Allow 2% relative error
+        double absoluteErrorTolerance = 1e-3;
 
         System.out.println("\n\n" + new String(new char[110]).replace('\0', '-'));
         System.out.printf(
@@ -93,23 +90,18 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
         for (int i = 0; i < expectedVector.length; i++) {
             double expectedVal = expectedVector[i];
             double actualVal = actualVector[i];
-            double absoluteError = actualVal - expectedVal;
+            double absoluteError = Math.abs(actualVal - expectedVal);
             double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance) || (Math.abs(absoluteError) < 1e-3);
+            boolean pass = (relativeError < relativeErrorTolerance) || (absoluteError < absoluteErrorTolerance);
 
-            if (i < 100) { // Limit detailed output
-                System.out.printf(
-                        "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
-                        i, expectedVal, actualVal, absoluteError, relativeError * 100, pass ? "Pass" : "Fail"
-                );
-            }
+            System.out.printf(
+                    "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
+                    i, expectedVal, actualVal, absoluteError, relativeError * 100, pass ? "Pass" : "Fail"
+            );
 
             if (!pass) {
                 errorCount++;
             }
-        }
-        if (expectedVector.length > 100) {
-            System.out.println("... (comparison output truncated for brevity)");
         }
         System.out.println(new String(new char[110]).replace('\0', '-'));
 
@@ -122,15 +114,26 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
     }
 
     /**
-     * Generates a 2D matrix of floats with random integer values.
+     * Generates a 2D matrix of floats with random float values.
      */
-    private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
+    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                matrix[i][j] = random.nextInt(max - min + 1) + min;
+                matrix[i][j] = min + random.nextFloat() * (max - min);
             }
+        }
+        return matrix;
+    }
+
+    /**
+     * Generates a 3D matrix of floats with random float values.
+     */
+    private INDArray createRandom3DMatrix(int batch, int rows, int cols, float min, float max) {
+        INDArray matrix = Nd4j.create(batch, rows, cols);
+        for (int i = 0; i < batch; i++) {
+            matrix.putSlice(i, Nd4j.create(generateRandomFloatMatrix(rows, cols, min, max)));
         }
         return matrix;
     }

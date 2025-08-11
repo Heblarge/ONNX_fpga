@@ -16,8 +16,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
     public void testMatMul2D() throws Exception {
         System.out.println("\n--- Testing 2D MatMul ---");
         int rowsA = 32;
-        int colsA = 32;
-        int colsB = 32;
+        int colsA = 3;
+        int colsB = 33;
         int minValue = -10;
         int maxValue = 10;
 
@@ -37,10 +37,10 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
     @Test
     public void testMatMul3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) MatMul ---");
-        int batchSize = 2;
-        int rowsA = 4;
-        int colsA = 4;
-        int colsB = 4;
+        int batchSize = 32;
+        int rowsA = 256;
+        int colsA = 3;
+        int colsB = 3;
         int minValue = -10;
         int maxValue = 10;
 
@@ -78,7 +78,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
         assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
 
         float[] expectedVector = expected.dup('c').data().asFloat();
-        float[] actualVector = actualOutput.data().asFloat();
+        float[] actualVector = actualOutput.dup('c').data().asFloat();
 
         int errorCount = 0;
         double relativeErrorTolerance = 0.02; // 允许 2% 的相对误差
