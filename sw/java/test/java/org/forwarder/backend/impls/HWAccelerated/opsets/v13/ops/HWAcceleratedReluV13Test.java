@@ -41,7 +41,7 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
     public void testRelu3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) Relu ---");
         int batchSize = 2;
-        int rows = 28;
+        int rows = 8192;
         int cols = 65;
         float minValue = -10.0f;
         float maxValue = 10.0f;

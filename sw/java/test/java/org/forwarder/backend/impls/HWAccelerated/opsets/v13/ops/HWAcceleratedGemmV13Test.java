@@ -18,8 +18,8 @@ import static org.junit.Assert.assertTrue;
 public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
 
     private final int rowsA = 8192;
-    private final int colsA = 65;
-    private final int colsB = 128;
+    private final int colsA = 129;
+    private final int colsB = 1024;
     private final int minValue = -10;
     private final int maxValue = 10;
 
