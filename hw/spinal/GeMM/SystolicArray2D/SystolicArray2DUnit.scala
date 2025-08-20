@@ -42,7 +42,7 @@ case class SystolicArray2DUnit_Config
     val ProductSum_Width = ABProduct_Width + log2Up(in_Length)
     val theroretical_outZ_Width = math.max(ABProduct_Width,ProductSum_Width)+1
     if(outZ_Width<theroretical_outZ_Width)
-    {SpinalWarning("SystolicArray2DUnit:\n\toutZ_Width is set to"+outZ_Width+"\n\tBut theroretical maximum is ABProduct_Width+ProductSum_Width="+(theroretical_outZ_Width))}
+    {SpinalWarning("SystolicArray2DUnit:\n\toutZ_Width is set to "+outZ_Width+"\n\tBut theroretical maximum is ABProduct_Width+ProductSum_Width="+(theroretical_outZ_Width))}
 }
 
 case class Fragment_Sim(){
