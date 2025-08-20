@@ -266,10 +266,6 @@ object AcceleratorTb_PerformanceTest extends App {
                 s"-1,-1,-1,Failed,$errorMsg\n")
               resultsFile.flush()
         }
-        import scala.concurrent.duration._
-        import java.util.concurrent.TimeUnit
-        //delay 10 seconds, so that vcs release the memory and can run again with a new config
-        Thread.sleep(10 * 1000)
 
       }
     }
