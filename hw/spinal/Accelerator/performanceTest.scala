@@ -22,7 +22,7 @@ object AcceleratorTb_PerformanceTest extends App {
   var testNum = 100
   
   // 定义每个配置运行的次数
-  val runsPerConfig = 5
+  val runsPerConfig = 3
 
   // 定义要测试的参数范围
   val paramVariations = Map(
@@ -93,8 +93,8 @@ object AcceleratorTb_PerformanceTest extends App {
             )
             .withVCS(
               VCSFlags(
-                compileFlags = List("-kdb", "-lca", "+notimingchecks"),
-                elaborateFlags = List("-fgp", "-kdb", "-lca", "+rad", "+notimingchecks"),
+                compileFlags = List("-kdb", "-lca", "+notimingchecks","-reportstats"),
+                elaborateFlags = List("-fgp", "-kdb", "-lca", "+rad", "+notimingchecks","-reportstats"),
                 runFlags = List("-l ./run.log")
               )
             )
@@ -265,7 +265,12 @@ object AcceleratorTb_PerformanceTest extends App {
                 s"${currentCfg.numCores}," +
                 s"-1,-1,-1,Failed,$errorMsg\n")
               resultsFile.flush()
-          }
+        }
+        import scala.concurrent.duration._
+        import java.util.concurrent.TimeUnit
+        //delay 10 seconds, so that vcs release the memory and can run again with a new config
+        Thread.sleep(10 * 1000)
+
       }
     }
   }

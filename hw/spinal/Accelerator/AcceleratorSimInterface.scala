@@ -101,7 +101,6 @@ object AcceleratorSimInterface {
         }
       }
     }
-
     matZ
   }
 
