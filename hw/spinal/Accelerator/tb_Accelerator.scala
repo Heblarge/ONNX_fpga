@@ -25,7 +25,7 @@ object AcceleratorTb extends App {
     UIDWidth = 19,
     AddressWidth = 17,
     ShapeWidth = 15,
-    systolicArraySideNum = 32,
+    systolicArraySideNum = 16,
     elementWidth = 25,
     intWidth = 13,
     systolicArrayInFifoDepth = 32,
@@ -49,8 +49,7 @@ object AcceleratorTb extends App {
   //   slicedInstFifoDepth = 32,
   //   numCores = 2
   // )
-  testNum += acceleratorCfg.numCores // This is magic
-  val compiled = SimConfig.withFsdbWave
+  val compiled = SimConfig.withVcdWave
     .withConfig(
       SpinalConfig(
         bitVectorWidthMax = 100000
@@ -165,7 +164,7 @@ object AcceleratorTb extends App {
         }
         println(s"test $n pass")
         n += 1
-        if (n == testNum - acceleratorCfg.numCores) {
+        if (n == testNum ) {
           println("TEST PASS".green)
           simSuccess()
         }

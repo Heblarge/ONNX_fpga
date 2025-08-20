@@ -19,7 +19,6 @@ case class SlicerCfg(
 ) {
   val dataWidthA = systolicArraySideNum * elementWidthA
   val dataWidthB = systolicArraySideNum * elementWidthB
-  val matABSubReadRowCntWidth = log2Up(systolicArraySideNum)
   val CoreSelectWidth = log2Up(numCores)
 }
 
@@ -98,129 +97,85 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
     io.slicedInst.valid := True
   }
 
-  val matARowSliceNum = instReg.input0Shape(0) / slicerCfg.systolicArraySideNum
-  val matBColSliceNum = instReg.input1Shape(1) / slicerCfg.systolicArraySideNum
-  val matAColSliceNum = Mux(isMatMul, instReg.input0Shape(1) / slicerCfg.systolicArraySideNum, U(1))
-  val matARowSliceCnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
-  val matBColSliceCnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
-  val matAColSliceCnt = Reg(UInt(slicerCfg.SlicecntWidth bits))
   val matABSubSendFinish = Bool()
-  when(io.inst.fire) {
-    matARowSliceCnt := 0
-    matBColSliceCnt := 0
-    matAColSliceCnt := 0
-  } elsewhen (matABSubSendFinish) {
-    when(matAColSliceCnt =/= matAColSliceNum - 1) {
-      matAColSliceCnt := matAColSliceCnt + 1
-    } otherwise {
-      matAColSliceCnt := 0
-      when(matBColSliceCnt =/= matBColSliceNum - 1) {
-        matBColSliceCnt := matBColSliceCnt + 1
-      } otherwise {
-        matBColSliceCnt := 0
-        when(matARowSliceCnt =/= matARowSliceNum - 1) {
-          matARowSliceCnt := matARowSliceCnt + 1
-        } otherwise {
-          matARowSliceCnt := 0
-        }
-      }
-    }
-  }
+  val matAColSliceCnt = Cnt(
+    Mux(isMatMul, instReg.input0Shape(1) / slicerCfg.systolicArraySideNum, U(1)) - 1,
+    io.inst.fire,
+    matABSubSendFinish
+  )
+  val matBColSliceCnt =
+    Cnt(instReg.input1Shape(1) / slicerCfg.systolicArraySideNum - 1, io.inst.fire, matAColSliceCnt.willOverflow)
+  val matARowSliceCnt =
+    Cnt(instReg.input0Shape(0) / slicerCfg.systolicArraySideNum - 1, io.inst.fire, matBColSliceCnt.willOverflow)
 
-  case class SlicerReader(ReadDataType: Data_mm2s_TypeDef, elementWidth: Int) extends Component {
-    val io = new Bundle {
-      val instFire = in port Bool()
-      val matABSubReadRowCnt = out(Reg(UInt((slicerCfg.matABSubReadRowCntWidth bits))))
-      val readStart = in port Bool()
-      val matABSub =
-        out(Vec.fill(slicerCfg.systolicArraySideNum, slicerCfg.systolicArraySideNum)(Reg(Bits(elementWidth bits))))
-      val matInSubReadFinish = in port Bool()
-      val matABSubReadFinish = out port Bool()
-      val readAddr = master Stream ReadAddrType
-      val readData = slave Stream ReadDataType
+  val matInSubReadFinish = Bool()
+  case class SlicerReader(ReadDataType: Data_mm2s_TypeDef, elementWidth: Int) extends Area {
+    val readData = Stream(ReadDataType)
+    val matABSubReadRowCnt = Cnt(slicerCfg.systolicArraySideNum - 1, io.inst.fire, readData.fire)
+
+    val readAddr = Stream(ReadAddrType)
+    readAddr.valid.setAsReg().init(False)
+    readAddr.StartAddr := 0
+    readAddr.RepeatNum := 1
+    readAddr.Offset := 0
+    when(readAddr.fire) {
+      readAddr.valid := False
+    } elsewhen (io.slicedInst.fire || matABSubSendFinish && !instFinish || readData.fire && !matABSubReadRowCnt.willOverflowIfInc) {
+      readAddr.valid := True
     }
 
-    when(io.instFire) {
-      io.matABSubReadRowCnt := 0
-    } elsewhen (io.readData.fire) {
-      io.matABSubReadRowCnt :=
-        Mux(io.matABSubReadRowCnt === slicerCfg.systolicArraySideNum - 1, U(0), io.matABSubReadRowCnt + 1)
+    val matABSub =
+      Vec.fill(slicerCfg.systolicArraySideNum, slicerCfg.systolicArraySideNum)(Reg(Bits(elementWidth bits)))
+    readData.ready.setAsReg().init(False)
+    when(readData.fire) {
+      readData.ready := False
+      matABSub(matABSubReadRowCnt) := readData.data.subdivideIn(elementWidth bits)
+    } elsewhen (readAddr.fire) {
+      readData.ready := True
     }
 
-    io.readAddr.valid.setAsReg().init(False)
-    io.readAddr.StartAddr := 0
-    io.readAddr.RepeatNum := 1
-    io.readAddr.Offset := 0
-    when(io.readAddr.fire) {
-      io.readAddr.valid := False
-    } elsewhen (io.readStart || io.readData.fire && io.matABSubReadRowCnt =/= slicerCfg.systolicArraySideNum - 1) {
-      io.readAddr.valid := True
-    }
-
-    io.readData.ready.setAsReg().init(False)
-    when(io.readData.fire) {
-      io.readData.ready := False
-      io.matABSub(io.matABSubReadRowCnt) := io.readData.data.subdivideIn(elementWidth bits)
-    } elsewhen (io.readAddr.fire) {
-      io.readData.ready := True
-    }
-
-    io.matABSubReadFinish.setAsReg().init(False)
-    when(io.matInSubReadFinish) {
-      io.matABSubReadFinish := False
-    } otherwise {
-      when(io.readData.fire && io.matABSubReadRowCnt === slicerCfg.systolicArraySideNum - 1) {
-        io.matABSubReadFinish := True
-      }
+    val matABSubReadFinish = Reg(Bool(), False)
+    when(matInSubReadFinish) {
+      matABSubReadFinish := False
+    } elsewhen (matABSubReadRowCnt.willOverflow) {
+      matABSubReadFinish := True
     }
   }
 
   val slicerReaderA = SlicerReader(ReadDataTypeA, slicerCfg.elementWidthA)
   val slicerReaderB = SlicerReader(ReadDataTypeB, slicerCfg.elementWidthB)
-  val matInSubReadFinish = slicerReaderA.io.matABSubReadFinish && slicerReaderB.io.matABSubReadFinish
+  matInSubReadFinish := slicerReaderA.matABSubReadFinish && slicerReaderB.matABSubReadFinish
 
-  slicerReaderA.io.instFire := io.inst.fire
-  slicerReaderA.io.readStart := io.slicedInst.fire || matABSubSendFinish && !instFinish
-  slicerReaderA.io.matInSubReadFinish := matInSubReadFinish
-  slicerReaderA.io.readAddr <> io.readAddrA
-  slicerReaderA.io.readData <> io.readDataA
-  io.readAddrA.StartAddr.allowOverride()
-  io.readAddrA.StartAddr := instReg.input0Address + ((matARowSliceCnt * slicerCfg.systolicArraySideNum +
-    slicerReaderA.io.matABSubReadRowCnt) * instReg.input0Shape(1) / slicerCfg.systolicArraySideNum).resized +
+  slicerReaderA.readAddr <> io.readAddrA
+  slicerReaderA.readData <> io.readDataA
+  io.readAddrA.StartAddr.allowOverride := instReg.input0Address + ((matARowSliceCnt * slicerCfg.systolicArraySideNum +
+    slicerReaderA.matABSubReadRowCnt) * instReg.input0Shape(1) / slicerCfg.systolicArraySideNum).resized +
     Mux(isMatMul, matAColSliceCnt, matBColSliceCnt)
 
-  slicerReaderB.io.instFire := io.inst.fire
-  slicerReaderB.io.readStart := io.slicedInst.fire || matABSubSendFinish && !instFinish
-  slicerReaderB.io.matInSubReadFinish := matInSubReadFinish
-  slicerReaderB.io.readAddr <> io.readAddrB
-  slicerReaderB.io.readData <> io.readDataB
-  io.readAddrB.StartAddr.allowOverride()
-  io.readAddrB.StartAddr := instReg.input1Address + ((Mux(isMatMul, matAColSliceCnt, matARowSliceCnt) *
-    slicerCfg.systolicArraySideNum + slicerReaderB.io.matABSubReadRowCnt) * instReg.input1Shape(1) /
-    slicerCfg.systolicArraySideNum).resized + matBColSliceCnt
+  slicerReaderB.readAddr <> io.readAddrB
+  slicerReaderB.readData <> io.readDataB
+  io.readAddrB.StartAddr.allowOverride := instReg.input1Address +
+    ((Mux[UInt](isMatMul, matAColSliceCnt, matARowSliceCnt) * slicerCfg.systolicArraySideNum +
+      slicerReaderB.matABSubReadRowCnt) * instReg.input1Shape(1) / slicerCfg.systolicArraySideNum).resized +
+    matBColSliceCnt
 
   val matAfterSlicer = Stream(MatAfterSlicerType)
-  val matABSubSendRowCnt = Reg(UInt(slicerCfg.matABSubReadRowCntWidth bits))
-  matABSubSendFinish := matAfterSlicer.fire && matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1
-  instFinish := matABSubSendFinish && matAColSliceCnt === matAColSliceNum - 1 && matBColSliceCnt === matBColSliceNum - 1 && matARowSliceCnt === matARowSliceNum - 1
-  when(io.inst.fire) {
-    matABSubSendRowCnt := 0
-  } elsewhen (matAfterSlicer.fire) {
-    matABSubSendRowCnt := Mux(matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1, U(0), matABSubSendRowCnt + 1)
-  }
+  val matABSubSendRowCnt = Cnt(slicerCfg.systolicArraySideNum - 1, io.inst.fire, matAfterSlicer.fire)
+  matABSubSendFinish := matABSubSendRowCnt.willOverflow
+  instFinish := matABSubSendFinish && matAColSliceCnt.willOverflowIfInc && matBColSliceCnt.willOverflowIfInc && matARowSliceCnt.willOverflowIfInc
 
-  matAfterSlicer.A := slicerReaderA.io.matABSub.mapVec(_(matABSubSendRowCnt).asSInt)
+  matAfterSlicer.A := slicerReaderA.matABSub.mapVec(_(matABSubSendRowCnt).asSInt)
   matAfterSlicer.B := Mux(
     isMatMul,
-    slicerReaderB.io.matABSub(matABSubSendRowCnt).mapVec(_.asSInt),
-    slicerReaderB.io.matABSub.shuffle(slicerCfg.systolicArraySideNum - 1 - _).mapVec(_(matABSubSendRowCnt).asSInt)
+    slicerReaderB.matABSub(matABSubSendRowCnt).mapVec(_.asSInt),
+    slicerReaderB.matABSub.shuffle(slicerCfg.systolicArraySideNum - 1 - _).mapVec(_(matABSubSendRowCnt).asSInt)
   )
-  matAfterSlicer.CoreInstruction.assignFromInst(instReg, matARowSliceCnt, matBColSliceCnt)
-  matAfterSlicer.Final := matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1 && matAColSliceCnt === matAColSliceNum - 1
+  matAfterSlicer.CoreInstruction.assignFromInst(instReg, matARowSliceCnt.resized, matBColSliceCnt.resized)
+  matAfterSlicer.Final := matABSubSendRowCnt.willOverflowIfInc && matAColSliceCnt.willOverflowIfInc
   matAfterSlicer.valid.setAsReg().init(False)
   when(matInSubReadFinish) {
     matAfterSlicer.valid := True
-  } elsewhen (matAfterSlicer.fire && matABSubSendRowCnt === slicerCfg.systolicArraySideNum - 1) {
+  } elsewhen (matABSubSendFinish) {
     matAfterSlicer.valid := False
   }
 

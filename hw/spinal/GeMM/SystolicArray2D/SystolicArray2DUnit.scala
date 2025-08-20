@@ -5,6 +5,15 @@ import spinal.lib.tools
 import spinal.core
 import scala.math
 import Interface.MatrixOperation_TypeDef
+import spire.std.boolean
+import spinal.lib.misc.pipeline._
+import Util._
+import spinal.lib.sim._
+import spinal.lib.sim.SimStreamAssert
+import spinal.lib.sim.ScoreboardInOrder_Bigint
+import spinal.core.sim.SimConfig
+import spire.syntax.bool
+
 /** **************************************************************
  *
  *    SystolicArray2DUnit
@@ -12,90 +21,229 @@ import Interface.MatrixOperation_TypeDef
  *    SystolicArray2DUnit is one Unit of systolic array 2D
  *                                                                                                                                                                
  * *************************************************************/
-abstract class SystolicArray2DUnit_io(cfg: SystolicArray2DUnit_Config) extends Component {
-  val io = new Bundle {
-    val inA = in SInt(cfg.inA_Width bits)
-    val inA_Final = in Bool()
-    val inB = in SInt(cfg.inB_Width bits)
-    val inB_Final = in Bool()
-    val Go = in Bool()
-
-    val outA = out(Reg(SInt(cfg.inA_Width bits))) init 0
-    val outA_Final = out(Reg(Bool())) init False
-    val outB = out(Reg(SInt(cfg.inB_Width bits))) init 0
-    val outB_Final = out(Reg(Bool())) init False
-
-    val outZ = out(Reg(SInt(cfg.outZ_Width bits))) init 0
-    val inMode = in(MatrixOperation_TypeDef()) // 使用枚举类型替换Bits(2 bits)
-    val outMode = out(Reg(MatrixOperation_TypeDef())) init(MatrixOperation_TypeDef.MatMul)
-
-    val inTranspose = in Bool()
-    val outTranspose = out(Reg(Bool()) init False)
-
-    val inShift = in (SInt(log2Up(cfg.outZ_Width + 1) + 1 bits))
-    val outShift = out (Reg(SInt(log2Up(cfg.outZ_Width + 1) + 1 bits)) init 0)
-  }
-}
-
-
+/** Configuration parameters for the SystolicArray2DUnit
+  *
+  * @param in_Length Number of elements to process
+  * @param inA_Width Bit width for matrix A elements (default=16)
+  * @param inB_Width Bit width for matrix B elements (default=16)
+  * @param outZ_Width Bit width for output Z elements (default=16)
+  */
 case class SystolicArray2DUnit_Config
 (
   in_Length   : Int,  // number of input data
   inA_Width   : Int=16,
   inB_Width   : Int=16,
-  outZ_Width  : Int=16
+  outZ_Width  : Int=16,
+  ID_Width    : Int=4, 
 )
 {
+    // Calculates bit width needed for A*B product
     val ABProduct_Width = inA_Width+inB_Width
     val ProductSum_Width = ABProduct_Width + log2Up(in_Length)
     val theroretical_outZ_Width = math.max(ABProduct_Width,ProductSum_Width)+1
     if(outZ_Width<theroretical_outZ_Width)
     {SpinalWarning("SystolicArray2DUnit:\n\toutZ_Width is set to"+outZ_Width+"\n\tBut theroretical maximum is ABProduct_Width+ProductSum_Width="+(theroretical_outZ_Width))}
-    val Latency = 1//得到全部输入后一周期就能出结果
-    val IterationInterval = 1
-    //对于每个元素，理想情况下每一个时钟周期都可以输入一个数据，除非下游的buffer阻塞，这种情况下本单元会传递该阻塞信号
+}
+
+case class Fragment_Sim(){
+  var fragment:BigInt = 0
+  var last:Boolean = false
+  def ==(that: Fragment_Sim): Boolean = {
+    this.fragment == that.fragment && this.last == that.last
+  }
+}
+
+/** Control signal definitions for the SystolicArray2DUnit
+  *
+  * @param out_Width Bit width of the output Z signal
+  */
+case class SystolicArray2DUnit_Control_TypeDef(out_Width:Int) extends Bundle {
+  
+  val Mode = MatrixOperation_TypeDef()
+  val Transpose = Bool()
+  val Shift = SInt(log2Up(out_Width + 1) + 1 bits)
+}
+case class SystolicArray2DUnit_Control_Sim_TypeDef(){
+  var Mode:String = MatrixOperation_TypeDef.MatMul.toString
+  var Transpose:Boolean = false
+  var Shift:BigInt = 0
+  def ==(that: SystolicArray2DUnit_Control_Sim_TypeDef): Boolean = {
+    this.Mode == that.Mode && 
+    this.Transpose == that.Transpose &&
+    this.Shift == that.Shift
+  }
+}
+
+case class SystolicArray2DUnit_StreamingBundle_TypeDef(cfg: SystolicArray2DUnit_Config) extends Bundle {
+  val A = Fragment(SInt(cfg.inA_Width bits))
+  val B = Fragment(SInt(cfg.inB_Width bits))
+  val Ctrl = SystolicArray2DUnit_Control_TypeDef(
+        cfg.outZ_Width)
+  val ID = UInt(cfg.ID_Width bits)
+  def initized_instance():SystolicArray2DUnit_StreamingBundle_TypeDef = {
+    val initialized = new SystolicArray2DUnit_StreamingBundle_TypeDef(cfg)
+    initialized.A.fragment := 0
+    initialized.A.last := False
+    initialized.B.fragment := 0
+    initialized.B.last := False
+    initialized.Ctrl.Mode := MatrixOperation_TypeDef.MatMul
+    initialized.Ctrl.Transpose := False
+    initialized.Ctrl.Shift := 0
+    initialized.ID:=0
+    initialized
+  }
+}
+case class SystolicArray2DUnit_StreamingBundle_Sim_TypeDef(){
+  var A = Fragment_Sim()
+  var B = Fragment_Sim()
+  var Ctrl = SystolicArray2DUnit_Control_Sim_TypeDef()
+  var ID:BigInt = 0
+  def ==(that: SystolicArray2DUnit_StreamingBundle_Sim_TypeDef): Boolean = {
+    this.A == that.A && this.B == that.B && this.Ctrl == that.Ctrl
+  }
+}
+case class SystolicArray2DUnit_ResultBundle_TypeDef(cfg: SystolicArray2DUnit_Config) extends Bundle {
+  val Z = Fragment(SInt(cfg.outZ_Width bits))
+  val Ctrl = SystolicArray2DUnit_Control_TypeDef(cfg.outZ_Width)
+  val ID = UInt(cfg.ID_Width bits)
+  def initized_instance():SystolicArray2DUnit_ResultBundle_TypeDef = {
+    val initialized = new SystolicArray2DUnit_ResultBundle_TypeDef(cfg)
+    initialized.Z.fragment := 0
+    initialized.Z.last := False
+    initialized.Ctrl.Mode := MatrixOperation_TypeDef.MatMul
+    initialized.Ctrl.Transpose := False
+    initialized.Ctrl.Shift := 0
+    initialized.ID := 0
+    initialized
+  }
+}
+case class SystolicArray2DUnit_ResultBundle_Sim_TypeDef(){
+  var Z = Fragment_Sim()
+  var Ctrl = SystolicArray2DUnit_Control_Sim_TypeDef()
+  var ID:BigInt = 0
+  def ==(that: SystolicArray2DUnit_ResultBundle_Sim_TypeDef): Boolean = {
+    this.Z == that.Z && this.Ctrl == that.Ctrl
+  }
+}
+
+
+abstract class SystolicArray2DUnit_io(cfg: SystolicArray2DUnit_Config) extends Component {
+  // io定义
+  /*
+  *   * io.upStream:    输入流，接收SystolicArray2DUnit_StreamingBundle_TypeDef类型的数据。
+  *   * io.downStream:  输出流，发送SystolicArray2DUnit_StreamingBundle_TypeDef类型的数据。
+  *   * io.result:      结果流，发送SystolicArray2DUnit_ResultBundle_TypeDef类型的数据。 
+   */
+  val io = new Bundle {
+    val upStream = slave Stream(SystolicArray2DUnit_StreamingBundle_TypeDef(cfg))
+    val downStream = master Stream(SystolicArray2DUnit_StreamingBundle_TypeDef(cfg))
+    val result = master Stream(SystolicArray2DUnit_ResultBundle_TypeDef(cfg))
+  }
+  //先把upStream fork成两个流
+  //一个用于传递到下游，一个用于传递到结果流
+  val (upStream_for_downStream, upStream_for_result) = StreamFork2(io.upStream, synchronous=false)
+  // 将upStream_for_downStream连接到downStream
+  upStream_for_downStream >/-> io.downStream
+
+
 }
 
 case class SystolicArray2DUnit(cfg: SystolicArray2DUnit_Config) extends SystolicArray2DUnit_io(cfg) {
   // io定义从SystolicArray2DUnit_io继承
-  val ABProduct = SInt(cfg.ABProduct_Width bits)
-  val ProductSum = Reg(SInt(cfg.ProductSum_Width bits)) init 0
-  val ProductSum_Next = SInt(cfg.ProductSum_Width bits)
+  /*  在SystolicArray2DUnit中，我们一共需要实现逻辑
+    1. 矩阵乘法（MatMul）
+      实现链路是 * -> + -> Shift -> result
+      其中*是A和B的乘积，+是累加的结果，
+      Shift是对累加结果的移位，result是最终输出。
+    为了让+和*调用同样的计算资源，先实现一个输入是A和B的* 阶段，
+    再实现一个+模块（matmul:ProductSum and product），
+    最后实现一个移位模块和输出模块。
+   */
+  val Mul_Node,Add_Node,Filter_Node,Shift_Node=Node()
+  val SL_MulMax2Add=StageLink(Mul_Node,Add_Node)
+  val CL_Add2Filter=CtrlLink(Add_Node,Filter_Node)
+  val SL_Filter2Shift=StageLink(Filter_Node,Shift_Node)
+  
+  /* Mul_Node */
+  val PAYLOAD_A = Payload(Fragment(SInt(cfg.inA_Width bits)))
+  val PAYLOAD_B = Payload(Fragment(SInt(cfg.inB_Width bits)))
+  val PAYLOAD_Ctrl = Payload(SystolicArray2DUnit_Control_TypeDef(
+        cfg.outZ_Width))
+  val PAYLOAD_ID = Payload((UInt(cfg.ID_Width bits)))
+  //这一级的共用乘法器
+  val PAYLOAD_factor_1 = Payload(Fragment(SInt(cfg.inA_Width bits)))
+  val PAYLOAD_factor_2 = Payload(Fragment(SInt(cfg.inB_Width bits)))
+  val PAYLOAD_product = Payload(Fragment(SInt(cfg.ABProduct_Width bits)))
 
-  when(io.inMode === MatrixOperation_TypeDef.MatMul) {
-    ABProduct := io.inA * io.inB
-    ProductSum_Next := ProductSum + ABProduct
-  }.otherwise {
-    ABProduct := S(0)
-    ProductSum_Next := S(0)
-  }
-  when(io.Go === True) {
-    io.outA_Final := io.inA_Final
-    io.outB_Final := io.inB_Final
-  }
-  when(io.Go === True) {
-    io.outA := io.inA
-    io.outB := io.inB
-    io.outMode := io.inMode
-    io.outTranspose := io.inTranspose
-    io.outShift := io.inShift
-    // 计算部分
-    when(io.inMode === MatrixOperation_TypeDef.MatMul) {
-      ProductSum := ProductSum_Next
-      when((io.inA_Final === True) && (io.inB_Final === True)) {
-        val instSIntShifter = new SIntShifter(inWidth = cfg.ProductSum_Width, outWidth = cfg.outZ_Width)
-        instSIntShifter.io.input := ProductSum_Next
-        instSIntShifter.io.shiftAmount := io.inShift
-        io.outZ := (instSIntShifter.io.output).resize(cfg.outZ_Width)
+  //这一级的输入，从上游流中获取
+  
+  Mul_Node.driveFrom(upStream_for_result.throwWhen(upStream_for_result.payload.Ctrl.Mode=/=MatrixOperation_TypeDef.MatMul))((self,payload)=> 
+    {
+      self(PAYLOAD_A):= payload.A
+      self(PAYLOAD_B):= payload.B
+      self(PAYLOAD_Ctrl):= payload.Ctrl
+      self(PAYLOAD_ID):= payload.ID
+    })
+  val Mul_Node_logic = new Mul_Node.Area{
+    //这一级的共用乘法器
+    (PAYLOAD_product).fragment:=
+      (PAYLOAD_factor_1).fragment * 
+      (PAYLOAD_factor_2).fragment
+    
+    (PAYLOAD_product).last:=
+      (PAYLOAD_factor_1).last &&
+      (PAYLOAD_factor_2).last
 
-        //io.outZ := (ProductSum_Next).resize(cfg.outZ_Width)
-        ProductSum:=0
+      PAYLOAD_factor_1 := PAYLOAD_A
+      PAYLOAD_factor_2 := PAYLOAD_B
+  }
+  /*Add_Node*/
+  val PAYLOAD_addend_1 = Payload(Fragment(SInt(cfg.ProductSum_Width bits)))
+  val PAYLOAD_addend_2 = Payload(Fragment(SInt(cfg.ABProduct_Width bits)))
+  val PAYLOAD_sum = Payload(Fragment(SInt(cfg.ProductSum_Width bits)))
+  val reg_ProductSum=Reg(SInt(cfg.ProductSum_Width bits)) init 0
+  val Add_Node_logic = new Add_Node.Area{
+    
+    //这一级共用的加法器
+    PAYLOAD_sum.fragment:=PAYLOAD_addend_1.fragment+PAYLOAD_addend_2.fragment
+    PAYLOAD_Ctrl:=PAYLOAD_Ctrl
+    PAYLOAD_sum.last:=PAYLOAD_product.last
+    //根据mode选择对应的逻辑
+    PAYLOAD_addend_1.fragment:=reg_ProductSum
+    PAYLOAD_addend_1.last:=PAYLOAD_addend_2.last
+    PAYLOAD_addend_2:=PAYLOAD_product
+    when(isFiring){
+      when(PAYLOAD_sum.last===True){
+        //结算
+        reg_ProductSum := 0
+      }.otherwise{
+        //累加
+        reg_ProductSum:=PAYLOAD_sum.fragment
+        CL_Add2Filter.terminateIt()
       }
-    }.otherwise{
-      ProductSum := S(0)
-      io.outZ := S(0)
     }
   }
+  /* Filter_Node */
+  
+  /* Shift_Node */
+  val PAYLOAD_result = Payload(SInt(cfg.outZ_Width bits))
+  val Shift_Node_logic = new Shift_Node.Area{
+    //这一级用的移位器
+    val instSIntShifter = new SIntShifter(inWidth = cfg.ProductSum_Width, outWidth = cfg.outZ_Width)
+    instSIntShifter.io.shiftAmount:=PAYLOAD_Ctrl.Shift
+    instSIntShifter.io.input:=(PAYLOAD_sum).fragment
+    PAYLOAD_result:=instSIntShifter.io.output
+  }
+  Shift_Node.driveTo(io.result){(payload, self) =>
+    payload.Z.fragment := self(PAYLOAD_result)
+    payload.Z.last:=self(PAYLOAD_sum).last
+    payload.Ctrl :=self(PAYLOAD_Ctrl)
+    payload.ID:=self(PAYLOAD_ID)
+  }
+  Builder(
+    SL_MulMax2Add, 
+    CL_Add2Filter,
+    SL_Filter2Shift)
 }
 
 object SystolicArray2DUnit_Verilog extends App{
@@ -114,155 +262,150 @@ object SystolicArray2DUnit_Verilog extends App{
     //tools.HDElkDiagramGen(SpinalVerilog(new SystolicArray2DUnit(cfg)))
 }
 
+
+import spinal.core.sim.SimConfig
+import spinal.core.sim._
+import spinal.sim.VCSFlags
 object SystolicArray2DUnit_Sim extends App {
     val FileDir = "rtl/SystolicArray2DUnit/verilog"
     import java.io.File
     new File(FileDir).mkdirs()
-    import spinal.core.sim._
     val testLength=3
     val cfg = SystolicArray2DUnit_Config(testLength,
     inA_Width = 8,
     inB_Width = 8,
-    outZ_Width = 16
+    outZ_Width = 32
     )
     
-//verilator
-    /*     val Sim_compiled=SimConfig.withConfig(SpinalConfig(
-        targetDirectory = FileDir,
-        oneFilePerComponent = true,
-        defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
-        )).
-        withFstWave.
-        allOptimisation.
-        compile(new SystolicArray2DUnit(cfg)) */
-        
 //VCS
-import scala.sys.process._
-import scala.util.{Try, Success, Failure}
-    // 设置自定义的 g++ 路径
-    val customGppPath = "/usr/local/bin"
-
-    // 设置 PATH 环境变量，将自定义 g++ 放在最前面
-    val newPath = s"$customGppPath:" + scala.sys.env("PATH")
-
-    // 执行 `which g++`，查看当前环境下使用的 g++
-    val whichGpp = Try(Process(Seq("which", "g++"), None, "PATH" -> newPath).!!.trim)
-
-    whichGpp match {
-      case Success(path) => println(s"Custom g++ path is: $path")
-      case Failure(exception) => println(s"Error finding g++: ${exception.getMessage}")
-    }
-    var result = scala.sys.env.get("CPLUS_INCLUDE_PATH")
-    println(s"The CPLUS_INCLUDE_PATH is: $result")
-    result = scala.sys.env.get("LIBRARY_PATH")
-    println(s"The LIBRARY_PATH is: $result")
-
-    val custom_CPLUS_INCLUDE_PATH = "/tools/opensource/boost_1_78_0"
-    val custom_LIBRARY_PATH = "/tools/opensource/boost_1_78_0/stage/lib"
-    val new_CPLUS_INCLUDE_PATH = s"$custom_CPLUS_INCLUDE_PATH"
-    val new_LIBRARY_PATH = s"$custom_LIBRARY_PATH"
-    val envVars = Map("CPLUS_INCLUDE_PATH" -> new_CPLUS_INCLUDE_PATH, "LIBRARY_PATH" -> new_LIBRARY_PATH)
-    val result_envVars = Process(Seq("/bin/bash", "-c", "echo $CPLUS_INCLUDE_PATH && echo $LIBRARY_PATH"), None, envVars.toSeq: _*).!!
-    println(result_envVars)
- 
-import spinal.sim.VCSFlags
-      val flag = VCSFlags(
-        compileFlags = List("-kdb","-lca", "+notimingchecks"),
-        elaborateFlags = List("-fgp", "-kdb", "-lca","+rad", "+notimingchecks"),
-        //    runFlags = List("-fgp=num_threads:11,allow_less_cores", "-l ./run.log")
-        //    elaborateFlags = List("-fgp", "+notimingchecks"),
-        runFlags = List("-l ./run.log")
-      )
+    val flag = VCSFlags(
+      compileFlags = List("-kdb","-lca", "+notimingchecks"),
+      elaborateFlags = List("-fgp", "-kdb", "-lca","+rad", "+notimingchecks"),
+      //    runFlags = List("-fgp=num_threads:11,allow_less_cores", "-l ./run.log")
+      //    elaborateFlags = List("-fgp", "+notimingchecks"),
+      runFlags = List("-l ./run.log")
+    )
+    val Spinalcfg=SpinalConfig(
+    targetDirectory = FileDir,
+    oneFilePerComponent = true,
+    defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
+    bitVectorWidthMax = 20000, //disable internal bigvector limitation"Way too big signal Bits"
+    )
       val Sim_compiled=SimConfig
       .withVCS(flag)
       .withVcdWave
       .withTimeScale(1 ns)
       .withTimePrecision(1 ns)
-      .withConfig(SpinalConfig(
-        
-        targetDirectory = FileDir,
-        oneFilePerComponent = true,
-        defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
-        ))
+      .withConfig(Spinalcfg)
       .allOptimisation
       .compile(new SystolicArray2DUnit(cfg))
-
-
-
-    Sim_compiled.doSim{ dut =>
-      // Fork a process to generate the reset and the clock on the dut
-      dut.clockDomain.forkStimulus(period = 10)
-      var xout_ref=0
-      var product:Int=0
-      var sumproduct:Int=0
-      var inA:Int=0
-      var inB:Int=0
-      var Go:Boolean = true
-      
-      dut.io.inA#=0
-      dut.io.inB#=0
-      dut.io.inA_Final#=false
-      dut.io.inB_Final#=false
-      dut.io.inMode #= MatrixOperation_TypeDef.MatMul
-      dut.io.inTranspose#= false
-      dut.io.inShift#=0
-      dut.io.Go#=true
-      var idx=0
-      while(idx<(testLength*10)) 
-      {
-        //Final 发送机制
-        if(idx % testLength == (testLength-1)){
-            dut.io.inA_Final#=true
-            dut.io.inB_Final#=true
-        }
-        else{
-            dut.io.inA_Final#=false
-            dut.io.inB_Final#=false
-        }
-
-        dut.clockDomain.waitRisingEdge()
-        // Drive the dut inputs with random values
-        dut.io.Go.randomize()
-        dut.io.inA.randomize()
-        dut.io.inB.randomize()
-        //将输入值转换回scala变量用于计算参考值
-        inA=dut.io.inA.toInt
-        inB=dut.io.inB.toInt
-        Go=dut.io.Go.toBoolean
-        if(Go)
-        {
-
-          product=(inA * inB)
-          sumproduct=sumproduct+product
     
-          if(idx % testLength == (testLength-1)){
-
-              xout_ref=sumproduct
-              sumproduct=0
-          }
-        }
-
-        println(
-          s"${idx}:inA:${dut.io.inA.toInt};" +
-          s"inB:${dut.io.inB.toInt};" +
-          s"sumproduct=${sumproduct};" +
-          s"xout=${dut.io.outZ.toInt};xout_ref=${xout_ref}")
-        // Wait a rising edge on the clock
-        
+      Sim_compiled.doSim("MatMul test"){ dut =>
+        SimTimeout(10000)
   
-        if((idx % testLength == 0)&&(idx != 0)){
-            
-            assert(dut.io.outZ.toInt == xout_ref)
-        }
-        
-
-        //println(dut.io.xout.toInt)
+        val testLength = 8
+        val scoreboard_result = ScoreboardInOrder[BigInt]
+        val scoreboard_downStream = ScoreboardInOrder[SystolicArray2DUnit_StreamingBundle_Sim_TypeDef]
+  
+        // 增加移位范围参数
+        val maxShiftBits = 4  // 最大移位位数
+        var sumProduct = BigInt(0)
+        var currentShift = 0  // 当前事务的移位值
+        var isNewMatrix = true  // 标记新矩阵开始
+  
+        // ===== Stream driver: 自动驱动输入流 =====
+        StreamDriver(dut.io.upStream, dut.clockDomain) { payload =>
+          var downStream_Ref = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
+  
+          // 新矩阵开始时随机化shift值
+          if (isNewMatrix) {
+            currentShift = scala.util.Random.nextInt(maxShiftBits + 1)  // 0到maxShiftBits之间的随机值
+            println(s"New matrix started with shift = $currentShift bits")
+            isNewMatrix = false
+          }
           
-        if(Go)
-        {
-          idx=idx+1
+          // Generate all random values first
+          var afragment = payload.A.fragment.randomizedBigInt()
+          var aFinal = payload.A.last.randomize()
+          var bfragment = payload.B.fragment.randomizedBigInt()
+          var bFinal = payload.B.last.randomize()
+          var transposeValue = payload.Ctrl.Transpose.randomize()
+          var id = payload.ID.randomize()
+  
+          // Assign generated values to DUT and reference
+          downStream_Ref.A.fragment = afragment
+          downStream_Ref.A.last = aFinal
+          downStream_Ref.B.fragment = bfragment
+          downStream_Ref.B.last = bFinal
+          payload.A.fragment #= afragment
+          payload.A.last #= aFinal
+          payload.B.fragment #= bfragment
+          payload.B.last #= bFinal
+          payload.Ctrl.Mode #= MatrixOperation_TypeDef.MatMul
+          downStream_Ref.Ctrl.Mode = MatrixOperation_TypeDef.MatMul.toString()
+          payload.Ctrl.Shift #= currentShift
+          downStream_Ref.Ctrl.Shift = currentShift
+          payload.Ctrl.Transpose #= transposeValue
+          downStream_Ref.Ctrl.Transpose = transposeValue
+          payload.ID #= id
+          downStream_Ref.ID = id
+  
+          // Print all generated values after assignment
+          println(s"A.fragment: $afragment")
+          println(s"A.last: $aFinal")
+          println(s"B.fragment: $bfragment")
+          println(s"B.last: $bFinal")
+          println(s"Set Ctrl.Mode: ${MatrixOperation_TypeDef.MatMul.toString()}")
+          println(s"Ctrl.Shift: $currentShift")
+          println(s"Ctrl.Transpose: $transposeValue")
+          println(s"ID: $id")
+          
+          scoreboard_downStream.pushRef(downStream_Ref)
+          var product = downStream_Ref.A.fragment * downStream_Ref.B.fragment
+          sumProduct += product
+          if (downStream_Ref.A.last && downStream_Ref.B.last) {
+                // 应用移位操作到最终结果
+            val shiftedResult = sumProduct >> currentShift
+  
+            println(s"Matrix complete | Raw sum: $sumProduct | " +
+            s"Shift: $currentShift | Result: $shiftedResult")
+            scoreboard_result.pushRef(shiftedResult)
+            sumProduct = BigInt(0)
+            isNewMatrix = true  // 标记下一个矩阵开始
+          }
+        
+          true  // 驱动 valid
         }
-      }
+  
+        // ===== 随机 ready 模拟流控（可选）=====
+        StreamReadyRandomizer(dut.io.downStream, dut.clockDomain)
+        StreamReadyRandomizer(dut.io.result, dut.clockDomain)
+        //dut.io.result.ready #= true // 直接使能结果流的ready
+        var downStream_DUT= new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
+        // ===== Stream monitor: 中间传递监控 =====
+        StreamMonitor(dut.io.downStream, dut.clockDomain) { payload =>
+          downStream_DUT.A.fragment = payload.A.fragment.toBigInt
+          downStream_DUT.A.last = payload.A.last.toBoolean
+          downStream_DUT.B.fragment = payload.B.fragment.toBigInt
+          downStream_DUT.B.last = payload.B.last.toBoolean
+          downStream_DUT.Ctrl.Mode = payload.Ctrl.Mode.toString
+          downStream_DUT.Ctrl.Transpose = payload.Ctrl.Transpose.toBoolean
+          downStream_DUT.Ctrl.Shift = payload.Ctrl.Shift.toBigInt
+          downStream_DUT.ID = payload.ID.toBigInt
+          scoreboard_downStream.pushDut(downStream_DUT)
+        }
+  
+        // ===== 输出结果流监控与比对 =====
+        StreamMonitor(dut.io.result, dut.clockDomain) { payload =>
+          scoreboard_result.pushDut(payload.Z.fragment.toBigInt)
+        }
+        // 启动时钟激励
+        dut.clockDomain.forkStimulus(10)
+        // ===== 等待仿真结束 =====
+        dut.clockDomain.waitActiveEdgeWhere(
+          scoreboard_result.matches == testLength 
+        )
+        println("TEST PASS".green)
+        simSuccess()
     }
-
 }

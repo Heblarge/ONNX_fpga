@@ -3,27 +3,46 @@ import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.tools
 import spinal.lib.sim.{StreamMonitor, StreamDriver, StreamReadyRandomizer, ScoreboardInOrder}
+import GeMM.SystolicArray2D.sim_SIntShifter.inputQueue
+
 
 
 case class SteamDemoTop() extends Component {
+  def streamHalfPipeN[T <: Data](input: Stream[T], n: Int): Stream[T] = {
+    require(n >= 0)
+    (0 until n).foldLeft(input)((stream, _) => stream.halfPipe())
+  }
 val io=new Bundle{
-  val inStream = slave(Stream(Vec.fill(4)(Vec.fill(4)(SInt(16 bits)))))
-val outStream = master(Stream(Vec.fill(4)(Vec.fill(4)(SInt(16 bits)))))
+  val inStream = slave(Stream(Vec.fill(4)(SInt(16 bits))))
+  val outStream = master(Stream(Vec.fill(4)(SInt(16 bits))))
 }
-val midStream_in = Stream(Vec.fill(4)(SInt(16 bits).asBits).asBits)
-val fifo=StreamFifo(Vec.fill(4)(SInt(16 bits).asBits).asBits, 2)
-val midStream_out = Stream(Vec.fill(4)(SInt(16 bits).asBits).asBits)
+val dispachedStreams=StreamFork(io.inStream,4)
+val midStream_in = Vec.fill(4)(Stream((SInt(16 bits))))
+//val midStream_out = Vec.fill(4)(Stream((SInt(16 bits))))
 
-val in2mid = StreamWidthAdapter(io.inStream, midStream_in)
-val mid2out = StreamWidthAdapter(midStream_out, io.outStream)
-midStream_in>/->fifo.io.push
-fifo.io.pop>/->midStream_out
+for(index <- 0 until 4){
+  
+  var substream=dispachedStreams(index).map{payload=>
+    val new_payload = (SInt(16 bits))
+    new_payload := payload(index)
+    new_payload
+    }
+  
+  midStream_in(index)<<streamHalfPipeN(substream,index)
+}
+
+io.outStream<<StreamJoin.vec(midStream_in)
+
+
+
+
+
 }
 object SteamDemoTop_Verilog extends App 
 {
   SpinalConfig().generateVerilog(SteamDemoTop())
   ////tools.HDElkDiagramGen(SpinalVerilog(SteamDemoTop()))
-}
+} 
 object SteamDemoTop_Sim extends App {
   val FileDir = "rtl/SteamDemoTop/verilog"
   import java.io.File
@@ -38,7 +57,7 @@ import spinal.sim.VCSFlags
       )
 val Sim_compiled=SimConfig
       .withVCS(flag)
-      .withFsdbWave
+      .withVcdWave
       .withTimeScale(1 ns)
       .withTimePrecision(1 ns)
       .withConfig(SpinalConfig(
@@ -49,7 +68,7 @@ val Sim_compiled=SimConfig
       .allOptimisation
       .compile(new SteamDemoTop())
   Sim_compiled.doSim("simple test") { dut =>
-    SimTimeout(10000)
+    SimTimeout(1000)
 
     val scoreboard = ScoreboardInOrder[BigInt]()
 
@@ -60,16 +79,15 @@ val Sim_compiled=SimConfig
     }
     StreamMonitor(dut.io.inStream, dut.clockDomain) { payload =>
       
-        scoreboard.pushRef(payload(0)(0).toBigInt)
-        scoreboard.pushRef(payload(0)(1).toBigInt)
+        scoreboard.pushRef(payload(0).toBigInt)
+        scoreboard.pushRef(payload(1).toBigInt)
     }
       
     // randmize ready on the output and add popped data to scoreboard
     StreamReadyRandomizer(dut.io.outStream, dut.clockDomain)
     StreamMonitor(dut.io.outStream, dut.clockDomain) { payload =>
 
-        scoreboard.pushDut(payload(0)(0).toBigInt)
-        scoreboard.pushDut(payload(0)(1).toBigInt)
+
 
     }
 

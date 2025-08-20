@@ -6,13 +6,13 @@ import spinal.lib.sim.{StreamMonitor, StreamDriver, StreamReadyRandomizer, Score
 import scala.util.Random
 import scala.collection.mutable
 import Interface.MatrixOperation_TypeDef
-
-object SystolicArray2D_Sim extends App {
+import Util._
+abstract class SystolicArray2D_Sim extends App {
   val FileDir = "rtl/SystolicArray2D/verilog"
   import java.io.File
   new File(FileDir).mkdirs()
-  val matrix_num = 10
-  val matmul_mult_dim = 8
+  val matrix_num = 1000
+  val matmul_mult_dim = 4
 
 
   // 矩阵A的行数和列数
@@ -85,17 +85,39 @@ val Sim_compiled=SimConfig
     0
   }
   //生成工作模式
-  def generateRandomMode(bool: Boolean, do_transpose:Boolean): Array[Boolean] = {
-    //    val rand = new Random()
-    //    rand.setSeed(seed)
+  def generateRandomMode(seed:Int): Array[Boolean] = {
+        val rand = new Random()
+        rand.setSeed(seed)
         val result = Array.fill(5)(false) // 随机生成0到1之间的整数
-        result(0) = do_transpose//do_PostTranspose
-        result(1) = false//bool//do_MatMul
-        result(2) = false//(!bool)//do_ElementWiseMul
-        result(3) = false//do_ElementWiseAdd
-        result(4) = true//(!bool)//do_ElementWiseMax
+        result(0) = rand.nextBoolean//do_PostTranspose
+        val mode=rand.nextInt(4)
+        if(mode==0){result(1)=true;result(2)=false;result(3)=false;result(4)=false}//matmul
+        else if(mode==1){result(1)=false;result(2)=true;result(3)=false;result(4)=false}//mul
+        else if(mode==2){result(1)=false;result(2)=false;result(3)=true;result(4)=false}//add
+        else if(mode==3){result(1)=false;result(2)=false;result(3)=false;result(4)=true}//max
         result
-      }
+  }
+  //生成Elementwise工作模式
+  def generateRandomElementMode(seed:Int): Array[Boolean] = {
+    val rand = new Random()
+    rand.setSeed(seed)
+    val result = Array.fill(5)(false) // 随机生成0到1之间的整数
+    result(0) = rand.nextBoolean//do_PostTranspose
+    val mode=rand.nextInt(3)+1
+    if(mode==0){result(1)=true;result(2)=false;result(3)=false;result(4)=false}//matmul
+    else if(mode==1){result(1)=false;result(2)=true;result(3)=false;result(4)=false}//mul
+    else if(mode==2){result(1)=false;result(2)=false;result(3)=true;result(4)=false}//add
+    else if(mode==3){result(1)=false;result(2)=false;result(3)=false;result(4)=true}//max
+    result
+  }
+  def generateRandomMatmulMode(seed:Int): Array[Boolean] = {
+    val rand = new Random()
+    rand.setSeed(seed)
+    val result = Array.fill(5)(false) // 随机生成0到1之间的整数
+    result(0) = rand.nextBoolean//do_PostTranspose
+    result(1)=true;result(2)=false;result(3)=false;result(4)=false//matmul
+    result
+  }
 
   /**
   * 逆时针旋转矩阵 90 度
@@ -111,34 +133,6 @@ val Sim_compiled=SimConfig
     }
     rotated
   }
-
-  /**
-  * 按元素乘矩阵ref
-  */
-//  def elementWiseMultiplyMatrix(A: Array[Array[Int]], B: Array[Array[Int]]): Array[Array[Int]] = {
-//    val n = A.length
-//    val result = Array.ofDim[Int](n, n)
-//    for (i <- 0 until n) {
-//      for (j <- 0 until n) {
-//        result(i)(j) = A(i)(j) * B(i)(j)
-//      }
-//    }
-//    result
-//  }
-
-  /**
-  * 按元素加矩阵ref
-  */
-//  def elementWiseAdditionMatrix(A: Array[Array[Int]], B: Array[Array[Int]]): Array[Array[Int]] = {
-//    val n = A.length
-//    val result = Array.ofDim[Int](n, n)
-//    for (i <- 0 until n) {
-//      for (j <- 0 until n) {
-//        result(i)(j) = A(i)(j) * B(i)(j)
-//      }
-//    }
-//    result
-//  }
 
   /**
    * 带移位与饱和保护的整数矩阵按元素操作ref
@@ -182,39 +176,6 @@ val Sim_compiled=SimConfig
     result
   }
 
-//  def elementWiseBinaryOpWithShiftAndSaturation(
-//                                                 A: Array[Array[Int]],
-//                                                 B: Array[Array[Int]],
-//                                                 op: (Int, Int) => Int,    // 运算函数：乘或加
-//                                                 shiftAmount: Int,
-//                                                 satBits: Int
-//                                               ): Array[Array[Int]] = {
-//    require(A.length == B.length && A(0).length == B(0).length, "矩阵维度不一致")
-//    require(satBits > 0 && satBits <= 32, "位宽必须为 1 到 32 之间")
-//
-//    val rows = A.length
-//    val cols = A(0).length
-//    val minVal = -(1 << (satBits - 1))
-//    val maxVal =  (1 << (satBits - 1)) - 1
-//
-//    val result = Array.ofDim[Int](rows, cols)
-//
-//    for (i <- 0 until rows; j <- 0 until cols) {
-//      val raw = op(A(i)(j), B(i)(j))
-//      val shifted = if (shiftAmount > 0) {
-//        raw >> shiftAmount
-//      } else if (shiftAmount < 0) {
-//        raw << (-shiftAmount)
-//      } else raw
-//
-//      result(i)(j) =
-//        if (shifted > maxVal) maxVal
-//        else if (shifted < minVal) minVal
-//        else shifted
-//    }
-//
-//    result
-//  }
   def elementWiseMultiplyMatrixWithShiftAndSaturation(
                                  A: Array[Array[Int]],
                                  B: Array[Array[Int]],
@@ -316,14 +277,16 @@ val Sim_compiled=SimConfig
   val ref_queue = mutable.Queue[Array[Array[Int]]]()
 
   val random = new Random()
-  val global_seed = 1234//1334
-  random.setSeed(global_seed)
-
+  //val global_seed = 114514
+  //random.setSeed(global_seed)
+}
+object SystolicArray2D_Sim_matmul extends SystolicArray2D_Sim
+{
   //准备数据
   for (matrix_idx <- 0 until matrix_num) {
     var m_A = generateRandomMatrix(rowsA, colsA,random.nextInt(20))
     var m_B = generateRandomMatrix(rowsB, colsB,random.nextInt(20))
-    var mode = generateRandomMode(random.nextBoolean(),random.nextBoolean())//true:matmul false:elementwise false
+    var mode = generateRandomMatmulMode(random.nextInt(20))
     var shift = generateRandomShiftAmount(shiftAmount = 4, seed = random.nextInt(20))
     // 生成两个随机矩阵
     matrixA_queue.enqueue(m_A)
@@ -374,9 +337,14 @@ val Sim_compiled=SimConfig
       }
     }
   }
+  println(s"case generated:")
+  println(s"matrixA_queue size: ${matrixA_queue.size}")
+  println(s"matrixB_queue size: ${matrixB_queue.size}")
+  println(s"mode_queue size: ${mode_queue.size}")
+  println(s"ref_queue size: ${ref_queue.size}")
 
-  Sim_compiled.doSim("simple test") { dut =>
-    SimTimeout(19000) // 设置仿真超时时间，单位为仿真时钟周期
+  Sim_compiled.doSim("Elementwise") { dut =>
+    SimTimeout(190000) // 设置仿真超时时间，单位为仿真时钟周期
 
     val scoreboard = new ScoreboardInOrder_matrix() // 创建自动对比参考结果的记分板
     var StreamDriver_sending_period = 0 // 记录当前数据流发送周期
@@ -389,14 +357,9 @@ val Sim_compiled=SimConfig
     var shift_sending = shift_queue.dequeue()
     // 启动输入流驱动器，向DUT输入数据
     dut.io.in_Mats.valid #= true
+    var case_sent_num=0
     StreamDriver(dut.io.in_Mats, dut.clockDomain) { payload =>
-      if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty) {
-        if(AllTestCaseSentReported!=true)
-        {
-          println("All input queues are empty, stopping StreamDriver.")
-          AllTestCaseSentReported = true
-        }
-        AllTestCaseSent_Count += 1
+      if (AllTestCaseSentReported){
         false
       } else {
       // 设置工作模式
@@ -454,27 +417,21 @@ val Sim_compiled=SimConfig
       // 判断是否切换到下一组输入
       if (StreamDriver_sending_period == mult_dim - 1) {
         StreamDriver_sending_period = 0
-        println(s"new input loaded")
+        println(s"case${case_sent_num}")
         println("A:")
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        println("Z:")
-        if (mode_sending(1)==true)
-          //printMatrix(multiplyMatrices(matrixA_sending, matrixB_sending))
-          printMatrix(multiplyMatricesWithShiftSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else if (mode_sending(2)==true)
-          //printMatrix(elementWiseMultiplyMatrix(matrixA_sending, matrixB_sending))
-          printMatrix(elementWiseMultiplyMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else if (mode_sending(3)==true)
-          //printMatrix(elementWiseAdditionMatrix(matrixA_sending, matrixB_sending))
-          printMatrix(elementWiseAdditionMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else if (mode_sending(4)==true)
-          printMatrix(elementWiseMaximumMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else{
-          println("Invalid mode.")
-          assert(false)
+        
+        if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
+        {
+        if(AllTestCaseSentReported!=true)
+        {
+          println("All input queues are empty, stopping StreamDriver.")
+          AllTestCaseSentReported = true
         }
+        AllTestCaseSent_Count += 1
+      }else{
         matrixA_sending = matrixA_queue.dequeue()
         matrixB_sending = matrixB_queue.dequeue()
         mode_sending = mode_queue.dequeue()
@@ -483,6 +440,7 @@ val Sim_compiled=SimConfig
         println(s"matrixB_queue size: ${matrixB_queue.size}")
         println(s"mode_queue size: ${mode_queue.size}")
         println(s"ref_queue size: ${ref_queue.size}")
+        case_sent_num += 1}
       } else { StreamDriver_sending_period = StreamDriver_sending_period + 1}
       true}
     }
@@ -521,7 +479,420 @@ val Sim_compiled=SimConfig
     // 等待所有结果比对完成
     dut.clockDomain.waitActiveEdgeWhere(scoreboard.matches == matrix_num)
     // 仿真结束时输出无效模式统计
-    
+    println("TEST PASS".green)
+    simSuccess() // 仿真成功退出
+  }
+  if (AllTestCaseSent_Count > 0) {
+    println(s"Invalid mode occurred $AllTestCaseSent_Count times.")
+  }
+}
+
+object SystolicArray2D_Sim_ElementWise extends SystolicArray2D_Sim
+{
+  //准备数据
+  for (matrix_idx <- 0 until matrix_num) {
+    var m_A = generateRandomMatrix(rowsA, colsA,random.nextInt(20))
+    var m_B = generateRandomMatrix(rowsB, colsB,random.nextInt(20))
+    var mode = generateRandomElementMode(random.nextInt(20))
+    var shift = generateRandomShiftAmount(shiftAmount = 4, seed = random.nextInt(20))
+    // 生成两个随机矩阵
+    matrixA_queue.enqueue(m_A)
+    matrixB_queue.enqueue(m_B)
+    mode_queue.enqueue(mode)
+    shift_queue.enqueue(shift)
+    if(mode(0) ==true){
+      if(mode(1)==true) {
+        //ref_queue.enqueue(multiplyMatrices(m_A, m_B).transpose)
+        //考虑输出移位与饱和处理
+        ref_queue.enqueue(multiplyMatricesWithShiftSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else if(mode(2)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseMultiplyMatrix(m_A, m_B).transpose)
+        //考虑输出移位与饱和处理
+        ref_queue.enqueue(elementWiseMultiplyMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else if(mode(3)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseAdditionMatrix(m_A, m_B).transpose)
+        //考虑输出移位与饱和处理
+        ref_queue.enqueue(elementWiseAdditionMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else if(mode(4)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        ref_queue.enqueue(elementWiseMaximumMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else {
+        println("Invalid mode.")
+        assert(false)
+      }
+    } else {
+      if(mode(1)==true) {
+        //ref_queue.enqueue(multiplyMatrices(m_A, m_B))
+        ref_queue.enqueue(multiplyMatricesWithShiftSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else if(mode(2)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseMultiplyMatrix(m_A, m_B))
+        ref_queue.enqueue(elementWiseMultiplyMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else if(mode(3)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseAdditionMatrix(m_A, m_B))
+        ref_queue.enqueue(elementWiseAdditionMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else if (mode(4)==true){
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseAdditionMatrix(m_A, m_B))
+        ref_queue.enqueue(elementWiseMaximumMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else {
+        println("Invalid mode.")
+        assert(false)
+      }
+    }
+  }
+  println(s"case generated:")
+  println(s"matrixA_queue size: ${matrixA_queue.size}")
+  println(s"matrixB_queue size: ${matrixB_queue.size}")
+  println(s"mode_queue size: ${mode_queue.size}")
+  println(s"ref_queue size: ${ref_queue.size}")
+
+  Sim_compiled.doSim("Elementwise") { dut =>
+    SimTimeout(190000) // 设置仿真超时时间，单位为仿真时钟周期
+
+    val scoreboard = new ScoreboardInOrder_matrix() // 创建自动对比参考结果的记分板
+    var StreamDriver_sending_period = 0 // 记录当前数据流发送周期
+    var reset_done=false
+    var do_random_clk = false
+
+    var matrixA_sending = matrixA_queue.dequeue() // 当前正在发送的矩阵A
+    var matrixB_sending = matrixB_queue.dequeue() // 当前正在发送的矩阵B
+    var mode_sending = mode_queue.dequeue() // 当前工作模式
+    var shift_sending = shift_queue.dequeue()
+    // 启动输入流驱动器，向DUT输入数据
+    dut.io.in_Mats.valid #= true
+    var case_sent_num=0
+    StreamDriver(dut.io.in_Mats, dut.clockDomain) { payload =>
+      if (AllTestCaseSentReported){
+        false
+      } else {
+      // 设置工作模式
+      payload.OpMode.do_PostTranspose #= mode_sending(0)
+      if((mode_sending(1)==true) && (mode_sending(2)==false) && (mode_sending(3)==false) && (mode_sending(4)==false))
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.MatMul // 矩阵乘法
+      else if(mode_sending(1)==false && mode_sending(2)==true && mode_sending(3)==false && mode_sending(4)==false)
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.ElementMul // 按元素乘
+      else if(mode_sending(1)==false && mode_sending(2)==false && mode_sending(3)==true&& mode_sending(4)==false)
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.ElementAdd // 按元素加
+      else if(mode_sending(1)==false && mode_sending(2)==false && mode_sending(3)==false&& mode_sending(4)==true)
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.ElementMax // 按元素最大值
+      else {
+        println("Invalid mode.")
+        assert(false)
+      }
+
+      payload.OpMode.post_Shift #= shift_sending
+
+      //确保按元素操作的矩阵均为正方形（由于输出buffer的尺寸限制）
+      if (mode_sending(1)==false){
+        mult_dim = rowsA
+      } else {
+        mult_dim = matmul_mult_dim
+      }
+      // 依次为每一行/列赋值
+      // A矩阵输入
+      for (row_index <- 0 until cfg.in_MatA_row_num) {
+        if (StreamDriver_sending_period < mult_dim - 1) {
+          payload.A(row_index).data #= matrixA_sending(row_index)(StreamDriver_sending_period)
+          payload.A(row_index).Final #= false
+        } else if (StreamDriver_sending_period == mult_dim - 1) {
+          payload.A(row_index).data #= matrixA_sending(row_index)(StreamDriver_sending_period)
+          payload.A(row_index).Final #= true // 最后一个数据打Final信号
+        } else {
+          payload.A(row_index).data #= 0
+          payload.A(row_index).Final #= false
+        }
+      }
+      // B矩阵输入
+      for (col_index <- 0 until cfg.in_MatB_col_num) {
+        if (StreamDriver_sending_period < mult_dim - 1) {
+          payload.B(col_index).data #= matrixB_sending(StreamDriver_sending_period)(col_index)
+          payload.B(col_index).Final #= false
+        } else if (StreamDriver_sending_period == mult_dim - 1) {
+          payload.B(col_index).data #= matrixB_sending(StreamDriver_sending_period)(col_index)
+          payload.B(col_index).Final #= true
+        } else {
+          payload.B(col_index).data #= 0
+          payload.B(col_index).Final #= false
+        }
+      }
+      // 打印当前周期信息
+      println(s"StreamDriver called:${StreamDriver_sending_period}")
+      // 判断是否切换到下一组输入
+      if (StreamDriver_sending_period == mult_dim - 1) {
+        StreamDriver_sending_period = 0
+        println(s"case${case_sent_num}")
+        println("A:")
+        printMatrix(matrixA_sending)
+        println("B:")
+        printMatrix(matrixB_sending)
+        
+        if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
+        {
+        if(AllTestCaseSentReported!=true)
+        {
+          println("All input queues are empty, stopping StreamDriver.")
+          AllTestCaseSentReported = true
+        }
+        AllTestCaseSent_Count += 1
+      }else{
+        matrixA_sending = matrixA_queue.dequeue()
+        matrixB_sending = matrixB_queue.dequeue()
+        mode_sending = mode_queue.dequeue()
+        shift_sending = shift_queue.dequeue()
+        println(s"matrixA_queue size: ${matrixA_queue.size}")
+        println(s"matrixB_queue size: ${matrixB_queue.size}")
+        println(s"mode_queue size: ${mode_queue.size}")
+        println(s"ref_queue size: ${ref_queue.size}")
+        case_sent_num += 1}
+      } else { StreamDriver_sending_period = StreamDriver_sending_period + 1}
+      true}
+    }
+
+    // 输出流随机化，模拟ready信号
+    StreamReadyRandomizer(dut.io.out_Mats, dut.clockDomain)
+    dut.io.out_Mats.ready #= true
+    var Dut_push_counter = 0 // DUT输出计数
+    var Ref_push_counter = 0 // 参考输出计数
+    // 监控DUT输出并与参考结果对比
+    StreamMonitor(dut.io.out_Mats, dut.clockDomain) { payload =>
+      var dut_result = Array.fill(cfg.in_MatA_row_num) { Array.fill(cfg.in_MatB_col_num) { 0 } }
+      if (dut.io.out_Mats.valid.toBoolean) {
+        for (row_index <- 0 until cfg.in_MatA_row_num) {
+          for (col_index <- 0 until cfg.in_MatB_col_num) {
+            dut_result(row_index)(col_index) = payload.Z(row_index)(col_index).toInt
+          }
+        }
+        println(s"dut_result${Dut_push_counter}:")
+        printMatrix(dut_result)
+        scoreboard.pushDut(dut_result)
+        Dut_push_counter = Dut_push_counter+1
+        println(s"ref_result${Ref_push_counter}:")
+        var resultMatrix =ref_queue.dequeue()
+        printMatrix(resultMatrix)
+        scoreboard.pushRef(resultMatrix)
+        Ref_push_counter=Ref_push_counter+1
+      }
+    }
+    // 监控输入流（可选）
+    StreamMonitor(dut.io.in_Mats, dut.clockDomain) { payload =>
+      {}
+    }
+    // 启动时钟激励
+    dut.clockDomain.forkStimulus(10)
+    // 等待所有结果比对完成
+    dut.clockDomain.waitActiveEdgeWhere(scoreboard.matches == matrix_num)
+    // 仿真结束时输出无效模式统计
+    println("TEST PASS".green)
+    simSuccess() // 仿真成功退出
+  }
+  if (AllTestCaseSent_Count > 0) {
+    println(s"Invalid mode occurred $AllTestCaseSent_Count times.")
+  }
+}
+object SystolicArray2D_Sim_AllMode extends SystolicArray2D_Sim
+{
+  //准备数据
+  for (matrix_idx <- 0 until matrix_num) {
+    var m_A = generateRandomMatrix(rowsA, colsA,random.nextInt(20))
+    var m_B = generateRandomMatrix(rowsB, colsB,random.nextInt(20))
+    var mode = generateRandomMode(random.nextInt(20))
+    var shift = generateRandomShiftAmount(shiftAmount = 4, seed = random.nextInt(20))
+    // 生成两个随机矩阵
+    matrixA_queue.enqueue(m_A)
+    matrixB_queue.enqueue(m_B)
+    mode_queue.enqueue(mode)
+    shift_queue.enqueue(shift)
+    if(mode(0) ==true){
+      if(mode(1)==true) {
+        //ref_queue.enqueue(multiplyMatrices(m_A, m_B).transpose)
+        //考虑输出移位与饱和处理
+        ref_queue.enqueue(multiplyMatricesWithShiftSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else if(mode(2)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseMultiplyMatrix(m_A, m_B).transpose)
+        //考虑输出移位与饱和处理
+        ref_queue.enqueue(elementWiseMultiplyMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else if(mode(3)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseAdditionMatrix(m_A, m_B).transpose)
+        //考虑输出移位与饱和处理
+        ref_queue.enqueue(elementWiseAdditionMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else if(mode(4)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        ref_queue.enqueue(elementWiseMaximumMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width).transpose)
+      } else {
+        println("Invalid mode.")
+        assert(false)
+      }
+    } else {
+      if(mode(1)==true) {
+        //ref_queue.enqueue(multiplyMatrices(m_A, m_B))
+        ref_queue.enqueue(multiplyMatricesWithShiftSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else if(mode(2)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseMultiplyMatrix(m_A, m_B))
+        ref_queue.enqueue(elementWiseMultiplyMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else if(mode(3)==true) {
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseAdditionMatrix(m_A, m_B))
+        ref_queue.enqueue(elementWiseAdditionMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else if (mode(4)==true){
+        m_B = rotateMatrixCounterClockwise(m_B)
+        //ref_queue.enqueue(elementWiseAdditionMatrix(m_A, m_B))
+        ref_queue.enqueue(elementWiseMaximumMatrixWithShiftAndSaturation(m_A, m_B, shiftAmount=shift, satBits = cfg.out_MatZ_element_Width))
+      } else {
+        println("Invalid mode.")
+        assert(false)
+      }
+    }
+  }
+  println(s"case generated:")
+  println(s"matrixA_queue size: ${matrixA_queue.size}")
+  println(s"matrixB_queue size: ${matrixB_queue.size}")
+  println(s"mode_queue size: ${mode_queue.size}")
+  println(s"ref_queue size: ${ref_queue.size}")
+
+  Sim_compiled.doSim("Elementwise") { dut =>
+    SimTimeout(190000) // 设置仿真超时时间，单位为仿真时钟周期
+
+    val scoreboard = new ScoreboardInOrder_matrix() // 创建自动对比参考结果的记分板
+    var StreamDriver_sending_period = 0 // 记录当前数据流发送周期
+    var reset_done=false
+    var do_random_clk = false
+
+    var matrixA_sending = matrixA_queue.dequeue() // 当前正在发送的矩阵A
+    var matrixB_sending = matrixB_queue.dequeue() // 当前正在发送的矩阵B
+    var mode_sending = mode_queue.dequeue() // 当前工作模式
+    var shift_sending = shift_queue.dequeue()
+    // 启动输入流驱动器，向DUT输入数据
+    dut.io.in_Mats.valid #= true
+    var case_sent_num=0
+    StreamDriver(dut.io.in_Mats, dut.clockDomain) { payload =>
+      if (AllTestCaseSentReported){
+        false
+      } else {
+      // 设置工作模式
+      payload.OpMode.do_PostTranspose #= mode_sending(0)
+      if((mode_sending(1)==true) && (mode_sending(2)==false) && (mode_sending(3)==false) && (mode_sending(4)==false))
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.MatMul // 矩阵乘法
+      else if(mode_sending(1)==false && mode_sending(2)==true && mode_sending(3)==false && mode_sending(4)==false)
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.ElementMul // 按元素乘
+      else if(mode_sending(1)==false && mode_sending(2)==false && mode_sending(3)==true&& mode_sending(4)==false)
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.ElementAdd // 按元素加
+      else if(mode_sending(1)==false && mode_sending(2)==false && mode_sending(3)==false&& mode_sending(4)==true)
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.ElementMax // 按元素最大值
+      else {
+        println("Invalid mode.")
+        assert(false)
+      }
+
+      payload.OpMode.post_Shift #= shift_sending
+
+      //确保按元素操作的矩阵均为正方形（由于输出buffer的尺寸限制）
+      if (mode_sending(1)==false){
+        mult_dim = rowsA
+      } else {
+        mult_dim = matmul_mult_dim
+      }
+      // 依次为每一行/列赋值
+      // A矩阵输入
+      for (row_index <- 0 until cfg.in_MatA_row_num) {
+        if (StreamDriver_sending_period < mult_dim - 1) {
+          payload.A(row_index).data #= matrixA_sending(row_index)(StreamDriver_sending_period)
+          payload.A(row_index).Final #= false
+        } else if (StreamDriver_sending_period == mult_dim - 1) {
+          payload.A(row_index).data #= matrixA_sending(row_index)(StreamDriver_sending_period)
+          payload.A(row_index).Final #= true // 最后一个数据打Final信号
+        } else {
+          payload.A(row_index).data #= 0
+          payload.A(row_index).Final #= false
+        }
+      }
+      // B矩阵输入
+      for (col_index <- 0 until cfg.in_MatB_col_num) {
+        if (StreamDriver_sending_period < mult_dim - 1) {
+          payload.B(col_index).data #= matrixB_sending(StreamDriver_sending_period)(col_index)
+          payload.B(col_index).Final #= false
+        } else if (StreamDriver_sending_period == mult_dim - 1) {
+          payload.B(col_index).data #= matrixB_sending(StreamDriver_sending_period)(col_index)
+          payload.B(col_index).Final #= true
+        } else {
+          payload.B(col_index).data #= 0
+          payload.B(col_index).Final #= false
+        }
+      }
+      // 打印当前周期信息
+      println(s"StreamDriver called:${StreamDriver_sending_period}")
+      // 判断是否切换到下一组输入
+      if (StreamDriver_sending_period == mult_dim - 1) {
+        StreamDriver_sending_period = 0
+        println(s"case${case_sent_num}")
+        println("A:")
+        printMatrix(matrixA_sending)
+        println("B:")
+        printMatrix(matrixB_sending)
+        
+        if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
+        {
+        if(AllTestCaseSentReported!=true)
+        {
+          println("All input queues are empty, stopping StreamDriver.")
+          AllTestCaseSentReported = true
+        }
+        AllTestCaseSent_Count += 1
+      }else{
+        matrixA_sending = matrixA_queue.dequeue()
+        matrixB_sending = matrixB_queue.dequeue()
+        mode_sending = mode_queue.dequeue()
+        shift_sending = shift_queue.dequeue()
+        println(s"matrixA_queue size: ${matrixA_queue.size}")
+        println(s"matrixB_queue size: ${matrixB_queue.size}")
+        println(s"mode_queue size: ${mode_queue.size}")
+        println(s"ref_queue size: ${ref_queue.size}")
+        case_sent_num += 1}
+      } else { StreamDriver_sending_period = StreamDriver_sending_period + 1}
+      true}
+    }
+
+    // 输出流随机化，模拟ready信号
+    StreamReadyRandomizer(dut.io.out_Mats, dut.clockDomain)
+    dut.io.out_Mats.ready #= true
+    var Dut_push_counter = 0 // DUT输出计数
+    var Ref_push_counter = 0 // 参考输出计数
+    // 监控DUT输出并与参考结果对比
+    StreamMonitor(dut.io.out_Mats, dut.clockDomain) { payload =>
+      var dut_result = Array.fill(cfg.in_MatA_row_num) { Array.fill(cfg.in_MatB_col_num) { 0 } }
+      if (dut.io.out_Mats.valid.toBoolean) {
+        for (row_index <- 0 until cfg.in_MatA_row_num) {
+          for (col_index <- 0 until cfg.in_MatB_col_num) {
+            dut_result(row_index)(col_index) = payload.Z(row_index)(col_index).toInt
+          }
+        }
+        println(s"dut_result${Dut_push_counter}:")
+        printMatrix(dut_result)
+        scoreboard.pushDut(dut_result)
+        Dut_push_counter = Dut_push_counter+1
+        println(s"ref_result${Ref_push_counter}:")
+        var resultMatrix =ref_queue.dequeue()
+        printMatrix(resultMatrix)
+        scoreboard.pushRef(resultMatrix)
+        Ref_push_counter=Ref_push_counter+1
+      }
+    }
+    // 监控输入流（可选）
+    StreamMonitor(dut.io.in_Mats, dut.clockDomain) { payload =>
+      {}
+    }
+    // 启动时钟激励
+    dut.clockDomain.forkStimulus(10)
+    // 等待所有结果比对完成
+    dut.clockDomain.waitActiveEdgeWhere(scoreboard.matches == matrix_num)
+    // 仿真结束时输出无效模式统计
+    println("TEST PASS".green)
     simSuccess() // 仿真成功退出
   }
   if (AllTestCaseSent_Count > 0) {

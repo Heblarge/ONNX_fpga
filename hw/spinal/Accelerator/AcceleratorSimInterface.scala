@@ -17,17 +17,17 @@ object AcceleratorSimInterface {
   val random = new Random(seed)
   val acceleratorCfg = AcceleratorCfg(
     UIDWidth = 16,
-    AddressWidth = 16,
+    AddressWidth = 20,
     ShapeWidth = 16,
-    systolicArraySideNum = 32,
+    systolicArraySideNum = 16,
     elementWidth = 24,
     intWidth = 12,
-    systolicArrayInFifoDepth = 32,
-    systolicArrayOutFifoDepth = 32,
+    systolicArrayInFifoDepth = 8,
+    systolicArrayOutFifoDepth = 8,
     systolicArrayInstFifoDepth = 32,
     activationOutFifoDepth = 32,
     slicedInstFifoDepth = 32,
-    numCores = 4
+    numCores = 2
   )
   lazy val compiled = SimConfig.withFsdbWave // This is magic
     .withConfig(
@@ -75,7 +75,7 @@ object AcceleratorSimInterface {
 
       var m = 0
       StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
-        if (m < 20) {
+        if (m < 1 + 2 * acceleratorCfg.numCores) { // This is magic
           instSim.driveSim(payload)
           m += 1
           true

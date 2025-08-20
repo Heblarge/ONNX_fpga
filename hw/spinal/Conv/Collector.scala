@@ -23,8 +23,6 @@ case class CollectorCfg(
   )
   val activationRowNum = systolicArraySideNum * systolicArraySideNum / activationUnitNum
   val dataWidthZ = systolicArraySideNum * elementWidthZ
-  val matZSubReceiveRowCntWidth = log2Up(activationRowNum)
-  val matZSubWriteRowCntWidth = log2Up(systolicArraySideNum)
   val CoreSelectWidth = log2Up(numCores)
 }
 
@@ -82,20 +80,14 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     StreamArbiterFactory.roundRobin.fragmentLock.on(matAfterActivations)
   )
 
-  val matZSubReceiveRowCnt = Reg(UInt(collectorCfg.matZSubReceiveRowCntWidth bits))
-  val matZsubReceiveFinish = matAfterActivation.fire && matZSubReceiveRowCnt === collectorCfg.activationRowNum - 1
-  when(slicedInst.fire) {
-    matZSubReceiveRowCnt := 0
-  } elsewhen (matAfterActivation.fire) {
-    matZSubReceiveRowCnt :=
-      Mux(matZSubReceiveRowCnt === collectorCfg.activationRowNum - 1, U(0), matZSubReceiveRowCnt + 1)
-  }
+  val matZSubReceiveRowCnt = Cnt(collectorCfg.activationRowNum - 1, slicedInst.fire, matAfterActivation.fire)
+  val matZsubReceiveFinish = matZSubReceiveRowCnt.willOverflow
 
   matAfterActivation.ready.setAsReg().init(False)
   val matZsubWriteFinish = Bool()
   when(slicedInst.fire || matZsubWriteFinish && !instFinish) {
     matAfterActivation.ready := True
-  } elsewhen (matAfterActivation.fire && matZSubReceiveRowCnt === collectorCfg.activationRowNum - 1) {
+  } elsewhen (matZsubReceiveFinish) {
     matAfterActivation.ready := False
   }
 
@@ -113,14 +105,8 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     matZsub(matZSubReceiveRowCnt) := matAfterActivation.Activation_x
   }
 
-  val matZSubWriteRowCnt = Reg(UInt(collectorCfg.matZSubWriteRowCntWidth bits))
-  matZsubWriteFinish := io.writeData.fire && matZSubWriteRowCnt === collectorCfg.systolicArraySideNum - 1
-  when(slicedInst.fire) {
-    matZSubWriteRowCnt := 0
-  } elsewhen (io.writeData.fire) {
-    matZSubWriteRowCnt :=
-      Mux(matZSubWriteRowCnt === collectorCfg.systolicArraySideNum - 1, U(0), matZSubWriteRowCnt + 1)
-  }
+  val matZSubWriteRowCnt = Cnt(collectorCfg.systolicArraySideNum - 1, slicedInst.fire, io.writeData.fire)
+  matZsubWriteFinish := matZSubWriteRowCnt.willOverflow
 
   io.writeAddr.StartAddr :=
     slicedInstReg.outputAddress + ((Mux(slicedInstReg.doTranspose, matBColSliceCnt, matARowSliceCnt) *
@@ -131,7 +117,7 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
   io.writeAddr.valid.setAsReg().init(False)
   when(io.writeAddr.fire) {
     io.writeAddr.valid := False
-  } elsewhen (matZsubReceiveFinish || io.writeData.fire && matZSubWriteRowCnt =/= collectorCfg.systolicArraySideNum - 1) {
+  } elsewhen (matZsubReceiveFinish || io.writeData.fire && !matZSubWriteRowCnt.willOverflowIfInc) {
     io.writeAddr.valid := True
   }
 
@@ -144,13 +130,11 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     io.writeData.valid := True
   }
 
-  val matZSliceNum = slicedInstReg.outputShape(0) / collectorCfg.systolicArraySideNum *
-    slicedInstReg.outputShape(1) / collectorCfg.systolicArraySideNum
-  val matZSliceCnt = Reg(UInt(2 * collectorCfg.SlicecntWidth bits))
-  instFinish := matZsubWriteFinish && matZSliceCnt === matZSliceNum - 1
-  when(slicedInst.fire) {
-    matZSliceCnt := 0
-  } elsewhen (matZsubWriteFinish) {
-    matZSliceCnt := Mux(matZSliceCnt === matZSliceNum - 1, U(0), matZSliceCnt + 1)
-  }
+  val matZSliceCnt = Cnt(
+    slicedInstReg.outputShape(0) / collectorCfg.systolicArraySideNum *
+      slicedInstReg.outputShape(1) / collectorCfg.systolicArraySideNum - 1,
+    slicedInst.fire,
+    matZsubWriteFinish
+  )
+  instFinish := matZSliceCnt.willOverflow
 }

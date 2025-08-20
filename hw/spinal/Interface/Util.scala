@@ -190,4 +190,19 @@ package object Util {
     def #=(arr: Array[Int]) = vec.zip(arr).foreach(p => p._1 #= p._2)
     def toArrayInt = vec.map(_.toInt).toArray
   }
+
+  case class Cnt(cntMax: UInt, clearCond: Bool, incCond: Bool) extends ImplicitArea[UInt] {
+    val cnt = Reg(UInt(cntMax.getWidth bits))
+    val willOverflowIfInc = cnt === cntMax
+    val willOverflow = incCond &&  willOverflowIfInc
+    val value = cnt
+    val valueNext = Mux(willOverflowIfInc, U(0), cnt + 1)
+    when(clearCond) {
+      cnt := 0
+    } elsewhen (incCond) {
+      cnt := valueNext
+    }
+
+    override def implicitValue = cnt
+  }
 }

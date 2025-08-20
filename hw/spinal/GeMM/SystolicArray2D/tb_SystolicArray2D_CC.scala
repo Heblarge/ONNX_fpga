@@ -10,6 +10,7 @@ import spinal.lib.sim.{StreamMonitor, StreamDriver, StreamReadyRandomizer, Score
 import scala.util.Random
 import scala.collection.mutable
 import Interface.MatrixOperation_TypeDef
+import Util._
 /**
   * 仿真中的DUT(design under test)调用者，主要功能是用StreamWidthAdapter将DUT的输出调整为一个时间步输出所有的结果，方便自动化验证结果是否正确
   *
@@ -44,8 +45,8 @@ object SystolicArray2D_CC_Sim extends App {
   val FileDir = "rtl/SystolicArray2D_CC/verilog"
   import java.io.File
   new File(FileDir).mkdirs()
-  val matrix_num = 10
-  val matmul_mult_dim = 8
+  val matrix_num = 1000
+  val matmul_mult_dim = 4
 
   // 矩阵A的行数和列数
   val rowsA = 4
@@ -60,6 +61,9 @@ object SystolicArray2D_CC_Sim extends App {
   val elementWise_mult_dim = rowsA
 
   var mult_dim = matmul_mult_dim
+  // 统计无效模式出现次数和提示标志
+  var AllTestCaseSent_Count = 0 // 统计无效模式出现次数
+  var AllTestCaseSentReported = false // 是否已打印过提示
 
   val cfg = SystolicArray2D_CC_Config(
     in_Length_Max = mult_dim,
@@ -70,8 +74,8 @@ object SystolicArray2D_CC_Sim extends App {
     in_MatB_element_Width = 8,
     out_MatZ_element_Width = 16,
     Enable_Transpose_logic = true,
-    in_FIFO_Depth = 2,
-    out_FIFO_Depth = 2
+    in_FIFO_Depth = 8,
+    out_FIFO_Depth = 8
 
   )
   val defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
@@ -121,17 +125,18 @@ object SystolicArray2D_CC_Sim extends App {
   }
 
   //生成工作模式
-  def generateRandomMode(bool: Boolean, do_transpose:Boolean): Array[Boolean] = {
-//    val rand = new Random()
-//    rand.setSeed(seed)
+  def generateRandomMode(seed:Int): Array[Boolean] = {
+    val rand = new Random()
+    rand.setSeed(seed)
     val result = Array.fill(5)(false) // 随机生成0到1之间的整数
-    result(0) = do_transpose//do_PostTranspose
-    result(1) = false//bool//bool//do_MatMul
-    result(2) = false//(!bool)//do_ElementWiseMul
-    result(3) = false//do_ElementWiseAdd
-    result(4) = true//(!bool)//do_ElementWiseMax
+    result(0) = rand.nextBoolean//do_PostTranspose
+    val mode=rand.nextInt(4)
+    if(mode==0){result(1)=true;result(2)=false;result(3)=false;result(4)=false}//matmul
+    else if(mode==1){result(1)=false;result(2)=true;result(3)=false;result(4)=false}//mul
+    else if(mode==2){result(1)=false;result(2)=false;result(3)=true;result(4)=false}//add
+    else if(mode==3){result(1)=false;result(2)=false;result(3)=false;result(4)=true}//max
     result
-  }
+}
 
   /**
   * 逆时针旋转矩阵 90 度
@@ -359,7 +364,7 @@ object SystolicArray2D_CC_Sim extends App {
   for (matrix_idx <- 0 until matrix_num) {
     var m_A = generateRandomMatrix(rowsA, colsA,random.nextInt(20))
     var m_B = generateRandomMatrix(rowsB, colsB,random.nextInt(20))
-    var mode = generateRandomMode(random.nextBoolean(),random.nextBoolean())//true:matmul false:elementwise false
+    var mode = generateRandomMode(random.nextInt(20))//true:matmul false:elementwise false
     var shift = generateRandomShiftAmount(shiftAmount = 4, seed = random.nextInt(20))
     // 生成两个随机矩阵
     matrixA_queue.enqueue(m_A)
@@ -506,9 +511,9 @@ object SystolicArray2D_CC_Sim extends App {
 
     // drive random data and add pushed data to scoreboard
     dut.io.in_Mats.valid #= true
+    var case_sent_num=0
     StreamDriver(dut.io.in_Mats, dut.clk_in) { payload =>
-    if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty) {
-        println("All input queues are empty, stopping StreamDriver.")
+      if (AllTestCaseSentReported){
         false
       } else {
       payload.mode.do_PostTranspose #= mode_sending(0)
@@ -555,30 +560,24 @@ object SystolicArray2D_CC_Sim extends App {
         payload.Final #= false
       }
       println(s"StreamDriver called:${StreamDriver_sending_period}")
+      // 判断是否切换到下一组输入
       if (StreamDriver_sending_period == mult_dim - 1) {
         StreamDriver_sending_period = 0
-
-        println(s"new input loaded")
+        println(s"case${case_sent_num}")
         println("A:")
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        println("Z:")
-        if (mode_sending(1)==true)
-          //printMatrix(multiplyMatrices(matrixA_sending, matrixB_sending))
-          printMatrix(multiplyMatricesWithShiftSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else if (mode_sending(2)==true)
-          //printMatrix(elementWiseMultiplyMatrix(matrixA_sending, matrixB_sending))
-          printMatrix(elementWiseMultiplyMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else if (mode_sending(3)==true)
-          //printMatrix(elementWiseAdditionMatrix(matrixA_sending, matrixB_sending))
-          printMatrix(elementWiseAdditionMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else if (mode_sending(4)==true)
-          printMatrix(elementWiseMaximumMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= shift_sending, satBits = cfg.out_MatZ_element_Width))
-        else{
-          println("Invalid mode.")
-          assert(false)
+        
+        if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
+        {
+        if(AllTestCaseSentReported!=true)
+        {
+          println("All input queues are empty, stopping StreamDriver.")
+          AllTestCaseSentReported = true
         }
+        AllTestCaseSent_Count += 1
+      }else{
         matrixA_sending = matrixA_queue.dequeue()
         matrixB_sending = matrixB_queue.dequeue()
         mode_sending = mode_queue.dequeue()
@@ -587,6 +586,7 @@ object SystolicArray2D_CC_Sim extends App {
         println(s"matrixB_queue size: ${matrixB_queue.size}")
         println(s"mode_queue size: ${mode_queue.size}")
         println(s"ref_queue size: ${ref_queue.size}")
+        case_sent_num += 1}
       } else { StreamDriver_sending_period = StreamDriver_sending_period + 1}
       true}
     }
@@ -631,7 +631,8 @@ object SystolicArray2D_CC_Sim extends App {
 
     //dut.clockDomain.forkStimulus(10)
 
-    dut.clk_out.waitActiveEdgeWhere(scoreboard.matches == matrix_num )
+    dut.clk_out.waitActiveEdgeWhere(scoreboard.matches == matrix_num)
+    println("TEST PASS".green)
     simSuccess()
   }
 }
