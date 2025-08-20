@@ -1,19 +1,13 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import os
 import sys
 import struct
 import argparse
 
-# ===================================================================
-#  默认配置
-# ===================================================================
 GOLDEN_DIR = 'golden_outputs'
 JAVA_DIR = 'java_outputs'
 ORDER_FILE = 'execution_order.txt'
 DEFAULT_TOLERANCE = 1e-2
-# ===================================================================
 
 def load_java_tensor(file_path):
     with open(file_path, 'rb') as f:

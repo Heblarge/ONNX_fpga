@@ -7,7 +7,7 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
 
 if len(sys.argv) < 2:
     print("\n错误: 请提供一个 .npy 文件作为参数。")
-    print("用法示例: python view_py.py golden_outputs/_v_5061.npy\n")
+    print("用法示例: python view_py.py golden_outputs/PPQ_Variable_1539.npy\n")
     sys.exit(1)
 
 # 从命令行参数获取要查看的文件路径
@@ -21,7 +21,7 @@ try:
     print(f"\n张量形状 (Shape): {tensor.shape}")
     print(f"数据类型 (Data Type): {tensor.dtype}")
     print("\n--- 张量内容 (Content): ---\n")
-    print(tensor[24][3][229])
+    print(tensor)
 
     print("\n-----------------------------------\n")
 
