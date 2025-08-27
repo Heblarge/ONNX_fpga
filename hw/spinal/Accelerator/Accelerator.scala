@@ -144,6 +144,10 @@ case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
   collector.io.writeData <> datapumpZ.io.DataStream
   sdpramZ.io.write <> datapumpZ.io.MemoryWritePort
   sdpramZ.noRead()
+  //防止这些模块被剪枝
+  sdpramA.io.dontSimplifyIt()
+  sdpramB.io.dontSimplifyIt()
+  sdpramZ.io.dontSimplifyIt()
 }
 
 object Accelerator_Verilog extends App {
