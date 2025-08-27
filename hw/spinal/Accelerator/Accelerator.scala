@@ -28,8 +28,6 @@ case class AcceleratorCfg(
     slicedInstFifoDepth: Int,
     numCores: Int
 ) {
-  //require(systolicArrayInFifoDepth == 32, "This is magic")
-  //require(systolicArrayOutFifoDepth == 32, "This is magic")
   val SlicecntWidth = log2Up(round(ceil((pow(2, ShapeWidth) - 1) / systolicArraySideNum)))
   val ShiftWidth = log2Up(elementWidth + 1) + 1
   val dataWidth = systolicArraySideNum * elementWidth

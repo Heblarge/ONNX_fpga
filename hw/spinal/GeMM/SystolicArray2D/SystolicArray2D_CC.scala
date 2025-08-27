@@ -183,35 +183,41 @@ case class SystolicArray2D_CC(
     compressed_MatZ_afterFIFO<>io.out_Mats
   }
 }
-//import MemBlackBoxer.PhaseMemBlackBoxer._
-//import scala.collection.mutable
-//object SystolicArray2D_CC_Verilog extends App {
-//  val testLength = 32
-//  val clk_domain_defaultConfig=ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = HIGH, softResetActiveLevel = HIGH, clockEnableActiveLevel = HIGH)
-//
-//  val cfg = SystolicArray2D_CC_Config(
-//    in_Length_Max = testLength,
-//    in_Length_Min = testLength,
-//    in_MatA_row_num = 32,
-//    in_MatB_col_num = 32,
-//    in_MatA_element_Width = 8, // 输入的A矩阵的每个数的位宽
-//    in_MatB_element_Width = 8, // 输入的B矩阵的每个数的位宽
-//    out_MatZ_element_Width = 8,// 输出的Z矩阵的每个数的位宽
-//  )
-//  val vendor = MemBlackBoxer.Vendor.UMC40
-//  val FileDir = "rtl/SystolicArray2D_CC/verilog"
-//  import java.io.File
-//  new File(FileDir).mkdirs()
-//
-//  val rtl=SpinalConfig(
-//    targetDirectory = FileDir,
-//    oneFilePerComponent = false,
-//    //memBlackBoxers = mutable.ArrayBuffer(new PhaseSramConverter(vendor)),
-//    defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
-//    removePruned=true,
-//    bitVectorWidthMax = 20000, //disable internal bigvector limitation"Way too big signal Bits"
-//  ).generateVerilog(new SystolicArray2D_CC(cfg))
-//  rtl.printPruned()
-//
-//  ////tools.HDElkDiagramGen(rtl)
-//}
+import MemBlackBoxer.PhaseMemBlackBoxer._
+import scala.collection.mutable
+object SystolicArray2D_CC_Verilog extends App {
+ val testLength = 32
+ val clk_domain_defaultConfig=ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = HIGH, softResetActiveLevel = HIGH, clockEnableActiveLevel = HIGH)
+
+ val cfg = SystolicArray2D_CC_Config(
+    in_Length_Max = 32,
+    in_Length_Min = 16,
+    in_MatA_row_num = 32,
+    in_MatB_col_num = 32,
+    in_MatA_element_Width = 8,
+    in_MatB_element_Width = 8,
+    out_MatZ_element_Width = 16,
+    Enable_Transpose_logic = true,
+    in_FIFO_Depth = 8,
+    out_FIFO_Depth = 8
+  )
+ val vendor = MemBlackBoxer.Vendor.UMC40
+ val FileDir = "rtl/SystolicArray2D_CC/verilog"
+ import java.io.File
+ new File(FileDir).mkdirs()
+
+ val rtl=SpinalConfig(
+   targetDirectory = FileDir,
+   oneFilePerComponent = false,
+   //memBlackBoxers = mutable.ArrayBuffer(new PhaseSramConverter(vendor)),
+   defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
+   removePruned=true,
+   bitVectorWidthMax = 20000, //disable internal bigvector limitation"Way too big signal Bits"
+ ).generateVerilog(new SystolicArray2D_CC_depress_for_Sim(cfg=cfg,
+ clk_in = ClockDomain.external("clk_in"),
+clk_out = ClockDomain.external("clk_out"),
+clk_core = ClockDomain.external("clk_core")))
+ rtl.printPruned()
+
+ ////tools.HDElkDiagramGen(rtl)
+}
