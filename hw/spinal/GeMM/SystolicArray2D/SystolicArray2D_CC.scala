@@ -127,8 +127,8 @@ case class SystolicArray2D_CC(
 //  }
 //  def out_Mats_Type():out_Mats_TypeDef={new out_Mats_TypeDef(cfg)}
   val io = new Bundle {
-    val in_Mats = slave(Stream(in_Mats_TypeDef(cfg))).addAttribute("DONT_TOUCH = \"TRUE\"")
-    val out_Mats = master(Stream(out_Mats_TypeDef(cfg))).addAttribute("DONT_TOUCH = \"TRUE\"")
+    val in_Mats = slave(Stream(in_Mats_TypeDef(cfg)))//.addAttribute("DONT_TOUCH = \"TRUE\"")
+    val out_Mats = master(Stream(out_Mats_TypeDef(cfg)))//.addAttribute("DONT_TOUCH = \"TRUE\"")
   }
 
   val SystolicArray2D_Instance = clk_core(SystolicArray2D(cfg.SystolicArray2D_Cfg))

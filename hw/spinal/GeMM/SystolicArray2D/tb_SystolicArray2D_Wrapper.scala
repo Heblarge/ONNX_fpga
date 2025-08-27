@@ -23,11 +23,11 @@ case class SystolicArray2D_Wrap_depress_for_Sim(cfg: SystolicArray2D_Wrap_Config
   val DUT=new SystolicArray2D_Wrapper(cfg,clk_in,clk_out,clk_core)
 
   val io = new Bundle {
-    val in_Mats = slave(Stream(DUT.in_Mats_Type())).addAttribute("DONT_TOUCH = \"TRUE\"")
+    val in_Mats = slave(Stream(DUT.in_Mats_Type()))//.addAttribute("DONT_TOUCH = \"TRUE\"")
     val out_MatZ = master(
       Stream(Vec.fill(cfg.to_SystolicArray2D_CC_Config().out_MatZ_row_num)(Vec.fill(cfg.to_SystolicArray2D_CC_Config().out_MatZ_col_num)(SInt(cfg.out_MatZ_element_Width bits))))
-    ).addAttribute("DONT_TOUCH = \"TRUE\"")
-    val out_coreInstruction_AfterMatrixOperation = master(Stream((DUT.CoreInstruction_AfterMatrixOperation_Type()))).addAttribute("DONT_TOUCH = \"TRUE\"")
+    )//.addAttribute("DONT_TOUCH = \"TRUE\"")
+    val out_coreInstruction_AfterMatrixOperation = master(Stream((DUT.CoreInstruction_AfterMatrixOperation_Type())))//.addAttribute("DONT_TOUCH = \"TRUE\"")
   }
   io.in_Mats>>DUT.io.in_Mats_with_Core_Instruction
 //  val to_decompres = DUT.io.out_Mats_with_Core_Instruction.map(payload=>{

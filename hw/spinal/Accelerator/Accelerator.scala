@@ -145,3 +145,43 @@ case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
   sdpramZ.io.write <> datapumpZ.io.MemoryWritePort
   sdpramZ.noRead()
 }
+
+object Accelerator_Verilog extends App {
+  val FileDir = "rtl/Accelerator/verilog"
+  import java.io.File
+  new File(FileDir).mkdirs()
+  val acceleratorCfg = AcceleratorCfg(
+    UIDWidth = 19,
+    AddressWidth = 20,
+    ShapeWidth = 16,
+    systolicArraySideNum = 32,
+    elementWidth = 24,
+    intWidth = 12,
+    systolicArrayInFifoDepth = 2,
+    systolicArrayOutFifoDepth = 2,
+    systolicArrayInstFifoDepth = 16,
+    activationOutFifoDepth = 32,
+    slicedInstFifoDepth = 16,
+    numCores = 1
+  )
+  // val acceleratorCfg = AcceleratorCfg(
+  //   UIDWidth = 16,
+  //   AddressWidth = 16,
+  //   ShapeWidth = 16,
+  //   systolicArraySideNum = 2,
+  //   elementWidth = 24,
+  //   intWidth = 12,
+  //   systolicArrayInFifoDepth = 32,
+  //   systolicArrayOutFifoDepth = 32,
+  //   systolicArrayInstFifoDepth = 32,
+  //   activationOutFifoDepth = 32,
+  //   slicedInstFifoDepth = 32,
+  //   numCores = 2
+  // )
+      SpinalConfig(
+        targetDirectory = FileDir,
+        oneFilePerComponent = true,
+        removePruned = true,
+        bitVectorWidthMax = 100000
+      ).generateVerilog(new Accelerator(acceleratorCfg))//.printPruned()
+  }

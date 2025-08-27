@@ -37,8 +37,8 @@ case class ElementWise(cfg: ElementWise_Config) extends Component{
   }
   def out_Mats_Bundle():out_Mats_TypeDef={new out_Mats_TypeDef(cfg)}
   val io = new Bundle {
-    val in_Mats = slave(Stream(in_Mats_Bundle())).addAttribute("DONT_TOUCH = \"TRUE\"")
-    val out_Mats = master(Stream(out_Mats_Bundle())).addAttribute("DONT_TOUCH = \"TRUE\"")
+    val in_Mats = slave(Stream(in_Mats_Bundle()))//.addAttribute("DONT_TOUCH = \"TRUE\"")
+    val out_Mats = master(Stream(out_Mats_Bundle()))//.addAttribute("DONT_TOUCH = \"TRUE\"")
   }
   //计数器统计乘次数
   val counter = Reg(UInt(log2Up(cfg.in_Length_Max) bits)) init(0)

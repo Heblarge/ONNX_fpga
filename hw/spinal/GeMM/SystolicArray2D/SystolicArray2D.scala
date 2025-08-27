@@ -225,8 +225,8 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   def out_Mats_Bundle():out_Mats_TypeDef={new out_Mats_TypeDef(cfg)}
 
   val io = new Bundle {
-    val in_Mats = slave(Stream(in_Mats_Bundle())).addAttribute("DONT_TOUCH = \"TRUE\"")
-    val out_Mats = master(Stream(out_Mats_Bundle())).addAttribute("DONT_TOUCH = \"TRUE\"")
+    val in_Mats = slave(Stream(in_Mats_Bundle()))//.addAttribute("DONT_TOUCH = \"TRUE\"")
+    val out_Mats = master(Stream(out_Mats_Bundle()))//.addAttribute("DONT_TOUCH = \"TRUE\"")
   }
 
   //锁存io.in_Mats.payload.mode，以实现只有第一个有效数据的OpMode是有效的

@@ -26,10 +26,10 @@ case class SystolicArray2D_CC_depress_for_Sim(cfg: SystolicArray2D_CC_Config,
     ) extends Component {
       val DUT=new SystolicArray2D_CC(cfg,clk_in,clk_out,clk_core)
     val io = new Bundle {
-    val in_Mats = slave(Stream(DUT.in_Mats_Type())).addAttribute("DONT_TOUCH = \"TRUE\"")
+    val in_Mats = slave(Stream(DUT.in_Mats_Type()))//.addAttribute("DONT_TOUCH = \"TRUE\"")
     val out_MatZ = master(
       Stream(Vec.fill(cfg.out_MatZ_row_num)(Vec.fill(cfg.out_MatZ_col_num)(SInt(cfg.out_MatZ_element_Width bits))))
-    ).addAttribute("DONT_TOUCH = \"TRUE\"")
+    )//.addAttribute("DONT_TOUCH = \"TRUE\"")
   }
   io.in_Mats>>DUT.io.in_Mats
   val to_decompres=DUT.io.out_Mats.map(payload=>{
