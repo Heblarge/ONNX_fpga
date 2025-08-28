@@ -58,7 +58,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
   
   //这一级的输入，从上游流中获取
   
-  MulMax_Node.driveFrom(upStream_for_result)((self,payload)=> 
+  MulMax_Node.driveFrom(upStream_for_result.pipelined(true,true,false))((self,payload)=> 
     {
       self(PAYLOAD_A):= payload.A
       self(PAYLOAD_B):= payload.B

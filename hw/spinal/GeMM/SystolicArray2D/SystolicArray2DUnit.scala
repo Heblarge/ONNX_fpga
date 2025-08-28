@@ -177,7 +177,7 @@ case class SystolicArray2DUnit(cfg: SystolicArray2DUnit_Config) extends Systolic
 
   //这一级的输入，从上游流中获取
   
-  Mul_Node.driveFrom(upStream_for_result.throwWhen(upStream_for_result.payload.Ctrl.Mode=/=MatrixOperation_TypeDef.MatMul))((self,payload)=> 
+  Mul_Node.driveFrom(upStream_for_result.throwWhen(upStream_for_result.payload.Ctrl.Mode=/=MatrixOperation_TypeDef.MatMul).pipelined(true,true,false))((self,payload)=> 
     {
       self(PAYLOAD_A):= payload.A
       self(PAYLOAD_B):= payload.B
@@ -247,7 +247,12 @@ case class SystolicArray2DUnit(cfg: SystolicArray2DUnit_Config) extends Systolic
 }
 
 object SystolicArray2DUnit_Verilog extends App{
-    val cfg = SystolicArray2DUnit_Config(32,16,16)
+    val cfg = SystolicArray2DUnit_Config(
+      in_Length   =32,  // number of input data
+      inA_Width   =16,
+      inB_Width   =16,
+      outZ_Width  =16,
+      ID_Width    =4)
 
     val FileDir = "rtl/SystolicArray2DUnit/verilog"
     import java.io.File
@@ -256,7 +261,6 @@ object SystolicArray2DUnit_Verilog extends App{
     SpinalConfig(
     targetDirectory = FileDir,
     oneFilePerComponent = true,
-    defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
     ).generateVerilog(new SystolicArray2DUnit(cfg)).printPruned()
     
     //tools.HDElkDiagramGen(SpinalVerilog(new SystolicArray2DUnit(cfg)))

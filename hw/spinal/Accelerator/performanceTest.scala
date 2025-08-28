@@ -128,14 +128,13 @@ object AcceleratorPerfOnce extends App {
 
     var totalCycles: Long   = -1
     var cyclesPerTest: Double = -1
-    // ---- 变更: 移除原有的 throughput 变量，因为它不精确
-    var totalOps: Long = -1 // 新增：总浮点运算次数
-    var flopsPerCycle: Double = -1 // 新增：每周期浮点运算次数 (FLOPS/cycle)
+    var totalOps: Long = -1 // 总浮点运算次数
+    var flopsPerCycle: Double = -1 // 每周期浮点运算次数 (FLOPS/cycle)
 
     compiled.doSimUntilVoid { dut =>
-      SimTimeout(1000000 * period)
-      dut.clockDomain.forkStimulusRandomClk(random, period)
-      dut.clkCore.forkStimulusRandomClk(random, period)
+      SimTimeout(1000000 * 4 * period)
+      dut.clockDomain.forkStimulus(period)
+      dut.clkCore.forkStimulus(4*period)
 
       var startTime: Long = -1
       var endTime: Long   = -1
@@ -287,15 +286,15 @@ object AcceleratorTb_PerformanceTest extends App {
 
   val defaultCfg = AcceleratorCfg(
     UIDWidth = 19,
-    AddressWidth = 17,
-    ShapeWidth = 15,
+    AddressWidth = 20,
+    ShapeWidth = 16,
     systolicArraySideNum = 4,
-    elementWidth = 25,
-    intWidth = 13,
+    elementWidth = 24,
+    intWidth = 12,
     systolicArrayInFifoDepth = 2,
     systolicArrayOutFifoDepth = 2,
     systolicArrayInstFifoDepth = 16,
-    activationOutFifoDepth = 16,
+    activationOutFifoDepth = 32,
     slicedInstFifoDepth = 16,
     numCores = 1
   )
