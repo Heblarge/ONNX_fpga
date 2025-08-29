@@ -12,6 +12,7 @@ import scala.collection.mutable
 import java.io.File
 //import Slicer._
 import Interface._
+import Util._
 
 import java.lang
 
@@ -58,7 +59,7 @@ object tb_SystolicArray2d_Wrapper extends App {
   val FileDir = "rtl/SystolicArray2D_Wrapper/verilog"
   new File(FileDir).mkdirs()
 
-  val matrix_num = 100
+  val matrix_num = 1000
   val matmul_mult_dim = 4
 
   // 矩阵A的行数和列数
@@ -94,7 +95,7 @@ object tb_SystolicArray2d_Wrapper extends App {
     compileFlags = List("-kdb","-lca", "+notimingchecks"), elaborateFlags = List("-fgp", "-kdb", "-lca","+rad", "+notimingchecks"), runFlags = List("-l ./run.log"))
   val Spinalcfg=SpinalConfig(targetDirectory = FileDir,
     oneFilePerComponent = true, defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW), bitVectorWidthMax = 20000) //disable internal bigvector limitation"Way too big signal Bits"
-  val Sim_compiled=SimConfig.withVCS(flag).withFsdbWave.withTimeScale(1 ns).withTimePrecision(1 ns).withConfig(Spinalcfg).allOptimisation
+  val Sim_compiled=SimConfig.withVCS(flag).withVcdWave.withTimeScale(1 ns).withTimePrecision(1 ns).withConfig(Spinalcfg).allOptimisation
     .compile(new SystolicArray2D_Wrap_depress_for_Sim(cfg=cfg, clk_in = ClockDomain.external("in"), clk_out = ClockDomain.external("out"), clk_core = ClockDomain.external("core")))
 
   // 软件函数
@@ -238,7 +239,7 @@ object tb_SystolicArray2d_Wrapper extends App {
   // 准备仿真 Case
   val random = new Random()
   val global_seed = 1234//1334
-  random.setSeed(global_seed)
+  //random.setSeed(global_seed)
   for (matrix_idx <- 0 until matrix_num) {
     // -------------------------------
     // 生成测试数据
@@ -291,7 +292,9 @@ object tb_SystolicArray2d_Wrapper extends App {
   }
 
   // 开始仿真
-  Sim_compiled.doSim("simple test",seed = 2344) { dut =>
+  Sim_compiled.doSim("simple test") { dut =>
+
+    SimTimeout(240000)
     val scoreboard = new ScoreboardInOrder_matrix()
     val scoreboard1 = new ScoreboardInOrder_Bigint()
 
@@ -392,7 +395,14 @@ object tb_SystolicArray2d_Wrapper extends App {
     var matrixB_sending = matrixB_queue.dequeue()
     var coreInstruction_sending = coreInstruction_queue.dequeue()
     dut.io.in_Mats.valid #= true
+    var AllTestCaseSent_Count = 0 // 统计无效模式出现次数
+    var AllTestCaseSentReported = false // 是否已打印过提示
+    var case_sent_num=0
     StreamDriver(dut.io.in_Mats, dut.DUT.clk_in) { payload =>
+
+      if (AllTestCaseSentReported){
+        false
+      } else {
       payload.CoreInstruction.Collector_Instruction.UID #= coreInstruction_sending.UID
       payload.CoreInstruction.SystolicArray2D_CC_Instruction.matrixOperation #= coreInstruction_sending.matrixOperation
       payload.CoreInstruction.SystolicArray2D_CC_Instruction.shiftLeft_AfterMatrixOperation #= coreInstruction_sending.shiftLeft_AfterActivation
@@ -432,32 +442,29 @@ object tb_SystolicArray2d_Wrapper extends App {
       if (StreamDriver_sending_period == mult_dim - 1) {
         StreamDriver_sending_period = 0
 
-        println(s"new input loaded")
+        println(s"case${case_sent_num}")
         println("A:")
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        println("Z:")
-        if (coreInstruction_sending.matrixOperation == MatrixOperation_TypeDef.MatMul)
-          //printMatrix(multiplyMatrices(matrixA_sending, matrixB_sending))
-          printMatrix(multiplyMatricesWithShiftSaturation(matrixA_sending, matrixB_sending,shiftAmount= coreInstruction_sending.shiftLeft_AfterActivation, satBits = cfg.out_MatZ_element_Width))
-        else if (coreInstruction_sending.matrixOperation == MatrixOperation_TypeDef.ElementMul)
-          //printMatrix(elementWiseMultiplyMatrix(matrixA_sending, matrixB_sending))
-          printMatrix(elementWiseMultiplyMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= coreInstruction_sending.shiftLeft_AfterActivation, satBits = cfg.out_MatZ_element_Width))
-        else if (coreInstruction_sending.matrixOperation == MatrixOperation_TypeDef.ElementAdd)
-          //printMatrix(elementWiseAdditionMatrix(matrixA_sending, matrixB_sending))
-          printMatrix(elementWiseAdditionMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= coreInstruction_sending.shiftLeft_AfterActivation, satBits = cfg.out_MatZ_element_Width))
-        else if (coreInstruction_sending.matrixOperation == MatrixOperation_TypeDef.ElementMax)
-          printMatrix(elementWiseMaximumMatrixWithShiftAndSaturation(matrixA_sending, matrixB_sending,shiftAmount= coreInstruction_sending.shiftLeft_AfterActivation, satBits = cfg.out_MatZ_element_Width))
-        else{
-          println("Invalid mode.")
-          assert(false)
+        if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || coreInstruction_queue.isEmpty)
+        {
+        if(AllTestCaseSentReported!=true)
+        {
+          println("All input queues are empty, stopping StreamDriver.")
+          AllTestCaseSentReported = true
         }
+        AllTestCaseSent_Count += 1}
+        else{
         matrixA_sending = matrixA_queue.dequeue()
         matrixB_sending = matrixB_queue.dequeue()
         coreInstruction_sending = coreInstruction_queue.dequeue()
+        println(s"matrixA_queue size: ${matrixA_queue.size}")
+        println(s"matrixB_queue size: ${matrixB_queue.size}")
+        println(s"coreInstruction_queue size: ${coreInstruction_queue.size}")
+      }
       } else { StreamDriver_sending_period = StreamDriver_sending_period + 1}
-      true
+      true}
     }
     StreamReadyRandomizer(dut.io.out_MatZ, dut.clk_out)
     StreamReadyRandomizer(dut.io.out_coreInstruction_AfterMatrixOperation, dut.clk_out)
@@ -509,8 +516,9 @@ object tb_SystolicArray2d_Wrapper extends App {
     }
     }
 
-    dut.clk_out.waitActiveEdgeWhere(scoreboard.matches == 80)
+    dut.clk_out.waitActiveEdgeWhere(scoreboard.matches == 100)
     //sleep(100000)
+    println("TEST PASS".green)
     simSuccess()
   }
 }

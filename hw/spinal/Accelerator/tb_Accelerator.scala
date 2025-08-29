@@ -23,38 +23,33 @@ object AcceleratorTb extends App {
   // var testNum = 1
   val acceleratorCfg = AcceleratorCfg(
     UIDWidth = 19,
-    AddressWidth = 17,
-    ShapeWidth = 15,
+    AddressWidth = 20,
+    ShapeWidth = 16,
     systolicArraySideNum = 16,
-    elementWidth = 25,
-    intWidth = 13,
-    systolicArrayInFifoDepth = 32,
-    systolicArrayOutFifoDepth = 32,
-    systolicArrayInstFifoDepth = 32,
-    activationOutFifoDepth = 33,
-    slicedInstFifoDepth = 31,
-    numCores = 3
+    elementWidth = 24,
+    intWidth = 12,
+    systolicArrayInFifoDepth = 16,
+    systolicArrayOutFifoDepth = 16,
+    systolicArrayInstFifoDepth = 16,
+    activationOutFifoDepth = 32,
+    slicedInstFifoDepth = 16,
+    numCores = 2
   )
-  // val acceleratorCfg = AcceleratorCfg(
-  //   UIDWidth = 16,
-  //   AddressWidth = 16,
-  //   ShapeWidth = 16,
-  //   systolicArraySideNum = 2,
-  //   elementWidth = 24,
-  //   intWidth = 12,
-  //   systolicArrayInFifoDepth = 32,
-  //   systolicArrayOutFifoDepth = 32,
-  //   systolicArrayInstFifoDepth = 32,
-  //   activationOutFifoDepth = 32,
-  //   slicedInstFifoDepth = 32,
-  //   numCores = 2
-  // )
-  val compiled = SimConfig.withVcdWave
+  val path = s"simWorkspace/AcceleratorTb"
+  import java.io.File
+  new File(path).mkdirs()
+  val compiled = SimConfig.workspacePath(path).withFsdbWave
     .withConfig(
       SpinalConfig(
-        bitVectorWidthMax = 100000
+        //oneFilePerComponent = true,
+        //removePruned = true,
+        bitVectorWidthMax = 100000,
+        //defaultClockDomainFrequency=FixedFrequency(1 GHz),
       )
     )
+    //.withTimeScale(1 ns)
+    //.withTimePrecision(1 ns)
+    .allOptimisation
     .withVCS(
       VCSFlags(
         compileFlags = List("-kdb", "-lca", "+notimingchecks"),
@@ -99,12 +94,20 @@ object AcceleratorTb extends App {
     matZs += instSim.acceleratorSim(matA, matB, acceleratorCfg.elementWidth, acceleratorCfg.fracWidth)
   }
 
+  var totalCycles: Long   = -1
+  var cyclesPerTest: Double = -1
+  var totalOps: Long = -1 // 总浮点运算次数
+  var flopsPerCycle: Double = -1 // 每周期浮点运算次数 (FLOPS/cycle)
+
   compiled.doSimUntilVoid { dut =>
-    SimTimeout(10000000 * period)
-    dut.clockDomain.forkStimulusRandomClk(random, period)
-    dut.clkCore.forkStimulusRandomClk(random, period)
+    SimTimeout(10000000 * 4*period)
+    dut.clockDomain.forkStimulus(period)
+    dut.clkCore.forkStimulus(4*period)
     // dut.clockDomain.forkStimulus(period)
     // dut.clkCore.forkStimulus(period)
+    var startTime: Long = -1
+    var endTime: Long   = -1
+    var cycleCount: Long = 0
     InstSim.memSetInstSims(
       dut.sdpramA.mem,
       instSims,
@@ -166,6 +169,21 @@ object AcceleratorTb extends App {
         n += 1
         if (n == testNum ) {
           println("TEST PASS".green)
+
+          endTime = cycleCount
+          totalCycles   = endTime - startTime
+          cyclesPerTest = totalCycles.toDouble / testNum
+          
+          // ---- 变更: 计算总浮点运算次数和 FLOPS/cycle
+          totalOps = instSims.map { inst =>
+            // M*K*N*2，其中 K=inst.input0Shape1，也是 inst.input1Shape0
+            2L * inst.input0Shape0 * inst.input0Shape1 * inst.input1Shape1
+          }.sum
+          flopsPerCycle = totalOps.toDouble / totalCycles
+          // ---- 结束变更
+          println(s"Total cycles: $totalCycles, Cycles/test: $cyclesPerTest")
+          println(s"Total operations: $totalOps, FLOPS/cycle: $flopsPerCycle")
+          
           simSuccess()
         }
       }

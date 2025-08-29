@@ -456,10 +456,9 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     Element_Unit2buffer_ptr.payload init (U(0))
     Element_Unit2buffer_ptr.valid init (False)
   }
-  val Element_col_ptr = enableElementWise generate 
-                        Vec.fill(cfg.in_MatA_row_num)(
+  val Element_col_ptr = enableElementWise generate                        
                           Reg(UInt(log2Up(cfg.in_MatB_col_num) bits)) init 0
-                        )//在element-wise模式下，代表了正在输出的反对角线的计算单元输出到缓冲区中的第几列
+                        //在element-wise模式下，代表了正在输出的反对角线的计算单元输出到缓冲区中的第几列
   
 
     // --- 指针管理逻辑 ---
@@ -467,9 +466,10 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     // 跟踪上一次分配的缓冲区指针
     val last_allocated_ptr = Reg(UInt(log2Up(cfg.out_MatZ_buffer_num) bits)) init 0
     // 组合逻辑，用于从上一次分配的指针之后开始环形查找
-    val next_idle_buffer_ptr = Reg(UInt(log2Up(cfg.out_MatZ_buffer_num) bits)) init U(0)
-    val idle_buffer_found = Reg(Bool()) init False
-
+    val next_idle_buffer_ptr = UInt(log2Up(cfg.out_MatZ_buffer_num) bits)
+    val idle_buffer_found = Bool()
+    next_idle_buffer_ptr:=U(0)
+    idle_buffer_found:=False
     // 环形查找：从 last_allocated_ptr 的下一个位置开始
     val start_search_ptr = (last_allocated_ptr + U(1)) % cfg.out_MatZ_buffer_num
     // 构建优先编码器
@@ -483,6 +483,12 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     val request_Matmul_allocation = 
       ((ResultStreams(0)(0).valid&& 
         (ResultStreams(0)(0).payload.Ctrl.Mode === MatrixOperation_TypeDef.MatMul)))
+    val element_allocation_grant = enableElementWise generate RegInit(True) init (True)//当buffer片已经分配给Element_Unit2buffer_ptr，阻止新的request_Element_allocation生成
+    val request_Element_allocation = enableElementWise generate (
+      (element_allocation_grant && // 只有在获得“许可”时才申请
+      (ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.Ctrl.Mode =/= MatrixOperation_TypeDef.MatMul)) && 
+      (ResultStreams(0)(cfg.in_MatB_col_num - 1).valid)
+      )
 
     // 分配逻辑
     when(request_Matmul_allocation) {
@@ -494,6 +500,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
             last_allocated_ptr := next_idle_buffer_ptr
       }
     } 
+    
     // Matmul_Unit2buffer_ptr对角线指针传递：将前一级指针值向后传递（从高位索引向低位索引传递）
     for (i <- (0 until cfg.diag_num-1).reverse){// i<-{cfg.diag_num-1,cfg.diag_num-2,...,1}
       
@@ -529,21 +536,15 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         }
       }
     }
-    val element_allocation_grant = enableElementWise generate RegInit(True) init (True)//当buffer片已经分配给Element_Unit2buffer_ptr，阻止新的request_Element_allocation生成
-      val request_Element_allocation = enableElementWise generate (
-        (element_allocation_grant && // 只有在获得“许可”时才申请
-        (ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.Ctrl.Mode =/= MatrixOperation_TypeDef.MatMul)) && 
-        (ResultStreams(0)(cfg.in_MatB_col_num - 1).valid)
-        )
+
     if(enableElementWise){
       //分配逻辑
-      when(request_Element_allocation) {
+      when(request_Element_allocation&&request_Matmul_allocation===False) {
         when(idle_buffer_found) {
           Element_Unit2buffer_ptr.payload := next_idle_buffer_ptr
           Element_Unit2buffer_ptr.valid := True
           buffer_array(next_idle_buffer_ptr).Status := out_MatZ_buffer_Status.Element_Collecting  
           last_allocated_ptr := next_idle_buffer_ptr
-          
           element_allocation_grant := False
         } otherwise {
           // 没有找到空闲缓冲区，
@@ -565,12 +566,12 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
             when(Element_Unit2buffer_ptr.valid){
               when(ResultStreams(row_index)(col_index).fire){
                 //当反对角线上的计算单元输出结果且工作模式不为matmul时更新buffer的行指针。
-                when(Element_col_ptr(row_index) < cfg.in_MatA_row_num-1){
-                  Element_col_ptr(row_index) := Element_col_ptr(row_index) + U(1)
+                when(Element_col_ptr < cfg.in_MatA_row_num-1){
+                  Element_col_ptr := Element_col_ptr + U(1)
                 }
-                when(Element_col_ptr(row_index) <= cfg.in_MatA_row_num-1) {//&& RegNext(units(0)(cfg.in_MatB_col_num-1).io.Go)
-                    buffer_array(Element_Unit2buffer_ptr.payload.resized).data(row_index)(Element_col_ptr(row_index)).payload := ResultStreams(row_index)(col_index).payload.Z
-                    buffer_array(Element_Unit2buffer_ptr.payload.resized).data(row_index)(Element_col_ptr(row_index)).valid := True
+                when(Element_col_ptr <= cfg.in_MatA_row_num-1) {//&& RegNext(units(0)(cfg.in_MatB_col_num-1).io.Go)
+                    buffer_array(Element_Unit2buffer_ptr.payload.resized).data(row_index)(Element_col_ptr).payload := ResultStreams(row_index)(col_index).payload.Z
+                    buffer_array(Element_Unit2buffer_ptr.payload.resized).data(row_index)(Element_col_ptr).valid := True
                     buffer_array(Element_Unit2buffer_ptr.payload.resized).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
                     buffer_array(Element_Unit2buffer_ptr.payload.resized).ID := ResultStreams(row_index)(col_index).payload.ID
                   }
@@ -650,8 +651,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
       when(Element_Unit2buffer_ptr.valid && Element_Unit2buffer_ptr.payload === current_output_ptr){
         Element_Unit2buffer_ptr.valid := False
         element_allocation_grant := True
-        for(row_index <- 0 until cfg.in_MatA_row_num){
-          Element_col_ptr(row_index) := 0}
+        Element_col_ptr := 0
       }
     }
     for(row_index <- 0 until cfg.in_MatA_row_num){

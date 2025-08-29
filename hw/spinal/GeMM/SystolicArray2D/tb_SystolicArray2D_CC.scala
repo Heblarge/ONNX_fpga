@@ -515,7 +515,8 @@ object SystolicArray2D_CC_Sim extends App {
     StreamDriver(dut.io.in_Mats, dut.clk_in) { payload =>
       if (AllTestCaseSentReported){
         false
-      } else {
+      } 
+      else {
       payload.mode.do_PostTranspose #= mode_sending(0)
       payload.mode.post_Shift #= shift_sending
       if((mode_sending(1)==true) && (mode_sending(2)==false) && (mode_sending(3)==false) && (mode_sending(4)==false))

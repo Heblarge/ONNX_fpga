@@ -74,9 +74,13 @@ object AcceleratorPerfOnce extends App {
     val runSeed = baseSeed + runID * 1000
     val random  = new Random(runSeed)
 
-    println(s"[Once] Testing $paramName = $value (Test ID: $testID), Run $runID, seed=$runSeed")
 
-    val compiled = SimConfig.withVcdWave
+
+    println(s"[Once] Testing $paramName = $value (Test ID: $testID), Run $runID, seed=$runSeed")
+    val path = s"simWorkspace/Accelerator_PerformanceTest_${testID}_Run${runID}"
+    import java.io.File
+    new File(path).mkdirs()
+    val compiled = SimConfig.workspacePath(path).withVcdWave
       .withConfig(
         SpinalConfig(
           bitVectorWidthMax = 100000

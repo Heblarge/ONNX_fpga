@@ -10,7 +10,7 @@ import GeMM.SystolicArray2D.sim_SIntShifter.inputQueue
 case class SteamDemoTop() extends Component {
   def streamHalfPipeN[T <: Data](input: Stream[T], n: Int): Stream[T] = {
     require(n >= 0)
-    (0 until n).foldLeft(input)((stream, _) => stream.halfPipe())
+    (0 until n).foldLeft(input)((stream, _) => stream.pipelined(true,true,false))
   }
 val io=new Bundle{
   val inStream = slave(Stream(Vec.fill(4)(SInt(16 bits))))

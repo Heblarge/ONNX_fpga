@@ -268,18 +268,18 @@ case class SystolicArray2D_Wrapper(
   * Generates Verilog code for the SystolicArray2D_Wrapper module.
   */
 object SystolicArray2D_Wrap_Verilog extends App {
-  val testLength = 32
+  val testLength = 4
   val clk_domain_defaultConfig=ClockDomainConfig(clockEdge = RISING, resetKind = ASYNC, resetActiveLevel = HIGH, softResetActiveLevel = HIGH, clockEnableActiveLevel = HIGH)
 
   val cfg = SystolicArray2D_Wrap_Config(
     in_Length_Max = testLength,
-    in_Length_Min = 16,
-    in_MatA_row_num = 16,
-    in_MatB_col_num = 16,
+    in_Length_Min = 4,
+    in_MatA_row_num = 4,
+    in_MatB_col_num = 4,
     in_MatA_element_Width = 8, // 输入的A矩阵的每个数的位宽
     in_MatB_element_Width = 8, // 输入的B矩阵的每个数的位宽
-    out_MatZ_element_Width = 22,// 输出的Z矩阵的每个数的位宽
-    UIDWidth = 32,
+    out_MatZ_element_Width = 8,// 输出的Z矩阵的每个数的位宽
+    UIDWidth = 4,
     ShiftWidth = 20,
     SlicecntWidth = 16
   )
@@ -290,9 +290,9 @@ object SystolicArray2D_Wrap_Verilog extends App {
 
   val rtl=SpinalConfig(
     targetDirectory = FileDir,
-    oneFilePerComponent = false,
+    oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
-    removePruned=true,
+    removePruned=false,
     bitVectorWidthMax = 20000, //disable internal bigvector limitation"Way too big signal Bits"
   ).generateVerilog(new SystolicArray2D_Wrapper(cfg,ClockDomain.external("SystolicArray2D_Wrapper_in"),
     ClockDomain.external("SystolicArray2D_Wrapper_out"),
