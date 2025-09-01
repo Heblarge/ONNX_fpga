@@ -73,7 +73,7 @@ object AcceleratorPerfOnce extends App {
     val path = s"simWorkspace/Accelerator_PerformanceTest_${testID}_Run${runID}"
     import java.io.File
     new File(path).mkdirs()
-    val compiled = SimConfig.workspacePath(path).withVcdWave
+    val compiled = SimConfig.workspacePath(path)//.withVcdWave
       .withConfig(
         SpinalConfig(
           bitVectorWidthMax = 100000
