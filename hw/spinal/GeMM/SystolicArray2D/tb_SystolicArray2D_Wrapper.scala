@@ -83,7 +83,7 @@ object tb_SystolicArray2d_Wrapper extends App {
     in_FIFO_Depth = 2,
     out_FIFO_Depth = 2,
     instruction_FIFO_Depth = 16,
-    UIDWidth = 8,
+    UIDWidth = 19,
     ShiftWidth = 20,
     SlicecntWidth = 16
   )

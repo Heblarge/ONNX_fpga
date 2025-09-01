@@ -141,8 +141,10 @@ case class SystolicArray2D_Wrapper(
     val out_Mats_with_Core_Instruction = master Stream(out_Mats_Type())
   }
 
-  //  // 三个时钟域定义（你可按需接管）
-
+  //将输入fork两份
+  val (in_Mats_with_Core_Instruction_for_SystolicArray2D_CC_inst,
+   in_Mats_with_Core_Instruction_for_CoreInstFifo) = 
+    clk_in(StreamFork2(io.in_Mats_with_Core_Instruction, synchronous=false))
   // 实例化 CC 模块
   /**
     * SystolicArray2D_CC_inst
@@ -150,32 +152,31 @@ case class SystolicArray2D_Wrapper(
     * Instantiated SystolicArray2D_CC module for core computation.
     */
   val SystolicArray2D_CC_inst = SystolicArray2D_CC(cfg.to_SystolicArray2D_CC_Config(), clk_in = clk_in, clk_core = clk_core, clk_out = clk_out)
-  // 创建 OpMode_TypeDef 类型
-  val OpMode_wire = OpMode_TypeDef(cfg.to_SystolicArray_Config())
-  // 提取 Stream 中的指令
-  val instruction = io.in_Mats_with_Core_Instruction.payload.CoreInstruction
-  // 将指令转换为OpMode（逻辑字段设置）
-  OpMode_wire.do_PostTranspose     := instruction.SystolicArray2D_CC_Instruction.doTranspose
-  OpMode_wire.MatrixOperation      := instruction.SystolicArray2D_CC_Instruction.matrixOperation 
-  OpMode_wire.post_Shift           := instruction.SystolicArray2D_CC_Instruction.shiftLeft_AfterMatrixOperation.resized
 
-  val cc_in_payload = SystolicArray2D_CC.in_Mats_TypeDef(cfg.to_SystolicArray2D_CC_Config())
-  val inst_fifo_ready = Bool()
-
-  // A/B 数据直接转发
-  for (i <- 0 until cfg.in_MatA_row_num) {
-    cc_in_payload.A(i) := io.in_Mats_with_Core_Instruction.payload.A(i)
+  //将输入的需要计算的部分映射到 SystolicArray2D_CC 模块的输入
+  val SystolicArray2D_CC_inst_in_Mats = in_Mats_with_Core_Instruction_for_SystolicArray2D_CC_inst.map{payload=>
+    val cc_in_payload = SystolicArray2D_CC.in_Mats_TypeDef(cfg.to_SystolicArray2D_CC_Config())
+    // 创建 OpMode_TypeDef 类型
+    val OpMode_wire = OpMode_TypeDef(cfg.to_SystolicArray_Config())
+    // 提取 Stream 中的指令
+    val instruction = io.in_Mats_with_Core_Instruction.payload.CoreInstruction
+    // 将指令转换为OpMode（逻辑字段设置）
+    OpMode_wire.do_PostTranspose     := instruction.SystolicArray2D_CC_Instruction.doTranspose
+    OpMode_wire.MatrixOperation      := instruction.SystolicArray2D_CC_Instruction.matrixOperation 
+    OpMode_wire.post_Shift           := instruction.SystolicArray2D_CC_Instruction.shiftLeft_AfterMatrixOperation.resized
+    // A/B 数据直接转发
+    for (i <- 0 until cfg.in_MatA_row_num) {
+      cc_in_payload.A(i) := io.in_Mats_with_Core_Instruction.payload.A(i)
+    }
+    for (j <- 0 until cfg.in_MatB_col_num) {
+      cc_in_payload.B(j) := io.in_Mats_with_Core_Instruction.payload.B(j)
+    }
+    cc_in_payload.mode  := OpMode_wire
+    cc_in_payload.Final := io.in_Mats_with_Core_Instruction.payload.Final
+    cc_in_payload
   }
-  for (j <- 0 until cfg.in_MatB_col_num) {
-    cc_in_payload.B(j) := io.in_Mats_with_Core_Instruction.payload.B(j)
-  }
-  cc_in_payload.mode  := OpMode_wire
-  cc_in_payload.Final := io.in_Mats_with_Core_Instruction.payload.Final
-
-  SystolicArray2D_CC_inst.io.in_Mats.valid := io.in_Mats_with_Core_Instruction.valid
-  io.in_Mats_with_Core_Instruction.ready := SystolicArray2D_CC_inst.io.in_Mats.ready & inst_fifo_ready
-  SystolicArray2D_CC_inst.io.in_Mats.payload := cc_in_payload
-
+  SystolicArray2D_CC_inst_in_Mats>>SystolicArray2D_CC_inst.io.in_Mats
+  
 //   Core Instruction FIFO
   /**
     * CoreInstFifo
@@ -190,19 +191,19 @@ case class SystolicArray2D_Wrapper(
   )
 
   // 将 in_Mats.payload.CoreInstruction 写入 FIFO
-  inst_fifo_ready := CoreInstFifo.io.push.ready
+  in_Mats_with_Core_Instruction_for_CoreInstFifo.ready := CoreInstFifo.io.push.ready
   val inst_pushed = clk_in(Reg(Bool()) init(False))
-  CoreInstFifo.io.push.payload.Activation_Instruction := io.in_Mats_with_Core_Instruction.payload.CoreInstruction.Activation_Instruction
-  CoreInstFifo.io.push.payload.Collector_Instruction := io.in_Mats_with_Core_Instruction.payload.CoreInstruction.Collector_Instruction
-  when(io.in_Mats_with_Core_Instruction.fire && !inst_pushed) {
+  CoreInstFifo.io.push.payload.Activation_Instruction := in_Mats_with_Core_Instruction_for_CoreInstFifo.payload.CoreInstruction.Activation_Instruction
+  CoreInstFifo.io.push.payload.Collector_Instruction := in_Mats_with_Core_Instruction_for_CoreInstFifo.CoreInstruction.Collector_Instruction
+  when(in_Mats_with_Core_Instruction_for_CoreInstFifo.fire && !inst_pushed) {
     // 仅在第一次fire时push
     CoreInstFifo.io.push.valid := True
     inst_pushed := True  // 设置标志，防止重复push
   } otherwise {
     CoreInstFifo.io.push.valid := False  // 当没有fire时，保持push信号为无效
   }
-  when(io.in_Mats_with_Core_Instruction.fire) {
-    when(io.in_Mats_with_Core_Instruction.payload.Final) {
+  when(in_Mats_with_Core_Instruction_for_CoreInstFifo.fire) {
+    when(in_Mats_with_Core_Instruction_for_CoreInstFifo.payload.Final) {
       inst_pushed := False
     }
   }

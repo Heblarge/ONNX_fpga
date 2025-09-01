@@ -14,18 +14,18 @@ import scala.collection.mutable.ArrayBuffer
 
 object AcceleratorTb extends App {
   val period = 10
-  val instDriveSpeed = 0.5f
+  val instDriveSpeed = 10f
   val errRateLimit = 0.01
   val zeroLimit = 10
   val seed = 114514
   val random = new Random(seed)
-  var testNum = 100
+  var testNum = 50
   // var testNum = 1
   val acceleratorCfg = AcceleratorCfg(
     UIDWidth = 19,
     AddressWidth = 20,
     ShapeWidth = 16,
-    systolicArraySideNum = 16,
+    systolicArraySideNum = 32,
     elementWidth = 24,
     intWidth = 12,
     systolicArrayInFifoDepth = 16,
@@ -108,6 +108,13 @@ object AcceleratorTb extends App {
     var startTime: Long = -1
     var endTime: Long   = -1
     var cycleCount: Long = 0
+    // 手动计数
+    fork {
+      while (true) {
+        dut.clockDomain.waitSampling()
+        cycleCount += 1
+      }
+    }
     InstSim.memSetInstSims(
       dut.sdpramA.mem,
       instSims,
@@ -128,6 +135,7 @@ object AcceleratorTb extends App {
     var m = 0
     StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
       if (m < testNum) {
+        if (m == 0) startTime = cycleCount
         instSims(m).driveSim(payload)
         m += 1
         true
