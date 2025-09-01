@@ -16,55 +16,48 @@ import scala.sys.process._
 import java.lang.ProcessBuilder
 import scala.util.control.NonFatal
 
+// ========================= 子程序：单次性能测试 =========================
 object AcceleratorPerfOnce extends App {
-  // ---- 解析参数（由父进程传入）----
-  // args 顺序见父程序调用处
-  require(args.length == 18, s"AcceleratorPerfOnce: expect 18 args, got ${args.length}")
+  // 统一模式：总是接收21个参数
+  require(args.length == 20, s"AcceleratorPerfOnce: expect 20 args, got ${args.length}")
+  
+  // 解析参数
   val testID                      = args(0).toInt
   val runID                       = args(1).toInt
-  val paramName                   = args(2)
-  val value                       = args(3).toInt
-  val testNum                     = args(4).toInt
-  val period                      = args(5).toInt
-  val instDriveSpeed              = args(6).toFloat
-  val errRateLimit                = args(7).toDouble
-  val zeroLimit                   = args(8).toInt
-  val baseSeed                    = args(9).toInt
-  val UIDWidth                    = args(10).toInt
-  val AddressWidth                = args(11).toInt
-  val ShapeWidth                  = args(12).toInt
-  val systolicArraySideNum_def    = args(13).toInt
-  val elementWidth                = args(14).toInt
-  val intWidth                    = args(15).toInt
-  val activationOutFifoDepth_def  = args(16).toInt
-  val numCores_def                = args(17).toInt
+  val systolicArraySideNum        = args(2).toInt
+  val systolicArrayInFifoDepth    = args(3).toInt
+  val systolicArrayOutFifoDepth   = args(4).toInt
+  val systolicArrayInstFifoDepth  = args(5).toInt
+  val activationOutFifoDepth      = args(6).toInt
+  val slicedInstFifoDepth         = args(7).toInt
+  val numCores                    = args(8).toInt
+  val testNum                     = args(9).toInt
+  val period                      = args(10).toInt
+  val instDriveSpeed              = args(11).toFloat
+  val errRateLimit                = args(12).toDouble
+  val zeroLimit                   = args(13).toInt
+  val baseSeed                    = args(14).toInt
+  val UIDWidth                    = args(15).toInt
+  val AddressWidth                = args(16).toInt
+  val ShapeWidth                  = args(17).toInt
+  val elementWidth                = args(18).toInt
+  val intWidth                    = args(19).toInt
 
-  // ---- 构造 defaultCfg 与当前 cfg（与原行为一致）----
-  val defaultCfg = AcceleratorCfg(
+  // 构建配置
+  val currentCfg = AcceleratorCfg(
     UIDWidth = UIDWidth,
     AddressWidth = AddressWidth,
     ShapeWidth = ShapeWidth,
-    systolicArraySideNum = systolicArraySideNum_def,
+    systolicArraySideNum = systolicArraySideNum,
     elementWidth = elementWidth,
     intWidth = intWidth,
-    systolicArrayInFifoDepth = 2,
-    systolicArrayOutFifoDepth = 2,
-    systolicArrayInstFifoDepth = 16,
-    activationOutFifoDepth = activationOutFifoDepth_def,
-    slicedInstFifoDepth = 16,
-    numCores = numCores_def
+    systolicArrayInFifoDepth = systolicArrayInFifoDepth,
+    systolicArrayOutFifoDepth = systolicArrayOutFifoDepth,
+    systolicArrayInstFifoDepth = systolicArrayInstFifoDepth,
+    activationOutFifoDepth = activationOutFifoDepth,
+    slicedInstFifoDepth = slicedInstFifoDepth,
+    numCores = numCores
   )
-
-  val currentCfg = paramName match {
-    case "systolicArraySideNum"       => defaultCfg.copy(systolicArraySideNum = value)
-    case "systolicArrayInFifoDepth"   => defaultCfg.copy(systolicArrayInFifoDepth = value)
-    case "systolicArrayOutFifoDepth"  => defaultCfg.copy(systolicArrayOutFifoDepth = value)
-    case "systolicArrayInstFifoDepth" => defaultCfg.copy(systolicArrayInstFifoDepth = value)
-    case "activationOutFifoDepth"     => defaultCfg.copy(activationOutFifoDepth = value)
-    case "slicedInstFifoDepth"        => defaultCfg.copy(slicedInstFifoDepth = value)
-    case "numCores"                   => defaultCfg.copy(numCores = value)
-    case other                        => throw new IllegalArgumentException(s"Unknown paramName: $other")
-  }
 
   // ---- 打开CSV（追加写）----
   val resultsFile = new FileWriter("performance_results.csv", true)
@@ -74,9 +67,9 @@ object AcceleratorPerfOnce extends App {
     val runSeed = baseSeed + runID * 1000
     val random  = new Random(runSeed)
 
-
-
-    println(s"[Once] Testing $paramName = $value (Test ID: $testID), Run $runID, seed=$runSeed")
+    println(s"[Once] Testing configuration (Test ID: $testID), Run $runID, seed=$runSeed")
+    println(s"[Once] Configuration: $currentCfg")
+    
     val path = s"simWorkspace/Accelerator_PerformanceTest_${testID}_Run${runID}"
     import java.io.File
     new File(path).mkdirs()
@@ -216,15 +209,14 @@ object AcceleratorPerfOnce extends App {
             totalCycles   = endTime - startTime
             cyclesPerTest = totalCycles.toDouble / testNum
             
-            // ---- 变更: 计算总浮点运算次数和 FLOPS/cycle
+            // 计算总浮点运算次数和 FLOPS/cycle
             totalOps = instSims.map { inst =>
               // M*K*N*2，其中 K=inst.input0Shape1，也是 inst.input1Shape0
               2L * inst.input0Shape0 * inst.input0Shape1 * inst.input1Shape1
             }.sum
             flopsPerCycle = totalOps.toDouble / totalCycles
-            // ---- 结束变更
 
-            println(s"[Once] TEST PASS for $paramName = $value, Run $runID (Test ID: $testID)")
+            println(s"[Once] TEST PASS for configuration, Run $runID (Test ID: $testID)")
             println(s"[Once] Total cycles: $totalCycles, Cycles/test: $cyclesPerTest")
             println(s"[Once] Total operations: $totalOps, FLOPS/cycle: $flopsPerCycle")
             simSuccess()
@@ -242,7 +234,7 @@ object AcceleratorPerfOnce extends App {
       s"${currentCfg.activationOutFifoDepth}," +
       s"${currentCfg.slicedInstFifoDepth}," +
       s"${currentCfg.numCores}," +
-      s"$totalCycles,$cyclesPerTest,$flopsPerCycle,Success,\n") // 变更: 写入 flopsPerCycle
+      s"$totalCycles,$cyclesPerTest,$flopsPerCycle,Success,\n")
     resultsFile.flush()
     resultsFile.close()
     sys.exit(0)
@@ -259,7 +251,7 @@ object AcceleratorPerfOnce extends App {
         s"${currentCfg.activationOutFifoDepth}," +
         s"${currentCfg.slicedInstFifoDepth}," +
         s"${currentCfg.numCores}," +
-        s"-1,-1,-1,Failed,$rawMessage\n") // 变更: 失败时写入 -1
+        s"-1,-1,-1,Failed,$rawMessage\n")
       resultsFile.flush()
       resultsFile.close()
       System.err.println(s"[Once][FAIL] $rawMessage")
@@ -274,18 +266,18 @@ object AcceleratorTb_PerformanceTest extends App {
   val errRateLimit    = 0.01
   val zeroLimit       = 10
   val baseSeed        = 114514
-  var testNum         = 100
+  var testNum         = 50
 
   val runsPerConfig   = 1
 
   val paramVariations = Map(
-    "systolicArraySideNum"        -> List(4, 8, 16, 32),
+    "systolicArraySideNum"        -> List(8, 32),
     "systolicArrayInFifoDepth"    -> List(8, 16, 32),
     "systolicArrayOutFifoDepth"   -> List(8, 16, 32),
-    "systolicArrayInstFifoDepth"  -> List(16, 32, 64),
-    "activationOutFifoDepth"      -> List(16, 32, 64),
-    "slicedInstFifoDepth"         -> List(16, 32, 64),
-    "numCores"                    -> List(1, 2, 4, 8, 16)
+    "systolicArrayInstFifoDepth"  -> List(16, 64),
+    "activationOutFifoDepth"      -> List(32, 64),
+    "slicedInstFifoDepth"         -> List(16, 64),
+    "numCores"                    -> List(1, 2, 4)
   )
 
   val defaultCfg = AcceleratorCfg(
@@ -303,6 +295,22 @@ object AcceleratorTb_PerformanceTest extends App {
     numCores = 1
   )
 
+  // 生成所有可能的参数组合（笛卡尔积）
+  val paramNames = paramVariations.keys.toList
+  val paramValues = paramNames.map(paramVariations)
+  val allCombinations = cartesianProduct(paramValues).map(values => paramNames.zip(values).toMap)
+
+  // 辅助函数：计算笛卡尔积
+  def cartesianProduct[T](lists: List[List[T]]): List[List[T]] = {
+    lists match {
+      case Nil => List(Nil)
+      case head :: tail => for {
+        h <- head
+        t <- cartesianProduct(tail)
+      } yield h :: t
+    }
+  }
+
   // 若CSV不存在或为空，需要写表头
   val csvFile = new java.io.File("performance_results.csv")
   val needHeader = !csvFile.exists() || csvFile.length() == 0
@@ -310,7 +318,7 @@ object AcceleratorTb_PerformanceTest extends App {
   if (needHeader) {
     resultsFile.write("TestID,RunID,SA_SideNum,SA_InFifoDepth,SA_OutFifoDepth," +
       "SA_InstFifoDepth,activationOutFifoDepth,slicedInstFifoDepth,numCores," +
-      "TotalCycles,CyclesPerTest,FLOPSPerCycle,Status,ErrorMessage\n") // 变更: 修改表头
+      "TotalCycles,CyclesPerTest,FLOPSPerCycle,Status,ErrorMessage\n")
     resultsFile.flush()
   }
   resultsFile.close()
@@ -319,50 +327,62 @@ object AcceleratorTb_PerformanceTest extends App {
   val classpath = System.getProperty("java.class.path")
   require(classpath != null && classpath.nonEmpty, "java.class.path is empty; cannot fork child JVM")
 
-  for ((paramName, values) <- paramVariations) {
-    for (value <- values) {
-      testID += 1
-      println(s"[Parent] Testing $paramName = $value (Test ID: $testID)")
+  // 遍历所有参数组合
+  for (combination <- allCombinations) {
+    testID += 1
+    println(s"[Parent] Testing combination (Test ID: $testID): ${combination.mkString(", ")}")
 
-      for (runID <- 1 to runsPerConfig) {
-        val args = Array(
-          testID.toString,           // 0
-          runID.toString,            // 1
-          paramName,                 // 2
-          value.toString,            // 3
-          testNum.toString,          // 4
-          period.toString,           // 5
-          instDriveSpeed.toString,   // 6
-          errRateLimit.toString,     // 7
-          zeroLimit.toString,        // 8
-          baseSeed.toString,         // 9
-          defaultCfg.UIDWidth.toString,      // 10
-          defaultCfg.AddressWidth.toString,  // 11
-          defaultCfg.ShapeWidth.toString,    // 12
-          defaultCfg.systolicArraySideNum.toString, // 13
-          defaultCfg.elementWidth.toString,  // 14
-          defaultCfg.intWidth.toString,      // 15
-          defaultCfg.activationOutFifoDepth.toString, //16
-          defaultCfg.numCores.toString       // 17
-        )
+    for (runID <- 1 to runsPerConfig) {
+      // 使用当前参数组合创建配置
+      val currentCfg = defaultCfg.copy(
+        systolicArraySideNum = combination.getOrElse("systolicArraySideNum", defaultCfg.systolicArraySideNum).asInstanceOf[Int],
+        systolicArrayInFifoDepth = combination.getOrElse("systolicArrayInFifoDepth", defaultCfg.systolicArrayInFifoDepth).asInstanceOf[Int],
+        systolicArrayOutFifoDepth = combination.getOrElse("systolicArrayOutFifoDepth", defaultCfg.systolicArrayOutFifoDepth).asInstanceOf[Int],
+        systolicArrayInstFifoDepth = combination.getOrElse("systolicArrayInstFifoDepth", defaultCfg.systolicArrayInstFifoDepth).asInstanceOf[Int],
+        activationOutFifoDepth = combination.getOrElse("activationOutFifoDepth", defaultCfg.activationOutFifoDepth).asInstanceOf[Int],
+        slicedInstFifoDepth = combination.getOrElse("slicedInstFifoDepth", defaultCfg.slicedInstFifoDepth).asInstanceOf[Int],
+        numCores = combination.getOrElse("numCores", defaultCfg.numCores).asInstanceOf[Int]
+      )
 
-        val cmd = Seq(
-          "java",
-          "-cp", classpath,
-          "Accelerator.AcceleratorPerfOnce"
-        ) ++ args
+      val args = Array(
+        testID.toString,           // 0
+        runID.toString,            // 1
+        currentCfg.systolicArraySideNum.toString, // 3
+        currentCfg.systolicArrayInFifoDepth.toString, // 4
+        currentCfg.systolicArrayOutFifoDepth.toString, // 5
+        currentCfg.systolicArrayInstFifoDepth.toString, // 6
+        currentCfg.activationOutFifoDepth.toString, // 7
+        currentCfg.slicedInstFifoDepth.toString, // 8
+        currentCfg.numCores.toString, // 9
+        testNum.toString,          // 10
+        period.toString,           // 11
+        instDriveSpeed.toString,   // 12
+        errRateLimit.toString,     // 13
+        zeroLimit.toString,        // 14
+        baseSeed.toString,         // 15
+        currentCfg.UIDWidth.toString,      // 16
+        currentCfg.AddressWidth.toString,  // 17
+        currentCfg.ShapeWidth.toString,    // 18
+        currentCfg.elementWidth.toString,  // 19
+        currentCfg.intWidth.toString       // 20
+      )
 
-        val pb = new ProcessBuilder(cmd.asJava)
-        pb.inheritIO()
-        val proc = pb.start()
-        val exit = proc.waitFor()
-        if (exit == 0) {
-          println(s"[Parent] Run $runID/$runsPerConfig (Test ID: $testID) done.")
-        } else {
-          println(s"[Parent][WARN] Run $runID failed (exit=$exit). See above logs.")
-        }
+      val cmd = Seq(
+        "java",
+        "-cp", classpath,
+        "Accelerator.AcceleratorPerfOnce"
+      ) ++ args
+
+      val pb = new ProcessBuilder(cmd.asJava)
+      pb.inheritIO()
+      val proc = pb.start()
+      val exit = proc.waitFor()
+      if (exit == 0) {
+        println(s"[Parent] Run $runID/$runsPerConfig (Test ID: $testID) done.")
+      } else {
+        println(s"[Parent][WARN] Run $runID failed (exit=$exit). See above logs.")
       }
     }
   }
-  println("All parameter variations tested successfully!")
+  println("All parameter combinations tested successfully!")
 }
