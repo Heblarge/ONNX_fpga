@@ -9,6 +9,122 @@ import breeze.plot._
 import spire.std.double
 import scala.annotation.varargs
 
+
+// Helper functions to mirror the fixed-point arithmetic and bit-level operations
+// of the hardware design.
+object FixedPointMath {
+  def pow2(x: Double): Double = Math.pow(2, x)
+
+  // This function simulates the floor division of the fixed-point number,
+  // effectively shifting the result to the right by `bit_frac` bits.
+  def floor(value: Long, bit_frac: Int): Long = {
+    value / pow2(bit_frac).toLong
+  }
+
+  // This function simulates the saturation logic, ensuring the value doesn't
+  // exceed the max integer part of the result.
+  def sat(value: Long, max_int_bits: Int, bit_frac: Int): Long = {
+    val max_val = pow2(max_int_bits + bit_frac).toLong - 1
+    if (value > max_val) max_val else value
+  }
+}
+
+class EXP_function_sw(cfg: EXP_function_cfg) {
+  import cfg._
+  import FixedPointMath._
+
+  val exp_frac_table = (1 to rotate).map(i =>
+    Math.round(Math.exp(1.0 / pow2(i)) * pow2(bit_frac)).toLong
+  )
+
+  val exp_int_pos_table = (0 until log2Up(x_max)).map(i =>
+    Math.round(Math.exp(pow2(i)) * pow2(bit_frac)).toLong
+  )
+
+  val exp_int_neg_table = (0 until bit_int).map(i =>
+    Math.round(Math.exp(-pow2(i)) * pow2(bit_frac)).toLong
+  )
+
+  private def getBit(n: Long, k: Int): Boolean = (n & (1L << k)) != 0
+
+  def compute(x: Int): Long = {
+    // ------------------------------------
+    // 初始值设置 (与硬件一致)
+    // ------------------------------------
+    val int_x = x >> bit_frac
+    val abs_int_x = Math.abs(int_x).toLong
+    val neg = int_x < 0
+    val frac_x = (x & ((1 << bit_frac) - 1)).toLong
+    
+    // 初始化寄存器数组 (模拟硬件流水线)
+    val frac_x_regs = Array.fill(rotate + 1)(0L)
+    val expx_frac_regs = Array.fill(rotate + 1)(0L)
+    val abs_int_x_regs = Array.fill(bit_int + 1)(0L)
+    val expx_int_regs = Array.fill(bit_int + 1)(0L)
+    val neg_regs = Array.fill(bit_int + 1)(false)
+    
+    // 设置初始值
+    frac_x_regs(0) = frac_x
+    abs_int_x_regs(0) = abs_int_x
+    neg_regs(0) = neg
+    expx_int_regs(0) = pow2(bit_frac).toLong // 1.0 的定点表示
+    expx_frac_regs(0) = pow2(bit_frac).toLong // 1.0 的定点表示
+    
+    // 预计算 poweroftwo 值 (与硬件一致)
+    val poweroftwo_values = (1 to rotate).map(i => 
+      pow2(bit_frac - i).toLong
+    )
+    
+    // ------------------------------------
+    // 分数部分计算 (模拟硬件流水线)
+    // ------------------------------------
+    for (i <- 0 until rotate) {
+      // 默认传递当前值到下一级
+      frac_x_regs(i + 1) = frac_x_regs(i)
+      expx_frac_regs(i + 1) = expx_frac_regs(i)
+      
+      // 与硬件相同的条件判断
+      if (frac_x_regs(i) > poweroftwo_values(i)) {
+        frac_x_regs(i + 1) = frac_x_regs(i) - poweroftwo_values(i)
+        val product = expx_frac_regs(i) * exp_frac_table(i)
+        expx_frac_regs(i + 1) = sat(floor(product, bit_frac), expx_int_bit, bit_frac)
+      }
+    }
+    
+    // ------------------------------------
+    // 整数部分计算 (模拟硬件流水线)
+    // ------------------------------------
+    for (i <- 0 until bit_int) {
+      // 默认传递当前值到下一级
+      abs_int_x_regs(i + 1) = abs_int_x_regs(i)
+      neg_regs(i + 1) = neg_regs(i)
+      expx_int_regs(i + 1) = expx_int_regs(i)
+      
+      // 检查当前位是否为1
+      if (getBit(abs_int_x_regs(i), i)) {
+        if (neg_regs(i)) {
+          val product = expx_int_regs(i) * exp_int_neg_table(i)
+          expx_int_regs(i + 1) = sat(floor(product, bit_frac), expx_int_bit, bit_frac)
+        } else {
+          if (i < log2Up(x_max)) {
+            val product = expx_int_regs(i) * exp_int_pos_table(i)
+            expx_int_regs(i + 1) = sat(floor(product, bit_frac), expx_int_bit, bit_frac)
+          }
+          // 如果 i >= log2Up(x_max)，保持原值不变 (与硬件一致)
+        }
+      }
+    }
+
+    // ------------------------------------
+    // 最终结果计算
+    // ------------------------------------
+    val final_result_raw = expx_frac_regs(rotate) * expx_int_regs(bit_int)
+    val final_result_floor = floor(final_result_raw, bit_frac)
+    sat(final_result_floor, expx_int_bit, bit_frac)
+  }
+}
+
+
 object sim_EXP_function_test extends App {
 
   new File("rtl/ExponentialFunction/sim_EXP_function_test_report").mkdir()
@@ -53,6 +169,8 @@ object sim_EXP_function_test extends App {
     .withFSDBWave
     .withConfig(SpinalConfig(bitVectorWidthMax = 20000)).compile(report)
 
+  val exp_ref = new EXP_function_sw(cfg)
+
 
   val random = new scala.util.Random
   val start = -3 * Math.pow(2, cfg.bit_frac).toInt
@@ -72,8 +190,12 @@ object sim_EXP_function_test extends App {
     val x = x_iter.next()
     x_Queue.enqueue(x)
     display_x_Queue.enqueue(x/Math.pow(2, cfg.bit_frac))
-    expx_Queue.enqueue(expx(x))
-    display_ref_Queue.enqueue(expx(x))
+
+    val ref = exp_ref.compute(x).toInt
+    //val ref = expx(x)
+
+    expx_Queue.enqueue(ref)
+    display_ref_Queue.enqueue(ref)
   }
 
   module_compiled.doSim("exp_tb"){dut =>
@@ -107,6 +229,8 @@ object sim_EXP_function_test extends App {
         display_Relative_error_Queue.enqueue(relerror)
         //println(s"ref: ${ref}\t:${float_ref}\n\terror: ${error}")
         println(s"ref: ${float_ref}\n\tabsolute error: ${abserror}\n\trelative error: ${relerror}%")
+
+        assert(ref==received)
       }
       else{
         println("end")

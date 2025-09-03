@@ -69,6 +69,16 @@ case class EXP_function_cfg(
   def expx_type = UInt(expx_bit bits)
   println(s"expx_int_bits: ${expx_int_bit}\t;frac_bits:${bit_frac}")
 
+  private def log2Up(x: Int): Int = {
+    var result = 0
+    var temp = 1
+    while (temp < x) {
+      temp *= 2
+      result += 1
+    }
+    result
+  }
+
 }
 
 case class EXP_function(cfg : EXP_function_cfg) extends Component {
