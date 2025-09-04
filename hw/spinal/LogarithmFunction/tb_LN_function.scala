@@ -7,8 +7,83 @@ import spinal.sim.VCSFlags
 import spinal.lib.sim.{FlowDriver, FlowMonitor, ScoreboardInOrder}
 import scala.collection.mutable
 import breeze.plot._
+import scala.math._
 
 object sim_LN_function_test extends App {
+def cordic_ln_ref(x: Int, cfg: LN_function_cfg): Double = {
+    val scale_factor = 1 << cfg.bit_frac
+    val log_2_int = math.round(log(2) * scale_factor).toInt
+
+    if (x <= 0) return 0 // Assuming hardware handles invalid input gracefully
+
+    // 规范化步骤：将x调整到[1, 2)范围
+    var x_scaled: Int = x
+    var k = 0
+    while (x_scaled >= 2 * scale_factor) {
+      x_scaled >>= 1
+      k += 1
+    }
+    while (x_scaled < scale_factor) {
+      x_scaled <<= 1
+      k -= 1
+    }
+
+    // CORDIC atanh(2^-j) 值的定点表示 (Q12格式)
+    val atanh_vals_fix = Array[Int](
+      0, // Dummy
+      (atanh(pow(2, -1)) * scale_factor).round.toInt, // j=1
+      (atanh(pow(2, -2)) * scale_factor).round.toInt, // j=2
+      (atanh(pow(2, -3)) * scale_factor).round.toInt, // j=3
+      (atanh(pow(2, -4)) * scale_factor).round.toInt, // j=4
+      (atanh(pow(2, -5)) * scale_factor).round.toInt, // j=5
+      (atanh(pow(2, -6)) * scale_factor).round.toInt, // j=6
+      (atanh(pow(2, -7)) * scale_factor).round.toInt, // j=7
+      (atanh(pow(2, -8)) * scale_factor).round.toInt, // j=8
+      (atanh(pow(2, -9)) * scale_factor).round.toInt, // j=9
+      (atanh(pow(2, -10)) * scale_factor).round.toInt, // j=10
+      (atanh(pow(2, -11)) * scale_factor).round.toInt, // j=11
+      (atanh(pow(2, -12)) * scale_factor).round.toInt, // j=12
+      (atanh(pow(2, -13)) * scale_factor).round.toInt, // j=13
+      (atanh(pow(2, -14)) * scale_factor).round.toInt // j=14
+    )
+    
+    // 初始化CORDIC变量（使用定点数）
+    var x_n: Long = x_scaled.toLong + scale_factor.toLong
+    var y_n: Long = x_scaled.toLong - scale_factor.toLong
+    var z_n: Long = 0
+
+    // CORDIC迭代
+    for (j <- 1 to cfg.rotate) {
+      val sign_y = if (y_n > 0) 1 else -1
+      val atanh_val = atanh_vals_fix(j)
+      
+      val x_temp = x_n
+      x_n = x_n - (sign_y * (y_n >> j))
+      y_n = y_n - (sign_y * (x_temp >> j))
+      z_n = z_n + sign_y * atanh_val
+
+      // 补偿迭代
+      if (cfg.using_compensation_iters && (j == 4 || j == 13)) {
+        val sign_y_comp = if (y_n > 0) 1 else -1
+        val x_temp_comp = x_n
+        x_n = x_n - (sign_y_comp * (y_n >> j))
+        y_n = y_n - (sign_y_comp * (x_temp_comp >> j))
+        z_n = z_n + sign_y_comp * atanh_val
+      }
+    }
+    
+    // 最终结果计算（定点数）
+    val result = (2 * z_n + k * log_2_int).toDouble/scale_factor
+    result
+  }
+   
+  // 辅助函数：计算atanh(x)
+  def atanh(x: Double): Double = 0.5 * log((1 + x) / (1 - x))
+  
+  // 替换原来的简单实现
+  def lnx_fixIn_fpOut(x: Int, cfg: LN_function_cfg): Double = {
+    cordic_ln_ref(x, cfg)
+  }
 
   new File("rtl/LogFunction/sim_LN_function_test_report").mkdir()
   val flags = VCSFlags(
@@ -60,15 +135,15 @@ object sim_LN_function_test extends App {
   }
 
 
-  def lnx_fixIn_fpOut(x: Int): Double = {
-    val x_float = x.toDouble / Math.pow(2, cfg.bit_frac)
-    if (x_float > 0) {
-      val ln_x_float = Math.log(x_float)
-      ln_x_float
-    } else {
-      Double.NaN
-    }
-  }
+  // def lnx_fixIn_fpOut(x: Int): Double = {
+  //   val x_float = x.toDouble / Math.pow(2, cfg.bit_frac)
+  //   if (x_float > 0) {
+  //     val ln_x_float = Math.log(x_float)
+  //     ln_x_float
+  //   } else {
+  //     Double.NaN
+  //   }
+  // }
 // 初始化队列用于存储输入、参考输出和结果
   val x_Queue = mutable.Queue[Int]()
   val lnx_Queue = mutable.Queue[Double]()
@@ -82,7 +157,7 @@ object sim_LN_function_test extends App {
     val x = x_iter.next()
     x_Queue.enqueue(x)
     display_x_Queue.enqueue(x)
-    val ref = lnx_fixIn_fpOut(x)
+    val ref = lnx_fixIn_fpOut(x,cfg)
     lnx_Queue.enqueue(ref)
     display_ref_Queue.enqueue(ref)
   }
