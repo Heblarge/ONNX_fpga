@@ -132,7 +132,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
         );
 
         int[][] matrixB_zero = new int[rows][cols];
-        int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointInput, matrixB_zero, instruction);
+        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
 
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {

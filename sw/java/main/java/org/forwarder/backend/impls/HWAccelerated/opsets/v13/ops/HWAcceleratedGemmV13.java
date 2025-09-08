@@ -120,6 +120,6 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
                 colsB
         );
 
-        return AcceleratorSimInterface.runSimOneInst(a, b, instruction);
+        return AcceleratorSimInterface.runRefOneInst(a, b, instruction);
     }
 }

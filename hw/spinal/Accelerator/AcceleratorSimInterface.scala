@@ -103,5 +103,11 @@ object AcceleratorSimInterface {
     }
     matZ
   }
+  def runRefOneInst(matA: Array[Array[Int]], matB: Array[Array[Int]], instJava: InstJavaTODO) = {
+    val instSim = new InstSim(instJava)
+    var matZ = Array[Array[Int]]()
+    matZ=instSim.acceleratorSim(matA, matB, acceleratorCfg.elementWidth, acceleratorCfg.fracWidth)
+    matZ
+  }
 
 }

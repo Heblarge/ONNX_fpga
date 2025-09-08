@@ -147,7 +147,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
                 colsA,
                 colsB
         );
-        int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointA, fixedPointB, instruction);
+        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         float[] Output = new float[rowsA * colsB];
         for (int i = 0; i < rowsA; i++) {

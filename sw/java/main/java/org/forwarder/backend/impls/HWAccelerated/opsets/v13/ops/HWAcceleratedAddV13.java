@@ -128,7 +128,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
                 cols
         );
 
-        int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointA, fixedPointB, instruction);
+        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {

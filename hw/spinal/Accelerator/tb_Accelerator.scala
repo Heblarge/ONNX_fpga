@@ -182,13 +182,12 @@ object AcceleratorTb extends App {
           totalCycles   = endTime - startTime
           cyclesPerTest = totalCycles.toDouble / testNum
           
-          // ---- 变更: 计算总浮点运算次数和 FLOPS/cycle
           totalOps = instSims.map { inst =>
             // M*K*N*2，其中 K=inst.input0Shape1，也是 inst.input1Shape0
             2L * inst.input0Shape0 * inst.input0Shape1 * inst.input1Shape1
           }.sum
           flopsPerCycle = totalOps.toDouble / totalCycles
-          // ---- 结束变更
+
           println(s"Total cycles: $totalCycles, Cycles/test: $cyclesPerTest")
           println(s"Total operations: $totalOps, FLOPS/cycle: $flopsPerCycle")
           

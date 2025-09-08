@@ -4,7 +4,7 @@ saveDB = TRUE
 relativePath = FALSE
 saveSingleView = FALSE
 saveNWaveWinId = 
-VerdiVersion = Verdi_N-2017.12-SP2
+VerdiVersion = Verdi_O-2018.09-SP2
 [KeyNote]
 Line1 = Automatic Backup 0
 Line2 = Save Open Database Information: Yes
@@ -15,14 +15,13 @@ ConstrViewShow = 0
 InherViewShow = 0
 FSDBMsgShow = 0
 AnnotationShow = 0
+Console = FALSE
 powerDumped = 0
 [hb]
-postSimFile = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb
-syncTime = 300
-viewport = 297 280 2136 1354 0 0 1104 2134
-activeNode = "HadamardProduct"
-activeScope = "HadamardProduct"
-activeFile = "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/./simWorkspace/tmp/job_1/HadamardProduct.v"
+viewport = 395 154 2027 922 0 0 364 2025
+activeNode = "Accelerator"
+activeScope = "Accelerator"
+activeFile = "/root/onnx_SpinalHDL_interface/simWorkspace/AcceleratorTb/tmp/job_1/Accelerator.v"
 interactiveMode = False
 viewType = Source
 simulatorMode = False
@@ -43,25 +42,21 @@ DnDtraceCrossHierOnly = True
 traceIncTopPort = False
 leadingZero = False
 signalPane = False
-Scope1 = "HadamardProduct"
-multipleSelection = 1 5 2 0 0
+Scope1 = "Accelerator"
+multipleSelection = 1 6 2 0 0
 sdfCheckUndef = FALSE
 simFlow = FALSE
 [hb.design]
-importCmd = "-dbdir" "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/HadamardProduct.daidir" 
-invokeDir = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM
+importCmd = "-sv" "-f" "/root/onnx_SpinalHDL_interface/simWorkspace/AcceleratorTb/Accelerator/filelist.f" 
+invokeDir = /root/onnx_SpinalHDL_interface
 [hb.sourceTab.1]
-scope = HadamardProduct
-File = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/tmp/job_1/HadamardProduct.v
+scope = Accelerator
+File = /root/onnx_SpinalHDL_interface/simWorkspace/AcceleratorTb/tmp/job_1/Accelerator.v
 Line = 7
-[nMemoryManager]
-FsdbFile = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb
-UserActionNum = 0
-nMemWindowNum = 0
 [wave.0]
-viewPort = 0 28 2136 852 475 39
+viewPort = 0 27 2027 390 362 147
 primaryWindow = TRUE
-SessionFile = /home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/verdiLog/novas_autosave.ses.wave.0
+Empty = /root/onnx_SpinalHDL_interface/verdiLog/novas_autosave.ses.wave.0
 displayGrid = FALSE
 hierarchicalName = FALSE
 snap = TRUE

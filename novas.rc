@@ -112,7 +112,7 @@ Branch = 1
 [DesignTree]
 IfShowModule = {TRUE, FALSE}
 [DisabledMessages]
-version = Verdi_N-2017.12-SP2
+version = Verdi_O-2018.09-SP2
 [Editor]
 editorName = TurboEditor
 [Emacs]
@@ -222,13 +222,13 @@ Orientation = Landscape
 LoadSimulationResults = "\"/home/user/Workspace/SpinalTemplateSbt/simWorkspace/MyTopLevel/null_MyTopLevel.fsdb\"" "\"/home/user/Workspace/SpinalTemplateSbt/simWorkspace/SoftplusFunction/null_SoftplusFunction.fsdb\"" "\"/home/user/Workspace/livehps_1/simWorkspace/Activation/null_A\
 ctivation.fsdb\"" "\"/home/user/Workspace/livehps_1/simWorkspace/Accelerator/null_Accelerator.fsdb\""
 [Form]
-version = Verdi_N-2017.12-SP2
+version = Verdi_O-2018.09-SP2
 [General]
 autoSaveSession = FALSE
 TclAutoSource = 
 cmd_enter_form = FALSE
 SyncBrowserDir = TRUE
-version = Verdi_N-2017.12-SP2
+version = Verdi_O-2018.09-SP2
 SignalCaseInSensitive = FALSE
 ShowWndCtntDuringResizing = FALSE
 [GlobalProp]
@@ -315,6 +315,19 @@ showCoverGroup = TRUE
 showProperty = TRUE
 showSequence = TRUE
 showDollarUnit = TRUE
+[OldFontRC]
+Wave_legend_window_font = -f COURIER12 -c ID_CYAN5
+Wave_value_window_font = -f COURIER12 -c ID_CYAN5
+Wave_curve_window_font = -f COURIER12 -c ID_CYAN5
+Wave_group_name_font = -f COURIER12 -c ID_GREEN5
+Wave_ruler_value_font = -f COURIER12 -c ID_CYAN5
+Wave_analog_ruler_value_font = -f COURIER12 -c ID_CYAN5
+Wave_comment_string_font = -f COURIER12 -c ID_RED5
+Wave_getsignal_form_font = -f COURIER12
+HB_designTreeFont = *-adobe-courier-medium-r-*-*-12-*-*-*-*-*-iso8859-*
+Text_font = COURIER12
+Text_annotFont = Helvetica_M_R_10
+nMemory_font = Fixed 14
 [OtherEditor]
 cmd1 = "xterm -font 9x15 -fg black -bg gray -e"
 name = "vi"
@@ -331,6 +344,7 @@ GroundNet = ID_RED2
 SimulationOnly = ID_CYAN3
 SRSN/SPA = ID_CYAN3
 CNSSignal = ID_CYAN3
+RPTRSignal = ID_CYAN3
 AcknowledgeSignal = ID_CYAN3
 BoundaryPort = ID_CYAN3
 DisplayInstrumentedCell = TRUE
@@ -341,6 +355,7 @@ ExtractIsoSameNets = FALSE
 AnnotateSignal = TRUE
 HighlightPowerObject = TRUE
 HighlightPowerDomain = TRUE
+TraceThroughInstruLowPower = FALSE
 BrightenPowerColorInSchematicWindow = FALSE
 ShowAlias = FALSE
 ShowVoltage = TRUE
@@ -354,6 +369,7 @@ PaperSize = A4 - 210x297 (mm)
 ColorPrint = FALSE
 [PropertyTools]
 saveFsdbStat = TRUE
+saveWaveformStat = TRUE
 savePropStat = FALSE
 savePropDtl = TRUE
 [QtDialog]
@@ -361,15 +377,15 @@ Verdi_OpenFile = 2376,1501,590,340
 qWaveSignalDialog = 2022,1247,1396,759
 loadFile = 2164,1331,1136,698
 QwWarnMsgDlg = 2416,1508,600,250
-QwUserAskDlg = 648,2346,324,130
+QwUserAskDlg = 60,83,324,130
 [Relationship]
 hideRecursiceNode = FALSE
 [Session Cache]
 3 = string (session file name)
 4 = string (session file name)
 5 = string (session file name)
-1 = /home/user/Workspace/livehps_1/verdiLog/novas_autosave.ses
 2 = /home/user/verdiLog/novas_autosave.ses
+1 = /root/onnx_SpinalHDL_interface/verdiLog/novas_autosave.ses
 [Simulation]
 scsPath = scsim
 scsOption = 
@@ -551,7 +567,7 @@ pdmlMacro = ID_BLACK
 font = COURIER12
 annotFont = Helvetica_M_R_10
 [Text.1]
-viewport = 1440 926 982 572 45
+viewport = 395 154 2027 922 45
 [TextPrinter]
 Orientation = Landscape
 Indicator = FALSE
@@ -641,10 +657,10 @@ DefaultLogTimeUnit = "1.000000ns"
 [VIA.oneSearch.preference.vgifColumnSettingRC.setting0]
 parRuleSets = ""
 [VIA.oneSearch.preference.vgifColumnSettingRC.setting0.column0]
-name = Severity
+name = Message
 width = 60
-visualIndex = 1
-isHidden = TRUE
+visualIndex = 4
+isHidden = FALSE
 isUserChangeColumnVisible = FALSE
 [VIA.oneSearch.preference.vgifColumnSettingRC.setting0.column1]
 name = Type
@@ -665,10 +681,10 @@ visualIndex = 0
 isHidden = TRUE
 isUserChangeColumnVisible = FALSE
 [VIA.oneSearch.preference.vgifColumnSettingRC.setting0.column4]
-name = Message
+name = Severity
 width = 60
-visualIndex = 4
-isHidden = FALSE
+visualIndex = 1
+isHidden = TRUE
 isUserChangeColumnVisible = FALSE
 [Vi]
 ViFont = "Clean 14"
@@ -688,8 +704,9 @@ waveform_vertical_scroll_bar = TRUE
 scope_to_save_with_macro
 open_file_dir
 open_rc_file_dir
+SetDefaultRadix = TRUE
 getSignalForm = 38 59 1396 759 340 661 806 159
-viewPort = 0 28 2548 579 394 147
+viewPort = 0 27 2027 390 362 147
 signalSpacing = 5
 digitalSignalHeight = 15
 analogSignalHeight = 98
@@ -713,6 +730,11 @@ grid = -c ID_WHITE -lw 1 -ls short_dashed
 rulerBackground = -c ID_GRAY3
 rulerForeground = -c ID_YELLOW5
 busTextColor = -c ID_ORANGE8
+legendForeground = -c ID_CYAN5
+valueForeground = -c ID_CYAN5
+curveForeground = -c ID_CYAN5
+groupNameColor = -c ID_GREEN5
+commentStringColor = -c ID_RED5
 region(Active)Background = -c ID_YELLOW1
 region(NBA)Background = -c ID_RED1
 region(Re-Active)Background = -c ID_YELLOW3
@@ -732,7 +754,9 @@ Dump_Off_Color = -c ID_BLUE2
 Compress_Bar_Color = -c ID_YELLOW4
 Vector_Dense_Block_Color = -c ID_ORANGE8
 Scalar_Dense_Block_Color = -c ID_GREEN6
+Analog_Dense_Block_Color = -c ID_PURPLE2
 Composite_Dense_Block_Color = -c ID_ORANGE5
+RPTR_Power_Off_Layer = -c ID_CYAN3 -stipple dots
 DB_Power_Off_Layer = -c ID_BLUE4 -stipple dots
 SPA_Driver_Power_Off_Layer = -c ID_ORANGE4 -stipple dots
 SPA_Receiver_Power_Off_Layer = -c ID_GREEN5 -stipple dots
@@ -806,7 +830,7 @@ EventSequence_SyncCursorTime = TRUE
 EventSequence_Sorting = FALSE
 EventSequence_RemoveGrid = FALSE
 EventSequence_IsGridMode = FALSE
-SetDefaultRadix = TRUE
+SetDefaultRadix_global = FALSE
 DefaultRadix = Hex
 SigSearchSignalMatchCase = FALSE
 SigSearchSignalScopeOption = FALSE
@@ -909,6 +933,7 @@ OverwriteAliasWithRC = TRUE
 overlay_added_analog_signals = FALSE
 case_insensitive = FALSE
 vhdlVariableCalculate = TRUE
+showError = TRUE
 signal_vertical_scroll_bar = TRUE
 showPortNameForDroppedInstance = FALSE
 truncateFilePathInTitleBar = TRUE
@@ -924,7 +949,7 @@ maskIsolation = TRUE
 maskRetention = TRUE
 maskDrivingPowerOff = TRUE
 maskToggle = TRUE
-autoBackupSignals = off 5 "\"/home/user/verdiLog\"" "\"novas_autosave_sig\""
+autoBackupSignals = off 5 "\"/root/onnx_SpinalHDL_interface/verdiLog\"" "\"novas_autosave_sig\""
 signal_rc_attribute = 65535
 signal_rc_alias_attribute = 0
 ConvertAttr1 = -inc FALSE
@@ -1051,7 +1076,7 @@ InputPinStatus = 1
 OutputPinStatus = 2
 RevisedComponentColor = ID_BLUE5
 SpareCellColor = ID_RED5
-UserName = user
+UserName = root
 CommentFormat = Novas ECO updated by ${UserName} ${Date} ${Time} 
 PrefixN = eco_n
 PrefixP = eco_p
@@ -1137,7 +1162,7 @@ showCellBitRangeWithAddr = TRUE
 wordsShownInOneRow = 8
 syncCursorTime = FALSE
 fixCellColumnWidth = FALSE
-font = Fixed 14
+font = Courier 12
 [planColors]
 plan_fillColor_inactive = lightGray
 plan_fillColor_warning = orange
@@ -1220,6 +1245,7 @@ margin_right = 0.50
 margin_unit = inches
 [spiceDebug]
 ThroughNet = ID_YELLOW5
+InstrumentSig = ID_GREEN5
 InterfaceElement = ID_GREEN5
 Run-timeInterfaceElement = ID_BLUE5
 HighlightThroughNet = TRUE
@@ -1249,7 +1275,7 @@ AddImportArgument = FALSE
 LineBreakWithScope = TRUE
 StopAfterCompileOption = -s
 [wave.0]
-viewPort = 0 28 2548 579 394 147
+viewPort = 0 27 2027 390 362 147
 [wave.1]
 viewPort = 127 219 960 332 100 65
 [wave.2]

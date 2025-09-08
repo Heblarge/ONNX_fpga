@@ -66,7 +66,7 @@ public class HWAcceleratedGemmV11 extends HWAcceleratedOperator implements GemmV
                 colsA,
                 colsB
         );
-        int[][] fixedPointOutput = AcceleratorSimInterface.runSimOneInst(fixedPointA, fixedPointB, instruction);
+        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         float[] Output = new float[rowsA * colsB];
         for (int i = 0; i < rowsA; i++) {

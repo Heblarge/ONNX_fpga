@@ -24,7 +24,7 @@ public class test {
 				8,
 				8
 		);
-		int[][] result = AcceleratorSimInterface.runSimOneInst(matrixA, matrixB, instJava);
+		int[][] result = AcceleratorSimInterface.runRefOneInst(matrixA, matrixB, instJava);
 
 		System.out.println("Matrix A:");
 		printMatrix(matrixA);
