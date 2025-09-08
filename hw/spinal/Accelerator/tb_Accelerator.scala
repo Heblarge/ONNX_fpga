@@ -17,7 +17,7 @@ object AcceleratorTb extends App {
   val instDriveSpeed = 10f
   val errRateLimit = 0.01
   val zeroLimit = 10
-  val seed = 114514
+  val seed = 114514+1000
   val random = new Random(seed)
   var testNum = 50
   // var testNum = 1
@@ -25,15 +25,15 @@ object AcceleratorTb extends App {
     UIDWidth = 19,
     AddressWidth = 20,
     ShapeWidth = 16,
-    systolicArraySideNum = 32,
     elementWidth = 24,
     intWidth = 12,
-    systolicArrayInFifoDepth = 16,
-    systolicArrayOutFifoDepth = 16,
-    systolicArrayInstFifoDepth = 16,
-    activationOutFifoDepth = 32,
-    slicedInstFifoDepth = 16,
-    numCores = 2
+    systolicArraySideNum = 8,//越高越快
+    systolicArrayInFifoDepth = 16,//越高越好
+    systolicArrayOutFifoDepth = 16,//越高越好,但帮助不大
+    systolicArrayInstFifoDepth = 16,//越高越好,但帮助不大
+    activationOutFifoDepth = 32,//能过reqirements就行
+    slicedInstFifoDepth = 2,//能过reqirements就行
+    numCores = 2//越高越快，但超过2之后帮助不大
   )
   val path = s"simWorkspace/AcceleratorTb"
   import java.io.File
