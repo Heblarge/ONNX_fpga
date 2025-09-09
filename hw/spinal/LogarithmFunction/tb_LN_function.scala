@@ -105,9 +105,19 @@ class LN_function_sw(cfg: LN_function_cfg) {
     val result = 2 * z_n + k * log2_fix.toLong
     result
   }
-  
+  // 提供浮点输入版本（可选）
+  def compute(x: Double): Long = {
+    val x_fixed = Math.round(x * (1 << bit_frac)).toInt
+    val result_fixed = compute(x_fixed)
+    result_fixed
+  }
   // 提供浮点输出版本（可选）
   def computeFloat(x: Int): Double = {
+    val result_fixed = compute(x)
+    result_fixed.toDouble / (1 << bit_frac)
+  }
+  // 提供浮点输入版本（可选）
+  def computeFloat(x: Double): Double = {
     val result_fixed = compute(x)
     result_fixed.toDouble / (1 << bit_frac)
   }

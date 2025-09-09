@@ -122,6 +122,22 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
     val final_result_floor = floor(final_result_raw, bit_frac)
     sat(final_result_floor, expx_int_bit, bit_frac)
   }
+  // 提供浮点输入版本（可选）
+  def compute(x: Double): Long = {
+    val x_fixed = Math.round(x * (1 << bit_frac)).toInt
+    val result_fixed = compute(x_fixed)
+    result_fixed
+  }
+  // 提供浮点输出版本（可选）
+  def computeFloat(x: Int): Double = {
+    val result_fixed = compute(x)
+    result_fixed.toDouble / (1 << bit_frac)
+  }
+  // 提供浮点输入版本（可选）
+  def computeFloat(x: Double): Double = {
+    val result_fixed = compute(x)
+    result_fixed.toDouble / (1 << bit_frac)
+  }
 }
 
 

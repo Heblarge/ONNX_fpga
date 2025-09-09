@@ -100,16 +100,21 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
     sum // 整数形式，与硬件 payload (fixed-point) 对齐
   }
   
+    // 提供浮点输入版本（可选）
+  def compute(x: Double): Long = {
+    val x_fixed = Math.round(x * (1 << bit_frac)).toInt
+    val result_fixed = compute(x_fixed)
+    result_fixed
+  }
   // 提供浮点输出版本（可选）
-  def computeFloat(payloadInt: Int): Double = {
-    val result_fixed = compute(payloadInt)
+  def computeFloat(x: Int): Double = {
+    val result_fixed = compute(x)
     result_fixed.toDouble / (1 << bit_frac)
   }
-  
-  // 直接从浮点数输入计算（便利函数）
-  def computeFromFloat(payloadFloat: Double): Double = {
-    val payloadFixed = (payloadFloat * (1 << bit_frac)).toInt
-    computeFloat(payloadFixed)
+  // 提供浮点输入版本（可选）
+  def computeFloat(x: Double): Double = {
+    val result_fixed = compute(x)
+    result_fixed.toDouble / (1 << bit_frac)
   }
   
   // 获取表内容（用于调试和验证）

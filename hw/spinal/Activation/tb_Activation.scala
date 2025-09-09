@@ -22,6 +22,7 @@ import scala.collection.mutable
 import scala.collection.mutable.Queue
 import ExponentialFunction.EXP_function_sw
 import LogarithmFunction.LN_function_sw
+import SoftplusFunction.Softplus_function_sw
 
 class TolerantScoreboard(tolerance: Double) extends ScoreboardInOrder[Double] {
   // 只要 abs(ref - dut) < tolerance 就算匹配
