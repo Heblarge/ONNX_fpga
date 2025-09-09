@@ -22,6 +22,7 @@ import scala.collection.mutable
 import scala.collection.mutable.Queue
 import ExponentialFunction.EXP_function_sw
 import LogarithmFunction.LN_function_sw
+import ReLUFunction.ReLU_function_sw
 import SoftplusFunction.Softplus_function_sw
 
 class TolerantScoreboard(tolerance: Double) extends ScoreboardInOrder[Double] {
@@ -116,13 +117,17 @@ object ActivationTest1 extends App {
     val rnd = new Random()
     rnd.nextInt(2 * maxShift + 1) - maxShift
   }
+  val EXP_sw=new EXP_function_sw(cfg.expCfg)
+  val LN_sw=new LN_function_sw(cfg.lnCfg)
+  val RELU_sw= new ReLU_function_sw(cfg.reluCfg)
+  val SOFTPLUS_sw=new Softplus_function_sw(cfg.softplusCfg)
 
   def activationRef(sel: Activation_TypeDef.E, x: Double, shiftAmt: Int): Double = {
     val activated = sel match {
-      case Activation_TypeDef.Exp      => math.exp(x)
-      case Activation_TypeDef.Log      => math.log(x max 1e-6)
-      case Activation_TypeDef.Relu     => if (x > 0) x else 0.0
-      case Activation_TypeDef.Softplus => math.log(1 + math.exp(x))
+      case Activation_TypeDef.Exp      => EXP_sw.computeFloat(x)
+      case Activation_TypeDef.Log      => LN_sw.computeFloat(x)
+      case Activation_TypeDef.Relu     => RELU_sw.computeFloat(x)
+      case Activation_TypeDef.Softplus => SOFTPLUS_sw.computeFloat(x)
       case Activation_TypeDef.None     => x
     }
 

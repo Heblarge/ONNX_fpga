@@ -185,19 +185,19 @@ class InstSim(
     transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
   }
 
-  def activationSim(matZ: Array[Array[Int]], elementWidth: Int, fracWidth: Int) = {
+  def activationSim(matZ: Array[Array[Int]], cfg:AcceleratorCfg) = {
     val matZ2 = activationFunction match {
-      case Activation_TypeDef.Exp      => matElementwiseExp(matZ, fracWidth)
-      case Activation_TypeDef.Log      => matElementwiseLog(matZ, fracWidth)
-      case Activation_TypeDef.Relu     => matElementwiseRelu(matZ, fracWidth)
-      case Activation_TypeDef.Softplus => matElementwiseSoftplus(matZ, fracWidth)
+      case Activation_TypeDef.Exp      => matElementwiseExp(matZ, cfg)
+      case Activation_TypeDef.Log      => matElementwiseLog(matZ, cfg)
+      case Activation_TypeDef.Relu     => matElementwiseRelu(matZ, cfg)
+      case Activation_TypeDef.Softplus => matElementwiseSoftplus(matZ, cfg)
       case Activation_TypeDef.None     => matZ
     }
-    matElementwiseShift(matZ2, shiftLeft_AfterActivation, elementWidth)
+    matElementwiseShift(matZ2, shiftLeft_AfterActivation, cfg.elementWidth)
   }
 
-  def acceleratorSim(matA: Array[Array[Int]], matB: Array[Array[Int]], elementWidth: Int, fracWidth: Int) = {
-    val matZ = systolicArraySim(matA, matB, elementWidth)
-    activationSim(matZ, elementWidth, fracWidth)
+  def acceleratorSim(matA: Array[Array[Int]], matB: Array[Array[Int]], cfg:AcceleratorCfg) = {
+    val matZ = systolicArraySim(matA, matB, cfg.elementWidth)
+    activationSim(matZ, cfg)
   }
 }

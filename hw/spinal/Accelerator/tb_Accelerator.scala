@@ -91,7 +91,7 @@ object AcceleratorTb extends App {
     val (matA, matB) = genMat(instSim)
     matAs += matA
     matBs += matB
-    matZs += instSim.acceleratorSim(matA, matB, acceleratorCfg.elementWidth, acceleratorCfg.fracWidth)
+    matZs += instSim.acceleratorSim(matA, matB, acceleratorCfg)
   }
 
   var totalCycles: Long   = -1

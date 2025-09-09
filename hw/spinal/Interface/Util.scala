@@ -3,6 +3,11 @@ import spinal.core.sim._
 
 import scala.math._
 import scala.util.Random
+import Accelerator._
+import ExponentialFunction.EXP_function_sw
+import LogarithmFunction.LN_function_sw
+import ReLUFunction.ReLU_function_sw
+import SoftplusFunction.Softplus_function_sw
 
 package object Util {
   def printlnMat(mat: Array[Array[Int]]) = println(matToString(mat))
@@ -54,15 +59,25 @@ package object Util {
   def fixOp(fracWidth: Int, op: Double => Double) = (x: Int) =>
     (op(x.toDouble / pow(2, fracWidth)) * pow(2, fracWidth)).toInt
 
-  def matElementwiseExp(mat: Array[Array[Int]], fracWidth: Int) = matElementwiseOp(mat, fixOp(fracWidth, exp))
+  def matElementwiseExp(mat: Array[Array[Int]], cfg:AcceleratorCfg) = {
+    val EXP_sw=new EXP_function_sw(cfg.activationCfg.expCfg)
+    matElementwiseOp(mat, fixOp(cfg.fracWidth, EXP_sw.computeFloat))
+  }
 
-  def matElementwiseLog(mat: Array[Array[Int]], fracWidth: Int) = matElementwiseOp(mat, fixOp(fracWidth, log))
+  def matElementwiseLog(mat: Array[Array[Int]],  cfg:AcceleratorCfg) = {
+    val LN_sw=new LN_function_sw(cfg.activationCfg.lnCfg)
+    matElementwiseOp(mat, fixOp(cfg.fracWidth, LN_sw.computeFloat))
+  }
 
-  def matElementwiseRelu(mat: Array[Array[Int]], fracWidth: Int) =
-    matElementwiseOp(mat, fixOp(fracWidth, x => if (x > 0) x else 0))
+  def matElementwiseRelu(mat: Array[Array[Int]],  cfg:AcceleratorCfg) ={
+    val RELU_sw= new ReLU_function_sw(cfg.activationCfg.reluCfg)
+    matElementwiseOp(mat, fixOp(cfg.fracWidth, RELU_sw.computeFloat))
+  }
 
-  def matElementwiseSoftplus(mat: Array[Array[Int]], fracWidth: Int) =
-    matElementwiseOp(mat, fixOp(fracWidth, x => log(1 + exp(x))))
+  def matElementwiseSoftplus(mat: Array[Array[Int]],  cfg:AcceleratorCfg) ={
+    val SOFTPLUS_sw=new Softplus_function_sw(cfg.activationCfg.softplusCfg)
+    matElementwiseOp(mat, fixOp(cfg.fracWidth, SOFTPLUS_sw.computeFloat))
+  }
 
   def matMul(matA: Array[Array[Int]], matB: Array[Array[Int]]) = {
     require(matA(0).length == matB.length, "mat shape mismatch".red)

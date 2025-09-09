@@ -120,7 +120,7 @@ object AcceleratorPerfOnce extends App {
       val (matA, matB) = genMat(instSim)
       matAs += matA
       matBs += matB
-      matZs += instSim.acceleratorSim(matA, matB, currentCfg.elementWidth, currentCfg.fracWidth)
+      matZs += instSim.acceleratorSim(matA, matB, currentCfg)
     }
 
     var totalCycles: Long   = -1
