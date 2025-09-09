@@ -28,12 +28,12 @@ object AcceleratorTb extends App {
     elementWidth = 24,
     intWidth = 12,
     systolicArraySideNum = 8,//越高越快
-    systolicArrayInFifoDepth = 16,//越高越好
+    systolicArrayInFifoDepth = 64,//越高越好
     systolicArrayOutFifoDepth = 16,//越高越好,但帮助不大
-    systolicArrayInstFifoDepth = 16,//越高越好,但帮助不大
+    systolicArrayInstFifoDepth = 32,//越高越好,但帮助不大
     activationOutFifoDepth = 32,//能过reqirements就行
     slicedInstFifoDepth = 2,//能过reqirements就行
-    numCores = 2//越高越快，但超过2之后帮助不大
+    numCores = 4//越高越快，但超过2之后帮助不大
   )
   val path = s"simWorkspace/AcceleratorTb"
   import java.io.File
