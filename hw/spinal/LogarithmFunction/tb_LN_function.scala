@@ -9,16 +9,54 @@ import scala.collection.mutable
 import breeze.plot._
 import scala.math._
 
-object sim_LN_function_test extends App {
-def cordic_ln_ref(x: Int, cfg: LN_function_cfg): Double = {
-    val scale_factor = 1 << cfg.bit_frac
-    val log_2_int = math.round(log(2) * scale_factor).toInt
+// 定点数数学工具类
+object FixedPointMath {
+  def pow2(x: Int): Double = Math.pow(2, x)
+  
+  def floor(value: Long, bit_frac: Int): Long = {
+    value / pow2(bit_frac).toLong
+  }
+  
+  def sat(value: Long, max_int_bits: Int, bit_frac: Int): Long = {
+    val max_val = pow2(max_int_bits + bit_frac).toLong - 1
+    if (value > max_val) max_val else value
+  }
+  
+  // 辅助函数：计算atanh(x)
+  def atanh(x: Double): Double = 0.5 * log((1 + x) / (1 - x))
+}
 
-    if (x <= 0) return 0 // Assuming hardware handles invalid input gracefully
-
-    // 规范化步骤：将x调整到[1, 2)范围
-    var x_scaled: Int = x
+class LN_function_sw(cfg: LN_function_cfg) {
+  import cfg._
+  import FixedPointMath._
+  
+  // 预计算atanh(2^-j)值的定点表示
+  val atanh_vals_fix: Array[Int] = {
+    val scale_factor = 1 << bit_frac
+    Array.tabulate(rotate + 1) { j =>
+      if (j == 0) 0 // Dummy value for index 0
+      else (atanh(pow(2, -j)) * scale_factor).round.toInt
+    }
+  }
+  
+  // 预计算log(2)的定点表示
+  val log2_fix: Int = {
+    val scale_factor = 1 << bit_frac
+    math.round(log(2) * scale_factor).toInt
+  }
+  
+  // 规范化步骤：将x调整到[1, 2)范围
+  private def normalize(x: Int): (Int, Int) = {
+    val scale_factor = 1 << bit_frac
+    var x_scaled = x
     var k = 0
+    
+    // 处理x <= 0的情况（硬件可能处理方式不同）
+    if (x_scaled <= 0) {
+      return (scale_factor, 0) // 返回1.0的定点表示和k=0
+    }
+    
+    // 规范化到[1, 2)范围
     while (x_scaled >= 2 * scale_factor) {
       x_scaled >>= 1
       k += 1
@@ -27,43 +65,34 @@ def cordic_ln_ref(x: Int, cfg: LN_function_cfg): Double = {
       x_scaled <<= 1
       k -= 1
     }
-
-    // CORDIC atanh(2^-j) 值的定点表示 (Q12格式)
-    val atanh_vals_fix = Array[Int](
-      0, // Dummy
-      (atanh(pow(2, -1)) * scale_factor).round.toInt, // j=1
-      (atanh(pow(2, -2)) * scale_factor).round.toInt, // j=2
-      (atanh(pow(2, -3)) * scale_factor).round.toInt, // j=3
-      (atanh(pow(2, -4)) * scale_factor).round.toInt, // j=4
-      (atanh(pow(2, -5)) * scale_factor).round.toInt, // j=5
-      (atanh(pow(2, -6)) * scale_factor).round.toInt, // j=6
-      (atanh(pow(2, -7)) * scale_factor).round.toInt, // j=7
-      (atanh(pow(2, -8)) * scale_factor).round.toInt, // j=8
-      (atanh(pow(2, -9)) * scale_factor).round.toInt, // j=9
-      (atanh(pow(2, -10)) * scale_factor).round.toInt, // j=10
-      (atanh(pow(2, -11)) * scale_factor).round.toInt, // j=11
-      (atanh(pow(2, -12)) * scale_factor).round.toInt, // j=12
-      (atanh(pow(2, -13)) * scale_factor).round.toInt, // j=13
-      (atanh(pow(2, -14)) * scale_factor).round.toInt // j=14
-    )
     
-    // 初始化CORDIC变量（使用定点数）
-    var x_n: Long = x_scaled.toLong + scale_factor.toLong
-    var y_n: Long = x_scaled.toLong - scale_factor.toLong
+    (x_scaled, k)
+  }
+  
+  // CORDIC核心计算
+  def compute(x: Int): Long = {
+    val scale_factor = 1 << bit_frac
+    
+    // 规范化输入
+    val (x_norm, k) = normalize(x)
+    
+    // 初始化CORDIC变量（使用Long以避免溢出）
+    var x_n: Long = x_norm.toLong + scale_factor.toLong  // x + 1
+    var y_n: Long = x_norm.toLong - scale_factor.toLong  // x - 1
     var z_n: Long = 0
-
+    
     // CORDIC迭代
-    for (j <- 1 to cfg.rotate) {
+    for (j <- 1 to rotate) {
       val sign_y = if (y_n > 0) 1 else -1
-      val atanh_val = atanh_vals_fix(j)
+      val atanh_val = atanh_vals_fix(j).toLong
       
       val x_temp = x_n
       x_n = x_n - (sign_y * (y_n >> j))
       y_n = y_n - (sign_y * (x_temp >> j))
       z_n = z_n + sign_y * atanh_val
-
-      // 补偿迭代
-      if (cfg.using_compensation_iters && (j == 4 || j == 13)) {
+      
+      // 补偿迭代（如果启用）
+      if (using_compensation_iters && (j == 4 || j == 13)) {
         val sign_y_comp = if (y_n > 0) 1 else -1
         val x_temp_comp = x_n
         x_n = x_n - (sign_y_comp * (y_n >> j))
@@ -72,18 +101,19 @@ def cordic_ln_ref(x: Int, cfg: LN_function_cfg): Double = {
       }
     }
     
-    // 最终结果计算（定点数）
-    val result = (2 * z_n + k * log_2_int).toDouble/scale_factor
+    // 最终结果计算（考虑规范化因子k和log(2)）
+    val result = 2 * z_n + k * log2_fix.toLong
     result
   }
-   
-  // 辅助函数：计算atanh(x)
-  def atanh(x: Double): Double = 0.5 * log((1 + x) / (1 - x))
   
-  // 替换原来的简单实现
-  def lnx_fixIn_fpOut(x: Int, cfg: LN_function_cfg): Double = {
-    cordic_ln_ref(x, cfg)
+  // 提供浮点输出版本（可选）
+  def computeFloat(x: Int): Double = {
+    val result_fixed = compute(x)
+    result_fixed.toDouble / (1 << bit_frac)
   }
+}
+
+object sim_LN_function_test extends App {
 
   new File("rtl/LogFunction/sim_LN_function_test_report").mkdir()
   val flags = VCSFlags(
@@ -152,12 +182,13 @@ def cordic_ln_ref(x: Int, cfg: LN_function_cfg): Double = {
   val display_out_Queue = mutable.Queue[Int]()
   val display_abserror_Queue = mutable.Queue[Double]()
   val display_relerror_Queue = mutable.Queue[Double]()
+  val lnx_sw = new LN_function_sw(cfg)
   // 填充测试数据到队列
   while (x_iter.hasNext) {
     val x = x_iter.next()
     x_Queue.enqueue(x)
     display_x_Queue.enqueue(x)
-    val ref = lnx_fixIn_fpOut(x,cfg)
+    val ref = lnx_sw.computeFloat(x)
     lnx_Queue.enqueue(ref)
     display_ref_Queue.enqueue(ref)
   }

@@ -10,6 +10,113 @@ import spinal.lib.sim.{FlowDriver, FlowMonitor, ScoreboardInOrder}
 
 import scala.collection.mutable
 import breeze.plot._
+import scala.collection.mutable.ArrayBuffer
+
+// Softplus表结构
+case class SoftplusTables(P: Array[Int], N: Array[Int])
+
+class Softplus_function_sw(cfg: Softplus_function_cfg) {
+  import cfg._
+  
+  // 预计算P表和N表
+  private val tables: SoftplusTables = generatePNTablesInts(cfg)
+  
+  // 生成P和N表的内部方法
+  private def generatePNTablesInts(cfg: Softplus_function_cfg): SoftplusTables = {
+    val K1 = cfg.K1; val K2 = cfg.K2; val K3 = cfg.K3
+    val bit_frac = cfg.bit_frac
+    val totalBits = cfg.total_bits
+    val tMin = cfg.t_range._1
+    val tMax = cfg.t_range._2
+    val fullIdxMax = (1 << totalBits) - 1
+
+    def alphamid(xh: Int, xm: Int, xl: Int): Double = {
+      val idx = (xh << (K2 + K3)) | (xm << K3) | xl
+      val t_mid = tMin + idx.toDouble / fullIdxMax.toDouble * (tMax - tMin)
+      math.log1p(math.exp(t_mid))
+    }
+
+    val pLen = 1 << (K1 + K2)
+    val P_table = Array.ofDim[Int](pLen)
+    for (idx <- 0 until pLen) {
+      val xh = idx >> K2
+      val xm = idx & ((1 << K2) - 1)
+      val spread = alphamid(xh, xm, 0) - alphamid(xh, xm, (1 << K3) - 1)
+      val first = alphamid(xh, 0, 0) - alphamid(xh, 0, (1 << K3) - 1)
+      val last  = alphamid(xh, (1 << K2) - 1, 0) - alphamid(xh, (1 << K2) - 1, (1 << K3) - 1)
+      val avg_spread = (first + last) / 2.0
+      val adjust = (avg_spread - spread) / 2.0
+      val value = (alphamid(xh, xm, 0) + adjust) * (1 << bit_frac)
+      P_table(idx) = value.toInt
+    }
+
+    val nLen = 1 << (K1 + K3)
+    val N_table = Array.ofDim[Int](nLen)
+    for (idx <- 0 until nLen) {
+      val xh = idx >> K3
+      val xl = idx & ((1 << K3) - 1)
+      val diff0 = alphamid(xh, 0, xl) - alphamid(xh, 0, 0)
+      val diff1 = alphamid(xh, (1 << K2) - 1, xl) - alphamid(xh, (1 << K2) - 1, 0)
+      val avgDiff = (diff0 + diff1) / 2.0
+      val value = avgDiff * (1 << bit_frac)
+      N_table(idx) = value.toInt
+    }
+
+    SoftplusTables(P_table, N_table)
+  }
+  
+  // 核心计算函数（返回定点数结果）
+  def compute(payloadInt: Int): Int = {
+    val K1 = cfg.K1; val K2 = cfg.K2; val K3 = cfg.K3
+    val totalBits = cfg.total_bits
+    val bit_frac = cfg.bit_frac
+    val tMin = cfg.t_range._1
+    val tMax = cfg.t_range._2
+
+    // scale_inv 与硬件 cfg.scale_inv 的整数计算 (以 Long 避免溢出)
+    val scaleInvLong = (((1L << totalBits) - 1L) / (tMax - tMin)).toLong
+
+    val tMinFixed = (tMin.toLong << bit_frac)        // t_min << bit_frac (Long)
+    val numerator = (payloadInt.toLong - tMinFixed) * scaleInvLong // Long
+    val idxLong = (numerator >> bit_frac)              // 与硬件的 >> bit_frac 保持一致 (算术右移)
+    var idx = idxLong.toInt
+
+    // clip 防止越界（硬件未必需要，但保证安全）
+    val maxIdx = (1 << totalBits) - 1
+    if (idx < 0) idx = 0
+    else if (idx > maxIdx) idx = maxIdx
+
+    val xh = idx >> (K2 + K3)
+    val rem = idx - (xh << (K2 + K3))
+    val xm = rem >> K3
+    val xl = rem - (xm << K3)
+
+    val pIdx = (xh << K2) | xm
+    val nIdx = (xh << K3) | xl
+
+    val P_raw = tables.P(pIdx)
+    val N_raw = tables.N(nIdx)
+    val sum = P_raw + N_raw
+    sum // 整数形式，与硬件 payload (fixed-point) 对齐
+  }
+  
+  // 提供浮点输出版本（可选）
+  def computeFloat(payloadInt: Int): Double = {
+    val result_fixed = compute(payloadInt)
+    result_fixed.toDouble / (1 << bit_frac)
+  }
+  
+  // 直接从浮点数输入计算（便利函数）
+  def computeFromFloat(payloadFloat: Double): Double = {
+    val payloadFixed = (payloadFloat * (1 << bit_frac)).toInt
+    computeFloat(payloadFixed)
+  }
+  
+  // 获取表内容（用于调试和验证）
+  def getPTable: Array[Int] = tables.P.clone()
+  def getNTable: Array[Int] = tables.N.clone()
+}
+
 object SoftplusFunctionTest extends App {
   new File("rtl/Softplus_function/sim_softplus_function_test_report").mkdir()
   val cfg=Softplus_function_cfg(
@@ -58,90 +165,6 @@ object SoftplusFunctionTest extends App {
       )
     ).compile(report)
 
-    import scala.collection.mutable.ArrayBuffer
-import scala.math._
-case class SoftplusTables(P: Array[Int], N: Array[Int])
-
-def generatePNTablesInts(cfg: Softplus_function_cfg): SoftplusTables = {
-  val K1 = cfg.K1; val K2 = cfg.K2; val K3 = cfg.K3
-  val bit_frac = cfg.bit_frac
-  val totalBits = cfg.total_bits
-  val tMin = cfg.t_range._1
-  val tMax = cfg.t_range._2
-  val fullIdxMax = (1 << totalBits) - 1
-
-  def alphamid(xh: Int, xm: Int, xl: Int): Double = {
-    val idx = (xh << (K2 + K3)) | (xm << K3) | xl
-    val t_mid = tMin + idx.toDouble / fullIdxMax.toDouble * (tMax - tMin)
-    math.log1p(math.exp(t_mid))
-  }
-
-  val pLen = 1 << (K1 + K2)
-  val P_table = Array.ofDim[Int](pLen)
-  for (idx <- 0 until pLen) {
-    val xh = idx >> K2
-    val xm = idx & ((1 << K2) - 1)
-    val spread = alphamid(xh, xm, 0) - alphamid(xh, xm, (1 << K3) - 1)
-    val first = alphamid(xh, 0, 0) - alphamid(xh, 0, (1 << K3) - 1)
-    val last  = alphamid(xh, (1 << K2) - 1, 0) - alphamid(xh, (1 << K2) - 1, (1 << K3) - 1)
-    val avg_spread = (first + last) / 2.0
-    val adjust = (avg_spread - spread) / 2.0
-    val value = (alphamid(xh, xm, 0) + adjust) * (1 << bit_frac)
-    P_table(idx) = value.toInt
-  }
-
-  val nLen = 1 << (K1 + K3)
-  val N_table = Array.ofDim[Int](nLen)
-  for (idx <- 0 until nLen) {
-    val xh = idx >> K3
-    val xl = idx & ((1 << K3) - 1)
-    val diff0 = alphamid(xh, 0, xl) - alphamid(xh, 0, 0)
-    val diff1 = alphamid(xh, (1 << K2) - 1, xl) - alphamid(xh, (1 << K2) - 1, 0)
-    val avgDiff = (diff0 + diff1) / 2.0
-    val value = avgDiff * (1 << bit_frac)
-    N_table(idx) = value.toInt
-  }
-
-  SoftplusTables(P_table, N_table)
-}
-
-/** ========== 软件模型：对单个输入 payload (fixed-point int) 产生与硬件等价的整数输出 ========== */
-def softplusRefInt(payloadInt: Int, cfg: Softplus_function_cfg, P_table: Array[Int], N_table: Array[Int]): Int = {
-  val K1 = cfg.K1; val K2 = cfg.K2; val K3 = cfg.K3
-  val totalBits = cfg.total_bits
-  val bit_frac = cfg.bit_frac
-  val tMin = cfg.t_range._1
-  val tMax = cfg.t_range._2
-
-  // scale_inv 与硬件 cfg.scale_inv 的整数计算 (以 Long 避免溢出)
-  val scaleInvLong = (((1L << totalBits) - 1L) / (tMax - tMin)).toLong
-
-  val tMinFixed = (tMin.toLong << bit_frac)        // t_min << bit_frac (Long)
-  val numerator = (payloadInt.toLong - tMinFixed) * scaleInvLong // Long
-  val idxLong = (numerator >> bit_frac)              // 与硬件的 >> bit_frac 保持一致 (算术右移)
-  var idx = idxLong.toInt
-
-  // clip 防止越界（硬件未必需要，但保证安全）
-  val maxIdx = (1 << totalBits) - 1
-  if (idx < 0) idx = 0
-  else if (idx > maxIdx) idx = maxIdx
-
-  val xh = idx >> (K2 + K3)
-  val rem = idx - (xh << (K2 + K3))
-  val xm = rem >> K3
-  val xl = rem - (xm << K3)
-
-  val pIdx = (xh << K2) | xm
-  val nIdx = (xh << K3) | xl
-
-  val P_raw = P_table(pIdx)
-  val N_raw = N_table(nIdx)
-  val sum = P_raw + N_raw
-  sum // 整数形式，与硬件 payload (fixed-point) 对齐
-}
-
-
-
 
   simCompiled.doSim("softplus_tb"){dut =>
 
@@ -172,11 +195,11 @@ def softplusRefInt(payloadInt: Int, cfg: Softplus_function_cfg, P_table: Array[I
     // 在 fork 之前，生成软件侧 P/N 表（与硬件生成方法一致）
 
 
-  val tables = generatePNTablesInts(cfg)
+  val softplus_sw = new Softplus_function_sw(cfg)
   // 用于精确断言：记录输入 (double) 与硬件输出的整数值
-val inputData = ArrayBuffer[Double]()
-val outputDataDouble = ArrayBuffer[Double]()
-val outputDataInt = ArrayBuffer[Int]()
+  val inputData = ArrayBuffer[Double]()
+  val outputDataDouble = ArrayBuffer[Double]()
+  val outputDataInt = ArrayBuffer[Int]()
 
     val PostionThread = fork {
       while (x_iter.hasNext) {
@@ -214,7 +237,7 @@ val relErrors = Array.ofDim[Double](inputData.length)
 for (i <- 0 until inputData.length) {
   val x = inputData(i)
   val payloadInt = math.round(x * (1 << cfg.bit_frac)).toInt // 恢复到硬件使用的 payload int
-  val expectedInt = softplusRefInt(payloadInt, cfg, tables.P, tables.N)
+  val expectedInt = softplus_sw.compute(payloadInt)
   val hwInt = outputDataInt(i)
   assert(hwInt == expectedInt,
     s"Mismatch @ idx=$i, x=$x, hwInt=$hwInt, expectedInt=$expectedInt, hwFloat=${hwInt.toDouble/(1<<cfg.bit_frac)}, expectedFloat=${expectedInt.toDouble/(1<<cfg.bit_frac)}")
