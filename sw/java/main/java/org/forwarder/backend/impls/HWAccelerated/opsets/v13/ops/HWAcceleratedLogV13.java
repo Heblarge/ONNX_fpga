@@ -112,17 +112,17 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
         int[][] fixedPointInput = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointInput[i][j] = Math.round(x.getFloat(i, j));
+                fixedPointInput[i][j] = Math.round((float)(x.getFloat(i, j)*Math.pow(2, fracWidth)));                
             }
         }
 
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                -fracWidth,
+                0,
                 false,
                 "log",
-                fracWidth,
+                0,
                 0,
                 0,
                 0,
@@ -137,7 +137,7 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                output[i * cols + j] = (float)(( (double)(fixedPointOutput[i][j]))/ Math.pow(2, fracWidth));
             }
         }
 
