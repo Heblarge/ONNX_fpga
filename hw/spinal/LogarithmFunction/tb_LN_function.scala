@@ -12,99 +12,161 @@ import scala.math._
 // 定点数数学工具类
 object FixedPointMath {
   def pow2(x: Int): Double = Math.pow(2, x)
-  
+
   def floor(value: Long, bit_frac: Int): Long = {
     value / pow2(bit_frac).toLong
   }
-  
+
   def sat(value: Long, max_int_bits: Int, bit_frac: Int): Long = {
     val max_val = pow2(max_int_bits + bit_frac).toLong - 1
     if (value > max_val) max_val else value
   }
-  
+
+  def clz(x: Int, width: Int): Int = {
+    // 将x限制在指定位宽下，避免负数扩展影响
+    val mask = if (width >= 31) -1 else ((1 << width) - 1)
+    val v = x & mask
+    if (v == 0) width
+    else {
+      // 使用内置bitLength近似：前导零 = width - bitLength
+      val bl = 32 - Integer.numberOfLeadingZeros(v) // 有效位数
+      width - bl
+    }
+  }
+
   // 辅助函数：计算atanh(x)
-  def atanh(x: Double): Double = 0.5 * log((1 + x) / (1 - x))
+  //def atanh(x: Double): Double = 0.5 * log((1 + x) / (1 - x))
+
 }
 
 class LN_function_sw(cfg: LN_function_cfg) {
   import cfg._
   import FixedPointMath._
-  
+  import LN_function_cfg._
+
   // 预计算atanh(2^-j)值的定点表示
+//  val atanh_vals_fix: Array[Int] = {
+//    val scale_factor = 1 << bit_frac
+//    Array.tabulate(rotate + 1) { j =>
+//      if (j == 0) 0 // Dummy value for index 0
+//      else (atanh(pow(2, -j)) * scale_factor).round.toInt
+//    }
+//  }
+
+
+  // 使用泰勒展开近似的atanh
   val atanh_vals_fix: Array[Int] = {
     val scale_factor = 1 << bit_frac
     Array.tabulate(rotate + 1) { j =>
-      if (j == 0) 0 // Dummy value for index 0
-      else (atanh(pow(2, -j)) * scale_factor).round.toInt
+      if (j == 0) 0
+      else {
+        val v = atanh(Math.pow(2.0, -j)) * scale_factor
+        v.toInt // 截断
+      }
     }
   }
-  
+
+//  val atanh_vals_fix: Array[Int] = {
+//    val scale_factor = 1 << bit_frac
+//    Array.tabulate(rotate + 1) { j =>
+//      if (j == 0) 0
+//      else {
+//        val v = atanh_taylor(Math.pow(2.0, -j)) * scale_factor
+//        v.toInt // 截断
+//      }
+//    }
+//  }
+
+
   // 预计算log(2)的定点表示
+  //val log2_fix: Int = (Math.log(2.0) * (1 << bit_frac)).toInt
   val log2_fix: Int = {
     val scale_factor = 1 << bit_frac
     math.round(log(2) * scale_factor).toInt
   }
-  
+
   // 规范化步骤：将x调整到[1, 2)范围
+//  private def normalize(x: Int): (Int, Int) = {
+//    val scale_factor = 1 << bit_frac
+//    var x_scaled = x
+//    var k = 0
+//
+//    // 处理x <= 0的情况（硬件可能处理方式不同）
+//    if (x_scaled <= 0) {
+//      return (scale_factor, 0) // 返回1.0的定点表示和k=0
+//    }
+//
+//    // 规范化到[1, 2)范围
+//    while (x_scaled >= 2 * scale_factor) {
+//      x_scaled >>= 1
+//      k += 1
+//    }
+//    while (x_scaled < scale_factor) {
+//      x_scaled <<= 1
+//      k -= 1
+//    }
+//
+//    (x_scaled, k)
+//  }
   private def normalize(x: Int): (Int, Int) = {
-    val scale_factor = 1 << bit_frac
-    var x_scaled = x
-    var k = 0
-    
-    // 处理x <= 0的情况（硬件可能处理方式不同）
-    if (x_scaled <= 0) {
-      return (scale_factor, 0) // 返回1.0的定点表示和k=0
+    val width     = bit_int + bit_frac
+    val threshold = bit_int - 1
+    val lz        = FixedPointMath.clz(x, width)
+    if (lz < threshold) {
+      val sh = (threshold - lz)
+      // 逻辑右移（无符号）：与硬件右移UInt一致
+      val x_shift = (x >>> sh)
+      (x_shift, sh)
+    } else if (lz > threshold) {
+      val sh = (lz - threshold)
+      // 左移（可能溢出上位被截断，软件侧与硬件位宽一致时等价）
+      val mask = if (width >= 31) -1 else ((1 << width) - 1)
+      val x_shift = (x << sh) & mask
+      (x_shift, -sh)
+    } else {
+      (x, 0)
     }
-    
-    // 规范化到[1, 2)范围
-    while (x_scaled >= 2 * scale_factor) {
-      x_scaled >>= 1
-      k += 1
-    }
-    while (x_scaled < scale_factor) {
-      x_scaled <<= 1
-      k -= 1
-    }
-    
-    (x_scaled, k)
   }
-  
+
   // CORDIC核心计算
   def compute(x: Int): Long = {
     val scale_factor = 1 << bit_frac
-    
-    // 规范化输入
+
+    // 规范化输入（与硬件一致）
     val (x_norm, k) = normalize(x)
-    
+
     // 初始化CORDIC变量（使用Long以避免溢出）
     var x_n: Long = x_norm.toLong + scale_factor.toLong  // x + 1
     var y_n: Long = x_norm.toLong - scale_factor.toLong  // x - 1
     var z_n: Long = 0
-    
+
     // CORDIC迭代
     for (j <- 1 to rotate) {
-      val sign_y = if (y_n > 0) 1 else -1
+      // [FIX] 与硬件一致：y>=0 走“正号”分支（!msb）
+      val sign_y = if (y_n >= 0L) 1L else -1L
       val atanh_val = atanh_vals_fix(j).toLong
-      
+
       val x_temp = x_n
       x_n = x_n - (sign_y * (y_n >> j))
       y_n = y_n - (sign_y * (x_temp >> j))
       z_n = z_n + sign_y * atanh_val
-      
-      // 补偿迭代（如果启用）
+
+      // 补偿迭代（如果启用），索引保持你的原逻辑 j==4 || j==13
       if (using_compensation_iters && (j == 4 || j == 13)) {
-        val sign_y_comp = if (y_n > 0) 1 else -1
+        val sign_y_comp = if (y_n >= 0L) 1L else -1L
         val x_temp_comp = x_n
         x_n = x_n - (sign_y_comp * (y_n >> j))
         y_n = y_n - (sign_y_comp * (x_temp_comp >> j))
         z_n = z_n + sign_y_comp * atanh_val
       }
     }
-    
+
     // 最终结果计算（考虑规范化因子k和log(2)）
-    val result = 2 * z_n + k * log2_fix.toLong
+    val result = 2L * z_n + k.toLong * log2_fix.toLong
     result
   }
+
+
   // 提供浮点输入版本（可选）
   def compute(x: Double): Long = {
     val x_fixed = Math.round(x * (1 << bit_frac)).toInt

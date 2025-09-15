@@ -36,6 +36,8 @@ case class LN_function_cfg(
     sum
   }
 
+  def atanh(x: Double): Double = 0.5 * log((1 + x) / (1 - x))
+
 }
 
 
@@ -154,7 +156,7 @@ case class LN_function(cfg: LN_function_cfg) extends Component {
   // 预计算atanh(2^(-i-1))的查找表，转换为定点数
   val atanh_lut = Vec.fill(rotate)(SInt(ln_bit + 1 bits))
   for (i <- 0 until rotate) {
-    atanh_lut(i) := S((atanh_taylor(Math.pow(2, -i - 1)) * Math.pow(2, bit_frac)).toInt, ln_bit + 1 bits).resized
+    atanh_lut(i) := S((atanh(Math.pow(2, -i - 1)) * Math.pow(2, bit_frac)).toInt, ln_bit + 1 bits).resized
   }
 
   // 实例化规范化模块
