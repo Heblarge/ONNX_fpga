@@ -29,7 +29,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
         int minValue = 1;
         int maxValue = 20;
 
-        INDArray input = Nd4j.create(generateRandomIntegerMatrix(rows, cols, minValue, maxValue));
+        INDArray input = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
         INDArray expected = Transforms.log(input.dup(), true); // Base e
 
         this.testLog(expected, input);
@@ -47,7 +47,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
         int minValue = 1;
         int maxValue = 10;
 
-        INDArray input = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
+        INDArray input = createRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue);
         INDArray expected = Transforms.log(input.dup(), true); // Base e
 
         this.testLog(expected, input);
@@ -112,7 +112,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
     }
 
     /**
-     * Generates a 2D matrix of floats with random float values.
+     * Generates a 2D matrix of floats with random integer values.
      */
     private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
         Random random = new Random();
@@ -124,14 +124,36 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
         }
         return matrix;
     }
-
     /**
      * Generates a 3D matrix of floats with random integer values.
      */
-    private INDArray createRandom3DMatrix(int batch, int rows, int cols, int min, int max) {
+    private INDArray createRandom3DIntegerMatrix(int batch, int rows, int cols, int min, int max) {
         INDArray matrix = Nd4j.create(batch, rows, cols);
         for (int i = 0; i < batch; i++) {
             matrix.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(rows, cols, min, max)));
+        }
+        return matrix;
+    }
+    /**
+     * Generates a 2D matrix of floats with random float values.
+     */
+    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
+        Random random = new Random();
+        float[][] matrix = new float[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                matrix[i][j] = min + random.nextFloat() * (max - min);
+            }
+        }
+        return matrix;
+    }
+    /**
+     * Generates a 3D matrix of floats with random float values.
+     */
+    private INDArray createRandom3DFloatMatrix(int batch, int rows, int cols, int min, int max) {
+        INDArray matrix = Nd4j.create(batch, rows, cols);
+        for (int i = 0; i < batch; i++) {
+            matrix.putSlice(i, Nd4j.create(generateRandomFloatMatrix(rows, cols, min, max)));
         }
         return matrix;
     }

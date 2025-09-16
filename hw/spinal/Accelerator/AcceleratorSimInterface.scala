@@ -21,7 +21,7 @@ object AcceleratorSimInterface {
     ShapeWidth = 16,
     systolicArraySideNum = 16,
     elementWidth = 24,
-    intWidth = 12,
+    intWidth = 9,
     systolicArrayInFifoDepth = 8,
     systolicArrayOutFifoDepth = 8,
     systolicArrayInstFifoDepth = 32,
