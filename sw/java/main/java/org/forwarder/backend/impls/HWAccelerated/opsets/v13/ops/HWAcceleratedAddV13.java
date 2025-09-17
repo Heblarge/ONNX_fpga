@@ -15,6 +15,7 @@ import org.onnx4j.opsets.operator.OperatorOutputs;
 /**
  * Implements the Add operation using a hardware accelerator.
  * This version automatically pads inputs to be multiples of 32 for hardware compatibility.
+ * It handles tensors of any rank >= 2 and supports Numpy-style broadcasting.
  */
 public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13 {
 
@@ -29,14 +30,55 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         return new AddOutputV13<>(outputTensor);
     }
 
+    /**
+     * Public dispatcher for the Add operation.
+     * It handles broadcasting and reshapes tensors for efficient hardware execution.
+     */
     public INDArray add(INDArray a, INDArray b) {
-        if (a.rank() == 2 && b.rank() == 2) {
-            return add2D(a, b);
-        } else if (a.rank() == 3 && b.rank() == 3) {
-            return add3D(a, b);
-        } else {
-            throw new IllegalArgumentException("Unsupported tensor rank for Add: A=" + a.rank() + ", B=" + b.rank());
+        if (!java.util.Arrays.equals(a.shape(), b.shape())) {
+            long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
+            a = a.broadcast(broadcastShape);
+            b = b.broadcast(broadcastShape);
         }
+
+        if (a.rank() == 2) {
+            return add2D(a, b);
+        } else if (a.rank() > 2) {
+            long[] finalShape = a.shape();
+            long numCols = finalShape[finalShape.length - 1];
+            long numRows = a.length() / numCols;
+            INDArray reshapedA = a.reshape('c', numRows, numCols);
+            INDArray reshapedB = b.reshape('c', numRows, numCols);
+            INDArray result2D = add2D(reshapedA, reshapedB);
+            return result2D.reshape('c', finalShape);
+        } else {
+            throw new IllegalArgumentException(
+                    "Unsupported tensor rank for Add: " + a.rank() + ". Only ranks >= 2 are supported."
+            );
+        }
+    }
+
+    /**
+     * Calculates the resulting shape of a broadcasting operation between two shapes.
+     * Follows Numpy-style broadcasting rules.
+     */
+    private long[] getBroadcastShape(long[] shapeA, long[] shapeB) {
+        int rankA = shapeA.length;
+        int rankB = shapeB.length;
+        int maxRank = Math.max(rankA, rankB);
+        long[] resultShape = new long[maxRank];
+
+        for (int i = 1; i <= maxRank; i++) {
+            long dimA = (rankA - i >= 0) ? shapeA[rankA - i] : 1;
+            long dimB = (rankB - i >= 0) ? shapeB[rankB - i] : 1;
+
+            if (dimA != dimB && dimA != 1 && dimB != 1) {
+                throw new IllegalArgumentException("Shapes " + java.util.Arrays.toString(shapeA) + " and "
+                        + java.util.Arrays.toString(shapeB) + " are not broadcastable.");
+            }
+            resultShape[maxRank - i] = Math.max(dimA, dimB);
+        }
+        return resultShape;
     }
 
     /**
@@ -58,58 +100,34 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         int originalRows = (int) a.rows();
         int originalCols = (int) a.columns();
 
-        // 1. Calculate padded dimensions
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        // 2. Create padded INDArrays
         INDArray paddedA = Nd4j.zeros(paddedRows, paddedCols);
         paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, a);
 
         INDArray paddedB = Nd4j.zeros(paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        // 3. Call the hardware accelerator with the padded data
         INDArray paddedResult = addOnAccelerator(paddedA, paddedB, paddedRows, paddedCols);
 
-        // 4. Slice the result back to the original output shape
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
     /**
-     * Performs 3D (batched) element-wise addition.
-     */
-    private INDArray add3D(INDArray a, INDArray b) {
-        if (!java.util.Arrays.equals(a.shape(), b.shape())) {
-            throw new IllegalArgumentException("Input shapes must be identical for 3D hardware addition.");
-        }
-        long batch = a.shape()[0];
-        long rows = a.shape()[1];
-        long cols = a.shape()[2];
-
-        INDArray result = Nd4j.createUninitialized(new long[]{batch, rows, cols}, 'c');
-
-        for (int i = 0; i < (int) batch; i++) {
-            INDArray sliceA = a.slice(i);
-            INDArray sliceB = b.slice(i);
-            INDArray sum = add2D(sliceA, sliceB); // add2D now handles padding
-            result.putSlice(i, sum);
-        }
-
-        return result;
-    }
-
-    /**
      * Private helper to run 2D element-wise addition on the hardware simulator.
-     * This method's logic is preserved exactly as requested.
      */
     private INDArray addOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
+        // Added fixed-point conversion logic to match Sub operator
+        int fracWidth = 8; // Should be determined from onnx graph for optimal value
+        double scaleFactor = Math.pow(2, fracWidth);
+
         int[][] fixedPointA = new int[rows][cols];
         int[][] fixedPointB = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = Math.round(a.getFloat(i, j));
-                fixedPointB[i][j] = Math.round(b.getFloat(i, j));
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
             }
         }
 
@@ -133,7 +151,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
             }
         }
 

@@ -5,6 +5,8 @@ import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.GemmV13;
@@ -52,7 +54,8 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
                 C = C.broadcast(yShape);
             }
             INDArray betaC = C.mul(beta);
-            Y = Y.add(betaC);
+            HWAcceleratedAddV13 addOperator = new HWAcceleratedAddV13();
+            Y = addOperator.add(Y, betaC);
         }
 
         return Y;
@@ -77,35 +80,37 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
         int paddedColsA = ceilToMultiple(originalColsA, HW_DIM_MULTIPLE);
         int paddedColsB = ceilToMultiple(originalColsB, HW_DIM_MULTIPLE);
 
-        int[][] paddedA = new int[paddedRowsA][paddedColsA];
-        for(int i = 0; i < originalRowsA; i++) {
-            for(int j = 0; j < originalColsA; j++) {
-                paddedA[i][j] = Math.round(a.getFloat(i, j));
-            }
-        }
+        INDArray paddedA = Nd4j.zeros(paddedRowsA, paddedColsA);
+        paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsA)}, a);
 
-        int[][] paddedB = new int[paddedColsA][paddedColsB];
-        for(int i = 0; i < originalRowsB; i++) {
-            for(int j = 0; j < originalColsB; j++) {
-                paddedB[i][j] = Math.round(b.getFloat(i, j));
-            }
-        }
+        INDArray paddedB = Nd4j.zeros(paddedColsA, paddedColsB);
+        paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsB), NDArrayIndex.interval(0, originalColsB)}, b);
 
-        int[][] paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB);
+        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB);
 
-        float[][] finalResult = new float[originalRowsA][originalColsB];
-        for(int i = 0; i < originalRowsA; i++) {
-            for(int j = 0; j < originalColsB; j++) {
-                finalResult[i][j] = paddedResult[i][j];
-            }
-        }
+        return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
 
-        return Nd4j.create(finalResult);
     }
 
 
-    private int[][] matMulOnAccelerator(int[][] a, int[][] b, int rowsA, int colsA, int colsB){
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB){
+
+        int fracWidth = 8;
+        double scaleFactor = Math.pow(2, fracWidth);
+
+        int[][] fixedPointA = new int[rowsA][colsA];
+        int[][] fixedPointB = new int[colsA][colsB];
+
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+            }
+        }
+        for (int i = 0; i < colsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+            }
+        }
 
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
@@ -114,12 +119,23 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
                 false,
                 "none",
                 0,
-                0, 0, 0,
+                0,
+                0,
+                0,
                 rowsA,
                 colsA,
                 colsB
         );
+        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
-        return AcceleratorSimInterface.runRefOneInst(a, b, instruction);
+        float[] Output = new float[rowsA * colsB];
+        double finalScaleFactor = scaleFactor * scaleFactor;
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                Output[i * colsB + j] = (float)(((double)(fixedPointOutput[i][j])) / finalScaleFactor);
+            }
+        }
+
+        return Nd4j.create(Output).reshape(rowsA, colsB);
     }
 }

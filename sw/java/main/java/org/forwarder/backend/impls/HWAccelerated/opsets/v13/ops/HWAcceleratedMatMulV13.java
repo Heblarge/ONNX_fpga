@@ -117,19 +117,22 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
 
     private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB){
 
+        int fracWidth = 8; // Should be determined from onnx graph for optimal value
+        double scaleFactor = Math.pow(2, fracWidth);
+
         int[][] fixedPointA = new int[rowsA][colsA];
         int[][] fixedPointB = new int[colsA][colsB];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
                 // 将浮点数转换为定点数
-                fixedPointA[i][j] = Math.round(a.getFloat(i, j));
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
 
             }
         }
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
                 // 将浮点数转换为定点数
-                fixedPointB[i][j] = Math.round(b.getFloat(i, j));
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
             }
         }
 
@@ -150,10 +153,11 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         float[] Output = new float[rowsA * colsB];
+        double finalScaleFactor = scaleFactor * scaleFactor;
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
                 // 将定点数转换回浮点数
-                Output[i * colsB + j] = (float) (fixedPointOutput[i][j]);
+                Output[i * colsB + j] = (float)(((double)(fixedPointOutput[i][j])) / finalScaleFactor);
             }
         }
 

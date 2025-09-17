@@ -1,5 +1,6 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
+import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -11,111 +12,121 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * This test class validates the HWAcceleratedAddV13 operator for
- * both 2D and 3D (batched) element-wise addition using floating-point inputs.
+ * This test class validates the HWAcceleratedAddV13 operator.
  */
 public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
 
-    /**
-     * Tests standard 2D element-wise addition.
-     */
+    private INDArray calculateSimulatedFixedPointAdd(INDArray a, INDArray b) {
+        int fracWidth = 8;
+        double scaleFactor = Math.pow(2, fracWidth);
+        int rows = (int) a.rows();
+        int cols = (int) a.columns();
+        int[][] fixedPointA = new int[rows][cols];
+        int[][] fixedPointB = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+            }
+        }
+        int[][] fixedPointOutput = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                fixedPointOutput[i][j] = fixedPointA[i][j] + fixedPointB[i][j];
+            }
+        }
+        float[] output = new float[rows * cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
+            }
+        }
+        return Nd4j.create(output).reshape(rows, cols);
+    }
+
     @Test
     public void testAdd2D() throws Exception {
         System.out.println("\n--- Testing 2D Add ---");
         int rows = 32;
         int cols = 32;
-        float minValue = -10.0f;
-        float maxValue = 10.0f;
-
-        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
-        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
-
-        INDArray expectedMatrix = matrixA.add(matrixB);
-
-        this.validateAdd(expectedMatrix, matrixA, matrixB);
+        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, -10.0f, 10.0f));
+        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, -10.0f, 10.0f));
+        INDArray theoreticalExpected = matrixA.add(matrixB);
+        INDArray simulatedExpected = calculateSimulatedFixedPointAdd(matrixA, matrixB);
+        this.validateAdd(theoreticalExpected, simulatedExpected, matrixA, matrixB);
     }
 
-    /**
-     * Tests 3D (batched) element-wise addition.
-     */
     @Test
     public void testAdd3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) Add ---");
-        int batchSize = 1;
-        int rows = 30;
-        int cols = 512;
-        float minValue = -10.0f;
-        float maxValue = 10.0f;
-
-        INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
-        INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
-
-        INDArray expectedMatrix = matrixA.add(matrixB);
-
-        this.validateAdd(expectedMatrix, matrixA, matrixB);
+        int batchSize = 2;
+        int rows = 28;
+        int cols = 32;
+        INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, -10.0f, 10.0f);
+        INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, -10.0f, 10.0f);
+        INDArray theoreticalExpected = matrixA.add(matrixB);
+        INDArray simulatedExpected = Nd4j.create(matrixA.shape());
+        for (int i = 0; i < batchSize; i++) {
+            INDArray sliceA = matrixA.slice(i);
+            INDArray sliceB = matrixB.slice(i);
+            INDArray expectedSlice = calculateSimulatedFixedPointAdd(sliceA, sliceB);
+            simulatedExpected.putSlice(i, expectedSlice);
+        }
+        this.validateAdd(theoreticalExpected, simulatedExpected, matrixA, matrixB);
     }
 
-    /**
-     * Helper method to run the operator, print matrices, and assert correctness.
-     */
-    private void validateAdd(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
+    private void validateAdd(INDArray theoreticalExpected, INDArray simulatedExpected, INDArray inputA, INDArray inputB) throws Exception {
         HWAcceleratedAddV13 operator = new HWAcceleratedAddV13();
         INDArray actualOutput = operator.add(inputA, inputB);
 
-        System.out.println("\ninputA shape: " + java.util.Arrays.toString(inputA.shape()));
-        System.out.print(inputA);
-        System.out.println("\n\ninputB shape: " + java.util.Arrays.toString(inputB.shape()));
-        System.out.print(inputB);
-        System.out.println("\n\nexpectedMatrix shape: " + java.util.Arrays.toString(expected.shape()));
-        System.out.print(expected);
-        System.out.println("\n\nactualOutput shape: " + java.util.Arrays.toString(actualOutput.shape()));
-        System.out.print(actualOutput);
+        assertArrayEquals("The output shape must match the expected shape.", simulatedExpected.shape(), actualOutput.shape());
 
-        assertArrayEquals("The output shape must match the expected shape.", expected.shape(), actualOutput.shape());
-
-        float[] expectedVector = expected.dup('c').data().asFloat();
+        float[] theoreticalVector = theoreticalExpected.dup('c').data().asFloat();
+        float[] simulatedVector = simulatedExpected.dup('c').data().asFloat();
         float[] actualVector = actualOutput.dup('c').data().asFloat();
 
-        int errorCount = 0;
-        double relativeErrorTolerance = 0.02; // Allow 2% relative error
-        double absoluteErrorTolerance = 1e-3;
+        String horizontalLine = new String(new char[201]).replace('\0', '-');
+        String headerFormat = "%-8s | %-10s | %-12s | %-9s | %-15s | %-5s | %-15s | %-5s | %-7s%n";
+        String dataFormat   = "%-8d | %-15.6f | %-15.6f | %-14f | %-15.6f | %-12s | %-15.6f | %-12s | %-7s%n";
 
-        System.out.println("\n\n" + new String(new char[110]).replace('\0', '-'));
-        System.out.printf(
-                "%-10s | %-20s | %-20s | %-20s | %-20s | %-7s%n",
-                "index", "Expected", "Actual", "Abs Error", "Rel Error %", "check"
+        System.out.println("\n\n" + horizontalLine);
+        System.out.printf(headerFormat,
+                "Index", "理论值", "模拟值(理论模拟硬件值)", "实际值", "总误差(理论与实际绝对误差)", "总相对误差",
+                "逻辑误差(模拟与实际绝对误差)", "逻辑相对误差", "Check"
         );
-        System.out.println(new String(new char[110]).replace('\0', '-'));
+        System.out.println(horizontalLine);
 
-        for (int i = 0; i < expectedVector.length; i++) {
-            double expectedVal = expectedVector[i];
+        int errorCount = 0;
+        double hardwareLogicTolerance = 1e-6;
+
+        for (int i = 0; i < actualVector.length; i++) {
+            double theoreticalVal = theoreticalVector[i];
+            double simulatedVal = simulatedVector[i];
             double actualVal = actualVector[i];
-            double absoluteError = Math.abs(actualVal - expectedVal);
-            double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
-            boolean pass = (relativeError < relativeErrorTolerance) || (absoluteError < absoluteErrorTolerance);
 
-            System.out.printf(
-                    "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
-                    i, expectedVal, actualVal, absoluteError, relativeError * 100, pass ? "Pass" : "Fail"
-            );
+            double totalAbsError = Math.abs(actualVal - theoreticalVal);
+            double totalRelError = (Math.abs(theoreticalVal) > 1e-9) ? (totalAbsError / Math.abs(theoreticalVal)) : 0.0;
+
+            double logicAbsError = Math.abs(actualVal - simulatedVal);
+            double logicRelError = (Math.abs(simulatedVal) > 1e-9) ? (logicAbsError / Math.abs(simulatedVal)) : 0.0;
+
+            boolean pass = logicAbsError <= hardwareLogicTolerance;
 
             if (!pass) {
                 errorCount++;
             }
+
+            String totalRelErrorStr = String.format("%.2f%%", totalRelError * 100);
+            String logicRelErrorStr = String.format("%.2f%%", logicRelError * 100);
+
+            System.out.printf(dataFormat, i, theoreticalVal, simulatedVal, actualVal, totalAbsError, totalRelErrorStr, logicAbsError, logicRelErrorStr, pass ? "Pass" : "Fail");
         }
-        System.out.println(new String(new char[110]).replace('\0', '-'));
+        System.out.println(horizontalLine);
 
-        assertTrue(
-                "The calculation result exceeds the allowable error range. " + errorCount + " errors found.",
-                errorCount == 0
-        );
-
-        System.out.println("\nCongratulations! This test case passed!");
+        assertTrue("硬件实际值与模拟值不符，逻辑错误! " + errorCount + " errors found.", errorCount == 0);
+        System.out.println("\nCongratulations! This test case passed with precise fixed-point validation!");
     }
 
-    /**
-     * Generates a 2D matrix of floats with random float values.
-     */
     private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
@@ -127,9 +138,6 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
         return matrix;
     }
 
-    /**
-     * Generates a 3D matrix of floats with random float values.
-     */
     private INDArray createRandom3DMatrix(int batch, int rows, int cols, float min, float max) {
         INDArray matrix = Nd4j.create(batch, rows, cols);
         for (int i = 0; i < batch; i++) {

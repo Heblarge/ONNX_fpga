@@ -13,9 +13,9 @@ import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SubV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
 /**
- * Implements the Sub operation using a hardware accelerator,
- * with support for both 2D and 3D (batched) tensors.
+ * Implements the Sub operation using a hardware accelerator.
  * This version automatically pads inputs to be multiples of 32 for hardware compatibility.
+ * It handles tensors of any rank >= 2 and supports Numpy-style broadcasting.
  */
 public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13 {
 
@@ -26,22 +26,61 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         SubInputsV13<INDArray> castedInputs = new SubInputsV13<>(node, inputs);
         INDArray matrixA = castedInputs.getA();
         INDArray matrixB = castedInputs.getB();
-        INDArray outputTensor = this.sub(matrixA,matrixB);
+        INDArray outputTensor = this.sub(matrixA, matrixB);
         return new SubOutputV13<>(outputTensor);
     }
 
     /**
-     * Public dispatcher for the Sub operation. It checks the tensor rank
-     * and calls the appropriate implementation.
+     * Public dispatcher for the Sub operation.
+     * It handles broadcasting and reshapes tensors for efficient hardware execution.
      */
     public INDArray sub(INDArray a, INDArray b) {
-        if (a.rank() == 2 && b.rank() == 2) {
-            return sub2D(a, b);
-        } else if (a.rank() == 3 && b.rank() == 3) {
-            return sub3D(a, b);
-        } else {
-            throw new IllegalArgumentException("Unsupported or mismatched tensor ranks for Sub: A=" + a.rank() + ", B=" + b.rank());
+        // 如果两个输入的形状不完全相同，则进行广播处理
+        if (!java.util.Arrays.equals(a.shape(), b.shape())) {
+            long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
+            // 将 a 和 b 广播到目标形状
+            a = a.broadcast(broadcastShape);
+            b = b.broadcast(broadcastShape);
         }
+
+        if (a.rank() == 2) {
+            return sub2D(a, b);
+        } else if (a.rank() > 2) {
+            long[] finalShape = a.shape();
+            long numCols = finalShape[finalShape.length - 1];
+            long numRows = a.length() / numCols;
+            INDArray reshapedA = a.reshape('c', numRows, numCols);
+            INDArray reshapedB = b.reshape('c', numRows, numCols);
+            INDArray result2D = sub2D(reshapedA, reshapedB);
+            return result2D.reshape('c', finalShape);
+        } else {
+            throw new IllegalArgumentException(
+                    "Unsupported tensor rank for Sub: " + a.rank() + ". Only ranks >= 2 are supported."
+            );
+        }
+    }
+
+    /**
+     * Calculates the resulting shape of a broadcasting operation between two shapes.
+     * Follows Numpy-style broadcasting rules.
+     */
+    private long[] getBroadcastShape(long[] shapeA, long[] shapeB) {
+        int rankA = shapeA.length;
+        int rankB = shapeB.length;
+        int maxRank = Math.max(rankA, rankB);
+        long[] resultShape = new long[maxRank];
+
+        for (int i = 1; i <= maxRank; i++) {
+            long dimA = (rankA - i >= 0) ? shapeA[rankA - i] : 1;
+            long dimB = (rankB - i >= 0) ? shapeB[rankB - i] : 1;
+
+            if (dimA != dimB && dimA != 1 && dimB != 1) {
+                throw new IllegalArgumentException("Shapes " + java.util.Arrays.toString(shapeA) + " and "
+                        + java.util.Arrays.toString(shapeB) + " are not broadcastable.");
+            }
+            resultShape[maxRank - i] = Math.max(dimA, dimB);
+        }
+        return resultShape;
     }
 
     /**
@@ -63,59 +102,36 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         int originalRows = (int) a.rows();
         int originalCols = (int) a.columns();
 
-        // 1. Calculate padded dimensions
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        // 2. Create padded INDArrays
         INDArray paddedA = Nd4j.zeros(paddedRows, paddedCols);
         paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, a);
 
         INDArray paddedB = Nd4j.zeros(paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        // 3. Call the hardware accelerator with the padded data
         INDArray paddedResult = subOnAccelerator(paddedA, paddedB, paddedRows, paddedCols);
 
-        // 4. Slice the result back to the original output shape
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
     /**
-     * Performs 3D (batched) element-wise subtraction.
-     */
-    private INDArray sub3D(INDArray a, INDArray b) {
-        if (!java.util.Arrays.equals(a.shape(), b.shape())) {
-            throw new IllegalArgumentException("Input shapes must be identical for 3D hardware subtraction.");
-        }
-
-        long batch = a.shape()[0];
-        long rows = a.shape()[1];
-        long cols = a.shape()[2];
-
-        INDArray result = Nd4j.createUninitialized(new long[]{batch, rows, cols}, 'c');
-
-        for (int i = 0; i < (int) batch; i++) {
-            INDArray sliceA = a.slice(i);
-            INDArray sliceB = b.slice(i);
-            INDArray diffSlice = sub2D(sliceA, sliceB); // sub2D now handles padding
-            result.putSlice(i, diffSlice);
-        }
-
-        return result;
-    }
-
-    /**
      * Private helper to run element-wise subtraction on the hardware simulator.
-     * This method's logic is preserved exactly as requested.
+     * Note: It simulates A - B by computing A + (-B) on the hardware, which only supports addition.
      */
     private INDArray subOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
+
+        int fracWidth = 8;
+        // 需根据onnx图确定最优值
+        double scaleFactor = Math.pow(2, fracWidth);
+
         int[][] fixedPointA = new int[rows][cols];
         int[][] fixedPointB = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = Math.round(a.getFloat(i, j));
-                fixedPointB[i][j] = Math.round(b.getFloat(i, j) * -1);
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor * -1);
             }
         }
 
@@ -139,7 +155,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
             }
         }
 

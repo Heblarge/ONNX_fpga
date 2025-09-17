@@ -7,7 +7,6 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
-import org.nd4j.linalg.ops.transforms.Transforms;
 import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MaxV13;
@@ -32,6 +31,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
             throw new IllegalArgumentException("Max operator requires at least one input tensor.");
         }
 
+        // Iteratively find the element-wise max by pairwise comparison
         INDArray currentMax = inputTensors.get(0);
         for (int i = 1; i < inputTensors.size(); i++) {
             currentMax = elementwiseMax(currentMax, inputTensors.get(i));
@@ -39,16 +39,58 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         return currentMax;
     }
 
+    /**
+     * Refactored to handle broadcasting and reshaping for efficient hardware execution.
+     */
     private INDArray elementwiseMax(INDArray a, INDArray b) {
-        if (a.rank() == 2 && b.rank() == 2) {
+        // Step 1: Handle broadcasting
+        if (!java.util.Arrays.equals(a.shape(), b.shape())) {
+            long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
+            a = a.broadcast(broadcastShape);
+            b = b.broadcast(broadcastShape);
+        }
+
+        // Step 2: Apply the "Flatten -> Compute -> Restore" pattern
+        if (a.rank() == 2) {
             return max2D(a, b);
-        } else if (a.rank() == 3 && b.rank() == 3) {
-            return max3D(a, b);
+        } else if (a.rank() > 2) {
+            long[] finalShape = a.shape();
+            long numCols = finalShape[finalShape.length - 1];
+            long numRows = a.length() / numCols;
+
+            INDArray reshapedA = a.reshape('c', numRows, numCols);
+            INDArray reshapedB = b.reshape('c', numRows, numCols);
+
+            INDArray result2D = max2D(reshapedA, reshapedB);
+
+            return result2D.reshape('c', finalShape);
         } else {
             throw new IllegalArgumentException(
-                    "Unsupported or mismatched tensor ranks for Max: A=" + a.rank() + ", B=" + b.rank()
+                    "Unsupported tensor rank for Max: " + a.rank() + ". Only ranks >= 2 are supported."
             );
         }
+    }
+
+    /**
+     * Calculates the resulting shape of a broadcasting operation between two shapes.
+     */
+    private long[] getBroadcastShape(long[] shapeA, long[] shapeB) {
+        int rankA = shapeA.length;
+        int rankB = shapeB.length;
+        int maxRank = Math.max(rankA, rankB);
+        long[] resultShape = new long[maxRank];
+
+        for (int i = 1; i <= maxRank; i++) {
+            long dimA = (rankA - i >= 0) ? shapeA[rankA - i] : 1;
+            long dimB = (rankB - i >= 0) ? shapeB[rankB - i] : 1;
+
+            if (dimA != dimB && dimA != 1 && dimB != 1) {
+                throw new IllegalArgumentException("Shapes " + java.util.Arrays.toString(shapeA) + " and "
+                        + java.util.Arrays.toString(shapeB) + " are not broadcastable.");
+            }
+            resultShape[maxRank - i] = Math.max(dimA, dimB);
+        }
+        return resultShape;
     }
 
     private int ceilToMultiple(int value, int multiple) {
@@ -56,6 +98,9 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
+    /**
+     * Performs 2D element-wise max with padding and slicing.
+     */
     private INDArray max2D(INDArray a, INDArray b) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
@@ -64,51 +109,30 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         int originalRows = (int) a.rows();
         int originalCols = (int) a.columns();
 
-        // 1. Calculate padded dimensions
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        // 2. Create padded INDArrays
         INDArray paddedA = Nd4j.zeros(paddedRows, paddedCols);
         paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, a);
 
         INDArray paddedB = Nd4j.zeros(paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        // 3. Call the hardware accelerator with the padded data
         INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols);
 
-        // 4. Slice the result back to the original output shape
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-
-    private INDArray max3D(INDArray a, INDArray b) {
-        if (!java.util.Arrays.equals(a.shape(), b.shape())) {
-            throw new IllegalArgumentException("Input shapes must be identical for 3D hardware acceleration.");
-        }
-        long batch = a.shape()[0];
-        long rows = a.shape()[1];
-        long cols = a.shape()[2];
-        INDArray result = Nd4j.createUninitialized(new long[]{batch, rows, cols}, 'c');
-
-        for (int i = 0; i < (int) batch; i++) {
-            INDArray sliceA = a.slice(i);
-            INDArray sliceB = b.slice(i);
-            INDArray maxSlice = max2D(sliceA, sliceB);
-            result.putSlice(i, maxSlice);
-        }
-        return result;
-    }
-
-
     private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
+        int fracWidth = 8;
+        double scaleFactor = Math.pow(2, fracWidth);
+
         int[][] fixedPointA = new int[rows][cols];
         int[][] fixedPointB = new int[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = Math.round(a.getFloat(i, j));
-                fixedPointB[i][j] = Math.round(b.getFloat(i, j));
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
             }
         }
 
@@ -131,7 +155,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) (fixedPointOutput[i][j]);
+                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
             }
         }
 

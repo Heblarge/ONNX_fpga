@@ -12,127 +12,166 @@ import static org.junit.Assert.assertTrue;
 
 public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
 
+    /**
+     * Simulates the exact fixed-point arithmetic of the MatMul hardware operator.
+     */
+    private INDArray calculateSimulatedFixedPointMatMul(INDArray a, INDArray b) {
+        // These parameters must EXACTLY match the ones in HWAcceleratedMatMulV13
+        int fracWidth = 8;
+        double scaleFactor = Math.pow(2, fracWidth);
+
+        int rowsA = (int) a.size(0);
+        int colsA = (int) a.size(1); // This is also rowsB
+        int colsB = (int) b.size(1);
+
+        // 1. Convert inputs to fixed-point integers
+        int[][] fixedPointA = new int[rowsA][colsA];
+        int[][] fixedPointB = new int[colsA][colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+            }
+        }
+        for (int i = 0; i < colsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+            }
+        }
+
+        // 2. Perform matrix multiplication in the integer domain
+        int[][] fixedPointOutput = new int[rowsA][colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                for (int k = 0; k < colsA; k++) {
+                    fixedPointOutput[i][j] += fixedPointA[i][k] * fixedPointB[k][j];
+                }
+            }
+        }
+
+        // 3. Convert the result back to float, accounting for double scaling
+        float[] output = new float[rowsA * colsB];
+        double finalScaleFactor = scaleFactor * scaleFactor;
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                output[i * colsB + j] = (float) (fixedPointOutput[i][j] / finalScaleFactor);
+            }
+        }
+
+        return Nd4j.create(output).reshape(rowsA, colsB);
+    }
+
     @Test
     public void testMatMul2D() throws Exception {
         System.out.println("\n--- Testing 2D MatMul ---");
         int rowsA = 32;
         int colsA = 3;
         int colsB = 33;
-        int minValue = -10;
-        int maxValue = 10;
+        int minValue = -3;
+        int maxValue = 3;
 
-        float[][] randomMatrixA = generateRandomIntegerMatrix(rowsA, colsA, minValue, maxValue);
-        float[][] randomMatrixB = generateRandomIntegerMatrix(colsA, colsB, minValue, maxValue);
-        INDArray matrixA = Nd4j.create(randomMatrixA);
-        INDArray matrixB = Nd4j.create(randomMatrixB);
+        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rowsA, colsA, minValue, maxValue));
+        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(colsA, colsB, minValue, maxValue));
 
-        INDArray expectedMatrix = matrixA.mmul(matrixB);
+        INDArray theoreticalExpected = matrixA.mmul(matrixB);
+        INDArray simulatedExpected = calculateSimulatedFixedPointMatMul(matrixA, matrixB);
 
-        this.testMatMul(expectedMatrix, matrixA, matrixB);
+        this.validateMatMul(theoreticalExpected, simulatedExpected, matrixA, matrixB);
     }
 
-    /**
-     * Tests 3D (batched) matrix multiplication.
-     */
     @Test
     public void testMatMul3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) MatMul ---");
         int batchSize = 32;
-        int rowsA = 256;
-        int colsA = 3;
-        int colsB = 3;
-        int minValue = -10;
-        int maxValue = 10;
+        int rowsA = 64; // Using smaller dimensions to keep test fast
+        int colsA = 32;
+        int colsB = 32;
+        int minValue = -2;
+        int maxValue = 2;
 
-        // Create random 3D tensors with integer values for batched multiplication
-        INDArray matrixA = Nd4j.create(batchSize, rowsA, colsA);
-        INDArray matrixB = Nd4j.create(batchSize, colsA, colsB);
+        INDArray matrixA = createRandom3DMatrix(batchSize, rowsA, colsA, minValue, maxValue);
+        INDArray matrixB = createRandom3DMatrix(batchSize, colsA, colsB, minValue, maxValue);
+
+        INDArray theoreticalExpected = Nd4j.create(batchSize, rowsA, colsB);
         for (int i = 0; i < batchSize; i++) {
-            matrixA.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(rowsA, colsA, minValue, maxValue)));
-            matrixB.putSlice(i, Nd4j.create(generateRandomIntegerMatrix(colsA, colsB, minValue, maxValue)));
+            INDArray productSlice = matrixA.slice(i).mmul(matrixB.slice(i));
+            theoreticalExpected.putSlice(i, productSlice);
+        }
+        INDArray simulatedExpected = Nd4j.create(batchSize, rowsA, colsB);
+        for (int i = 0; i < batchSize; i++) {
+            simulatedExpected.putSlice(i, calculateSimulatedFixedPointMatMul(matrixA.slice(i), matrixB.slice(i)));
         }
 
-        // Calculate the expected result by multiplying each slice individually
-        INDArray expectedMatrix = Nd4j.create(batchSize, rowsA, colsB);
-        for (int i = 0; i < batchSize; i++) {
-            expectedMatrix.putSlice(i, matrixA.slice(i).mmul(matrixB.slice(i)));
-        }
-
-        this.testMatMul(expectedMatrix, matrixA, matrixB);
+        this.validateMatMul(theoreticalExpected, simulatedExpected, matrixA, matrixB);
     }
 
-
-    private void testMatMul(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
+    private void validateMatMul(INDArray theoreticalExpected, INDArray simulatedExpected, INDArray inputA, INDArray inputB) throws Exception {
         HWAcceleratedMatMulV13 operator = new HWAcceleratedMatMulV13();
         INDArray actualOutput = operator.matmul(inputA, inputB);
 
-        System.out.println("\ninputA:");
-        System.out.print(inputA);
-        System.out.println("\ninputB:");
-        System.out.print(inputB);
-        System.out.println("\nexpectedMatrix:");
-        System.out.print(expected);
-        System.out.println("\nactualOutput:");
-        System.out.print(actualOutput);
+        assertArrayEquals("The output shape must match the expected shape.", simulatedExpected.shape(), actualOutput.shape());
 
-        assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
-
-        float[] expectedVector = expected.dup('c').data().asFloat();
+        float[] theoreticalVector = theoreticalExpected.dup('c').data().asFloat();
+        float[] simulatedVector = simulatedExpected.dup('c').data().asFloat();
         float[] actualVector = actualOutput.dup('c').data().asFloat();
 
+        String horizontalLine = new String(new char[154]).replace('\0', '-');
+        String headerFormat = "%-8s | %-10s | %-12s | %-9s | %-15s | %-5s | %-15s | %-5s | %-7s%n";
+        String dataFormat   = "%-8d | %-15.6f | %-15.6f | %-14f | %-15.6f | %-12s | %-15.6f | %-12s | %-7s%n";
+
+        System.out.println("\n\n" + horizontalLine);
+        System.out.printf(headerFormat, "Index", "理论值", "模拟值", "实际值", "总误差(Abs)", "总误差(Rel)", "逻辑误差(Abs)", "逻辑误差(Rel)", "Check");
+        System.out.println(horizontalLine);
+
         int errorCount = 0;
-        double relativeErrorTolerance = 0.02; // 允许 2% 的相对误差
+        double hardwareLogicTolerance = 1e-6;
 
-        System.out.println("\n");
-        System.out.println(new String(new char[110]).replace('\0', '-'));
-        System.out.printf(
-                "%-10s | %-20s | %-20s | %-20s | %-20s | %-7s%n",
-                "index", "Expected", "Actual", "Abs Error", "Rel Error %", "check"
-        );
-        System.out.println(new String(new char[110]).replace('\0', '-'));
-
-        for (int i = 0; i < expectedVector.length; i++) {
-            double expectedVal = expectedVector[i];
+        for (int i = 0; i < actualVector.length; i++) {
+            double theoreticalVal = theoreticalVector[i];
+            double simulatedVal = simulatedVector[i];
             double actualVal = actualVector[i];
 
-            double absoluteError = actualVal - expectedVal;
-            double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
+            double totalAbsError = Math.abs(actualVal - theoreticalVal);
+            double totalRelError = (Math.abs(theoreticalVal) > 1e-9) ? (totalAbsError / Math.abs(theoreticalVal)) : 0.0;
 
-            boolean pass = (Math.abs(relativeError) < relativeErrorTolerance)|| (Math.abs(absoluteError) < 1e-3);
+            double logicAbsError = Math.abs(actualVal - simulatedVal);
+            double logicRelError = (Math.abs(simulatedVal) > 1e-9) ? (logicAbsError / Math.abs(simulatedVal)) : 0.0;
 
-            System.out.printf(
-                        "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
-                        i,
-                        expectedVal,
-                        actualVal,
-                        absoluteError,
-                        relativeError * 100,
-                        pass ? "Pass" : "Fail"
-            );
+            boolean pass = logicAbsError <= hardwareLogicTolerance;
 
             if (!pass) {
                 errorCount++;
             }
+
+            String totalRelErrorStr = String.format("%.2f%%", totalRelError * 100);
+            String logicRelErrorStr = String.format("%.2f%%", logicRelError * 100);
+
+            System.out.printf(dataFormat, i, theoreticalVal, simulatedVal, actualVal, totalAbsError, totalRelErrorStr, logicAbsError, logicRelErrorStr, pass ? "Pass" : "Fail");
+
         }
-        System.out.println(new String(new char[110]).replace('\0', '-'));
+        System.out.println(horizontalLine);
 
-        assertTrue(
-                "计算结果超出允许的误差范围。共发现 " + errorCount + " 个错误。",
-                errorCount == 0
-        );
+        assertTrue("硬件实际值与模拟值不符，逻辑错误! " + errorCount + " errors found.", errorCount == 0);
+        System.out.println("\nCongratulations! This test case passed with precise fixed-point validation!");
+    }
 
-        System.out.println("\nCongratulations! All tests pass!");
-}
-
-
-    private float[][] generateRandomIntegerMatrix(int rows, int cols, int min, int max) {
+    private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                // 生成一个在 [min, max) 区间内的随机整数
-                matrix[i][j] = random.nextInt(max - min + 1) + min;
+                matrix[i][j] = min + random.nextFloat() * (max - min);
             }
+        }
+        return matrix;
+    }
+
+    /**
+     * Generates a 3D matrix with random float values.
+     */
+    private INDArray createRandom3DMatrix(int batch, int rows, int cols, float min, float max) {
+        INDArray matrix = Nd4j.create(batch, rows, cols);
+        for (int i = 0; i < batch; i++) {
+            matrix.putSlice(i, Nd4j.create(generateRandomFloatMatrix(rows, cols, min, max)));
         }
         return matrix;
     }

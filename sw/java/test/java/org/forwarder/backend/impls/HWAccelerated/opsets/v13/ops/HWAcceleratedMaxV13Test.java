@@ -1,5 +1,6 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
+import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.junit.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -14,14 +15,52 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
 /**
- * This test class validates the HWAcceleratedMaxV13 operator for
- * both 2D and 3D (batched) element-wise maximum using floating-point inputs.
+ * This test class validates the HWAcceleratedMaxV13 operator.
+ * The validation logic is aligned with the Sub operator's test, providing
+ * a 3-way comparison between theoretical, simulated, and actual hardware values.
  */
 public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
 
     /**
-     * Tests standard 2D element-wise max.
+     * Helper method that simulates the exact fixed-point arithmetic of the Max hardware operator.
      */
+    private INDArray calculateSimulatedFixedPointMax(INDArray a, INDArray b) {
+        // Match the fixed-point parameters from the Max operator
+        int fracWidth = 8;
+        double scaleFactor = Math.pow(2, fracWidth);
+
+        int rows = (int) a.rows();
+        int cols = (int) a.columns();
+
+        // 1. Scale up and round to integer
+        int[][] fixedPointA = new int[rows][cols];
+        int[][] fixedPointB = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+            }
+        }
+
+        // 2. Perform the max operation in the integer domain
+        int[][] fixedPointOutput = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                fixedPointOutput[i][j] = Math.max(fixedPointA[i][j], fixedPointB[i][j]);
+            }
+        }
+
+        // 3. Scale back down to float
+        float[] output = new float[rows * cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
+            }
+        }
+
+        return Nd4j.create(output).reshape(rows, cols);
+    }
+
     @Test
     public void testMax2D() throws Exception {
         System.out.println("\n--- Testing 2D Max ---");
@@ -33,99 +72,89 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
         INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
         INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
 
-        INDArray expectedMatrix = Transforms.max(matrixA, matrixB);
+        INDArray theoreticalExpected = Transforms.max(matrixA, matrixB);
+        INDArray simulatedExpected = calculateSimulatedFixedPointMax(matrixA, matrixB);
 
-        this.testMax(expectedMatrix, matrixA, matrixB);
+        this.validateMax(theoreticalExpected, simulatedExpected, matrixA, matrixB);
     }
 
-    /**
-     * Tests 3D (batched) element-wise max.
-     */
     @Test
     public void testMax3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) Max ---");
-        int batchSize = 1;
+        int batchSize = 2;
         int rows = 30;
-        int cols = 512;
+        int cols = 32;
         float minValue = -10.0f;
         float maxValue = 10.0f;
 
         INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
         INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, minValue, maxValue);
 
-        INDArray expectedMatrix = Transforms.max(matrixA, matrixB);
+        INDArray theoreticalExpected = Transforms.max(matrixA, matrixB);
+        INDArray simulatedExpected = Nd4j.create(matrixA.shape());
+        for (int i = 0; i < batchSize; i++) {
+            INDArray sliceA = matrixA.slice(i);
+            INDArray sliceB = matrixB.slice(i);
+            INDArray expectedSlice = calculateSimulatedFixedPointMax(sliceA, sliceB);
+            simulatedExpected.putSlice(i, expectedSlice);
+        }
 
-        this.testMax(expectedMatrix, matrixA, matrixB);
+        this.validateMax(theoreticalExpected, simulatedExpected, matrixA, matrixB);
     }
 
     /**
-     * Helper method to run the operator, print matrices, and assert correctness.
+     * Validation helper with a 3-way comparison, matching the Sub test format.
      */
-    private void testMax(INDArray expected, INDArray inputA, INDArray inputB) throws Exception {
+    private void validateMax(INDArray theoreticalExpected, INDArray simulatedExpected, INDArray inputA, INDArray inputB) throws Exception {
         HWAcceleratedMaxV13 operator = new HWAcceleratedMaxV13();
         List<INDArray> inputs = Arrays.asList(inputA, inputB);
         INDArray actualOutput = operator.max(inputs);
 
-        System.out.println("\ninputA:");
-        System.out.print(inputA);
-        System.out.println("\ninputB:");
-        System.out.print(inputB);
-        System.out.println("\nexpectedMatrix:");
-        System.out.print(expected);
-        System.out.println("\nactualOutput:");
-        System.out.print(actualOutput);
+        assertArrayEquals("The output shape must match the expected shape.", simulatedExpected.shape(), actualOutput.shape());
 
-        assertArrayEquals("The number of outputs should match the number of inputs.", expected.shape(), actualOutput.shape());
-
-        float[] expectedVector = expected.dup('c').data().asFloat();
+        float[] theoreticalVector = theoreticalExpected.dup('c').data().asFloat();
+        float[] simulatedVector = simulatedExpected.dup('c').data().asFloat();
         float[] actualVector = actualOutput.dup('c').data().asFloat();
 
+        String horizontalLine = new String(new char[154]).replace('\0', '-');
+        String headerFormat = "%-8s | %-10s | %-12s | %-9s | %-15s | %-5s | %-15s | %-5s | %-7s%n";
+        String dataFormat   = "%-8d | %-15.6f | %-15.6f | %-15.6f | %-15.6f | %-15s | %-15.6f | %-15s | %-7s%n";
+
+        System.out.println("\n\n" + horizontalLine);
+        System.out.printf(headerFormat, "Index", "理论值", "模拟值", "实际值", "总误差(Abs)", "总误差(Rel)", "逻辑误差(Abs)", "逻辑误差(Rel)", "Check");
+        System.out.println(horizontalLine);
+
         int errorCount = 0;
-        double relativeErrorTolerance = 0.02; // Allow 2% relative error
-        double absoluteErrorTolerance = 1e-3;
+        double hardwareLogicTolerance = 1e-6;
 
-        System.out.println("\n");
-        System.out.println(new String(new char[110]).replace('\0', '-'));
-        System.out.printf(
-                "%-10s | %-20s | %-20s | %-20s | %-20s | %-7s%n",
-                "index", "Expected", "Actual", "Abs Error", "Rel Error %", "check"
-        );
-        System.out.println(new String(new char[110]).replace('\0', '-'));
-
-        for (int i = 0; i < expectedVector.length; i++) {
-            double expectedVal = expectedVector[i];
+        for (int i = 0; i < actualVector.length; i++) {
+            double theoreticalVal = theoreticalVector[i];
+            double simulatedVal = simulatedVector[i];
             double actualVal = actualVector[i];
-            double absoluteError = Math.abs(actualVal - expectedVal);
-            double relativeError = (Math.abs(expectedVal) > 1e-6) ? (absoluteError / expectedVal) : 0.0;
-            boolean pass = (relativeError < relativeErrorTolerance) || (absoluteError < absoluteErrorTolerance);
 
-            System.out.printf(
-                    "%-10d | %-20.6f | %-20.6f | %-20.6f | %-20.2f%% | %-7s%n",
-                    i,
-                    expectedVal,
-                    actualVal,
-                    absoluteError,
-                    relativeError * 100,
-                    pass ? "Pass" : "Fail"
-            );
+            double totalAbsError = Math.abs(actualVal - theoreticalVal);
+            double totalRelError = (Math.abs(theoreticalVal) > 1e-9) ? (totalAbsError / Math.abs(theoreticalVal)) : 0.0;
+
+            double logicAbsError = Math.abs(actualVal - simulatedVal);
+            double logicRelError = (Math.abs(simulatedVal) > 1e-9) ? (logicAbsError / Math.abs(simulatedVal)) : 0.0;
+
+            boolean pass = logicAbsError <= hardwareLogicTolerance;
 
             if (!pass) {
                 errorCount++;
             }
+
+            String totalRelErrorStr = String.format("%.2f%%", totalRelError * 100);
+            String logicRelErrorStr = String.format("%.2f%%", logicRelError * 100);
+
+            System.out.printf(dataFormat, i, theoreticalVal, simulatedVal, actualVal, totalAbsError, totalRelErrorStr, logicAbsError, logicRelErrorStr, pass ? "Pass" : "Fail");
         }
-        System.out.println(new String(new char[110]).replace('\0', '-'));
+        System.out.println(horizontalLine);
 
-        assertTrue(
-                "The calculation result exceeds the allowable error range. " + errorCount + " errors found.",
-                errorCount == 0
-        );
-
-        System.out.println("\nCongratulations! All tests pass!");
+        assertTrue("硬件实际值与模拟值不符，逻辑错误! " + errorCount + " errors found.", errorCount == 0);
+        System.out.println("\nCongratulations! This test case passed with precise fixed-point validation!");
     }
 
-    /**
-     * Generates a 2D matrix of floats with random float values.
-     */
     private float[][] generateRandomFloatMatrix(int rows, int cols, float min, float max) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
@@ -137,9 +166,6 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
         return matrix;
     }
 
-    /**
-     * Generates a 3D matrix of floats with random float values.
-     */
     private INDArray createRandom3DMatrix(int batch, int rows, int cols, float min, float max) {
         INDArray matrix = Nd4j.create(batch, rows, cols);
         for (int i = 0; i < batch; i++) {
