@@ -27,6 +27,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Set;
 
+// 这个版本是只保存最终的输出结果到data_n文件夹
+
 public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     private final Collection<Node> orderedSequenceNodes;
