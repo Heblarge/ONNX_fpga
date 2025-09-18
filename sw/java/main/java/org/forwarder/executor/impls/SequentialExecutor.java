@@ -15,6 +15,7 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.onnx4j.opsets.OperatorSets;
 import org.onnx4j.prototypes.OnnxProto3.TensorProto;
+import java.io.DataOutputStream;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -32,7 +33,7 @@ import java.util.Set;
 public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     private final Collection<Node> orderedSequenceNodes;
-    private final File JAVA_OUTPUTS_DIR = new File("java_outputs");
+    private final File JAVA_OUTPUTS_DIR = new File("/home/user/Workspace/livehps_1/onnx_debug_py/java_hw_each_layer_outputs");
 
     // 新增一个执行计数器，用于创建 data1, data2, ... 目录
     private int executionCount = 0;
@@ -59,46 +60,68 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
         // 1. 依次执行图中的所有节点
         for (Node node : this.orderedSequenceNodes) {
-            this.handle(session, opsets, node);
+            this.handle(session, opsets, node, currentOutputDataDir);
         }
 
-        // 2. 所有节点执行完毕后，保存模型的最终输出到当前执行的子目录
-        System.out.println("--- 推理完成，正在保存最终输出... ---");
-        for (GraphOutput graphOutput : this.model.getGraph().getOutputs()) {
-            String outputName = graphOutput.getName();
-            INDArray tensorData = (INDArray) session.getIntermediateOutput(outputName);
-
-            if (tensorData != null) {
-                String sanitizedName = outputName.replace('/', '_').replace(':', '_');
-                String finalFileName = "output_" + sanitizedName + ".pb";
-
-                // 将文件保存到新建的 dataN 子目录中
-                File outputFile = new File(currentOutputDataDir, finalFileName);
-                try {
-                    saveTensorAsPb(tensorData, outputFile);
-                    System.out.println("  - 已保存: " + outputFile.getName());
-                } catch (IOException e) {
-                    System.err.println("保存最终输出张量失败: " + outputName);
-                    e.printStackTrace();
-                }
-            } else {
-                System.err.println("警告：在会话中找不到最终输出张量: " + outputName);
-            }
-        }
-        System.out.println("--- 所有最终输出保存完毕 ---");
+//        // 2. 所有节点执行完毕后，保存模型的最终输出到当前执行的子目录
+//        System.out.println("--- 推理完成，正在保存最终输出... ---");
+//        for (GraphOutput graphOutput : this.model.getGraph().getOutputs()) {
+//            String outputName = graphOutput.getName();
+//            INDArray tensorData = (INDArray) session.getIntermediateOutput(outputName);
+//
+//            if (tensorData != null) {
+//                String sanitizedName = outputName.replace('/', '_').replace(':', '_');
+//                String finalFileName = "output_" + sanitizedName + ".pb";
+//
+//                // 将文件保存到新建的 dataN 子目录中
+//                File outputFile = new File(currentOutputDataDir, finalFileName);
+//                try {
+//                    saveTensorAsPb(tensorData, outputFile);
+//                    System.out.println("  - 已保存: " + outputFile.getName());
+//                } catch (IOException e) {
+//                    System.err.println("保存最终输出张量失败: " + outputName);
+//                    e.printStackTrace();
+//                }
+//            } else {
+//                System.err.println("警告：在会话中找不到最终输出张量: " + outputName);
+//            }
+//        }
+//        System.out.println("--- 所有最终输出保存完毕 ---");
+        System.out.println("--- 所有节点执行和保存完毕 ---");
     }
 
-    private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node) {
+    private void handle(Session<T_BK_TS> session, OperatorSets opsets, Node node, File outputDir) {
         Inputs inputs = new Inputs();
         for (String inputName : node.getInputNames()) {
             Input input = Input.wrap(inputName, node, session.getIntermediateOutput(inputName));
             inputs.append(input);
         }
 
+        System.out.printf("正在执行节点: %-30s (OpType: %s)\n", node.getName(), node.getOpType());
         Outputs outputs = super.handle(session, opsets, node, inputs);
 
         for (Output output : outputs.get()) {
+            // 将节点的输出存回会话中，供后续节点使用
             session.putIntermediateOutput(output.getName(), (T_BK_TS) output.getTensor());
+
+            // 同时，将这个输出张量保存到文件中
+            String outputName = output.getName();
+            INDArray tensorData = (INDArray) output.getTensor();
+
+            if (tensorData != null) {
+                String sanitizedName = outputName.replace('/', '_').replace(':', '_');
+                String fileName = sanitizedName + ".bin";
+                File outputFile = new File(outputDir, fileName);
+
+                try {
+                    //saveTensorAsPb(tensorData, outputFile);
+                    saveTensorAsBinary(tensorData, outputFile);
+                    System.out.println("  - 已保存中间层输出: " + outputFile.getName());
+                } catch (IOException e) {
+                    System.err.println("保存中间层输出张量失败: " + outputName);
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -127,6 +150,37 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 //            tensorProto.writeTo(fos);
 //        }
 //    }
+
+    private void saveTensorAsBinary(INDArray tensor, File file) throws IOException {
+        try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
+            // Write shape info
+            dos.writeInt(tensor.rank());
+            for (long dim : tensor.shape()) {
+                dos.writeLong(dim);
+            }
+
+            // Manually extract data in C-order
+            long[] shape = tensor.shape();
+            long length = tensor.length();
+            int rank = tensor.rank();
+
+            for (int i = 0; i < length; i++) {
+                long[] coords = new long[rank];
+                long temp = i;
+                // Calculate coordinates from the linear index (C-order logic)
+                for (int d = rank - 1; d >= 0; d--) {
+                    if (shape[d] > 0) {
+                        coords[d] = temp % shape[d];
+                        temp /= shape[d];
+                    } else {
+                        coords[d] = 0;
+                    }
+                }
+                dos.writeFloat(tensor.getFloat(coords));
+            }
+        }
+    }
+
 
     private void saveTensorAsPb(INDArray tensor, File file) throws IOException {
         TensorProto.Builder builder = TensorProto.newBuilder();
