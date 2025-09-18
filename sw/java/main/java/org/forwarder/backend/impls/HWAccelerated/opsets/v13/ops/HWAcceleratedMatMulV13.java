@@ -77,91 +77,83 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
     }
 
     private INDArray matmul3D(INDArray a, INDArray b) {
-        // Handle broadcasting for mixed 2D/3D inputs
-        INDArray inputA = a.rank() == 2 ? a.reshape(1, a.rows(), a.columns()) : a;
-        INDArray inputB = b.rank() == 2 ? b.reshape(1, b.rows(), b.columns()) : b;
-
-        long batchA = inputA.shape()[0];
-        long batchB = inputB.shape()[0];
-
-        if (batchA != batchB && batchA != 1 && batchB != 1) {
-            throw new IllegalArgumentException(
-                    String.format("Batch dimensions must be compatible for 3D MatMul: A=%d, B=%d", batchA, batchB)
-            );
-        }
-
+        long batchA = a.size(0);
+        long batchB = b.size(0);
         long batch = Math.max(batchA, batchB);
-        long m = inputA.size(1);
-        long k_a = inputA.size(2);
-        long k_b = inputB.size(1);
-        long n = inputB.size(2);
+        long m = a.size(1);
+        long n = b.size(2);
 
-        if (k_a != k_b) {
-            throw new IllegalArgumentException(
-                    String.format("Matrix shape mismatch for 3D MatMul: A's columns (%d) must equal B's rows (%d).", k_a, k_b)
-            );
-        }
-
-        INDArray result = Nd4j.createUninitialized(new long[]{batch, m, n}, 'c'); //
+        INDArray result = Nd4j.createUninitialized(new long[]{batch, m, n}, 'c');
 
         for (int i = 0; i < (int) batch; i++) {
-            INDArray sliceA = (batchA == 1) ? inputA.slice(0) : inputA.slice(i);
-            INDArray sliceB = (batchB == 1) ? inputB.slice(0) : inputB.slice(i);
+            INDArray sliceA = (batchA == 1) ? a.slice(0) : a.slice(i);
+            INDArray sliceB = (batchB == 1) ? b.slice(0) : b.slice(i);
             INDArray product = matmul2D(sliceA, sliceB);
             result.putSlice(i, product);
         }
-
         return result;
     }
 
 
     private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB){
+        // 获取硬件参数
+        int elementWidth = AcceleratorSimInterface.acceleratorCfg().elementWidth();
+        int intWidth = AcceleratorSimInterface.acceleratorCfg().intWidth();
+        long ELEMENT_INT_MAX = (1L << (elementWidth - 1)) - 1;
+        long ELEMENT_INT_MIN = -(1L << (elementWidth - 1));
+        double REAL_VALUE_MAX_RANGE = Math.pow(2, intWidth - 1);
 
-        int fracWidth = 8; // Should be determined from onnx graph for optimal value
+        // 使用固定的 fracWidth
+        int fracWidth = 9;
         double scaleFactor = Math.pow(2, fracWidth);
 
+        // 输入转换溢出检查 (检查放大后的整数是否超出 elementWidth)
         int[][] fixedPointA = new int[rowsA][colsA];
-        int[][] fixedPointB = new int[colsA][colsB];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
-                // 将浮点数转换为定点数
-                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
-
+                double scaledValue = a.getFloat(i, j) * scaleFactor;
+                if (scaledValue > ELEMENT_INT_MAX || scaledValue < ELEMENT_INT_MIN) {
+                    throw new ArithmeticException("Input Overflow during scaling! Value exceeds " + elementWidth + "-bit range.");
+                }
+                fixedPointA[i][j] = (int)Math.round(scaledValue);
             }
         }
+
+        int[][] fixedPointB = new int[colsA][colsB];
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                // 将浮点数转换为定点数
-                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+                double scaledValue = b.getFloat(i, j) * scaleFactor;
+                if (scaledValue > ELEMENT_INT_MAX || scaledValue < ELEMENT_INT_MIN) {
+                    throw new ArithmeticException("Input Overflow during scaling! Value exceeds " + elementWidth + "-bit range.");
+                }
+                fixedPointB[i][j] = (int)Math.round(scaledValue);
             }
         }
 
-        InstJavaTODO instruction = new InstJavaTODO(
-                0,
-                "matmul",
-                0,
-                false,
-                "none",
-                0,
-                0,
-                0,
-                0,
-                rowsA,
-                colsA,
-                colsB
-        );
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        // 调用硬件仿真
+        InstJavaTODO instruction = new InstJavaTODO(0, "matmul", 0, false, "none", 0, 0, 0, 0, rowsA, colsA, colsB);
+        int[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
-        float[] Output = new float[rowsA * colsB];
+        // 将累加结果转换回浮点数
+        float[] output = new float[rowsA * colsB];
         double finalScaleFactor = scaleFactor * scaleFactor;
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                // 将定点数转换回浮点数
-                Output[i * colsB + j] = (float)(((double)(fixedPointOutput[i][j])) / finalScaleFactor);
+                output[i * colsB + j] = (float) (hardwareResult[i][j] / finalScaleFactor);
             }
         }
 
-        return Nd4j.create(Output).reshape(rowsA, colsB);
+        // **新增**：对最终的精确计算结果进行范围检查
+        for (float v : output) {
+            if (Math.abs(v) >= REAL_VALUE_MAX_RANGE) {
+                throw new ArithmeticException(String.format(
+                        "Computation Overflow! Final result %.6f exceeds the range [+/-%.2f] supported by intWidth=%d.",
+                        v, REAL_VALUE_MAX_RANGE, intWidth
+                ));
+            }
+        }
+
+        return Nd4j.create(output).reshape(rowsA, colsB);
     }
 
 }

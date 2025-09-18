@@ -27,7 +27,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
         int cols = 32;
         // Log is only defined for positive numbers
         int minValue = 1;
-        int maxValue = 20;
+        int maxValue = 50;
 
         INDArray input = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
         INDArray expected = Transforms.log(input.dup(), true); // Base e

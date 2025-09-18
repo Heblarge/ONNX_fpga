@@ -8,7 +8,7 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
 
 if len(sys.argv) < 2:
     print("\n错误: 请提供一个 .bin 文件作为参数。")
-    print("用法示例: python view_bin.py java_outputs/_model1_MinGRU_Layers_layers.0_Add_36_output_0.bin\n")
+    print("用法示例: python view_bin.py java_each_layer_outputs/data1/PPQ_Variable_1770.bin\n")
 
     sys.exit(1)
 
@@ -40,8 +40,8 @@ try:
         print(f"\n完整张量形状 (Full Shape): {tensor.shape}")
         print(f"数据类型 (Data Type): {tensor.dtype}")
 
-        print("tensor[0]: \n")
-        print(tensor[0][0][271])
+        print("tensor: \n")
+        print(tensor[0])
         print("\n----------------------------------------------------\n")
 
 

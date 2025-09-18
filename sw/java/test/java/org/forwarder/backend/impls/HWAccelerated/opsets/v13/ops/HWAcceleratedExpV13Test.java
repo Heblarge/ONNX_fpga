@@ -27,7 +27,7 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
         int cols = 32;
         // Use a smaller integer range for Exp to avoid extremely large float values
         int minValue = -3;
-        int maxValue = 4;
+        int maxValue = 6;
 
         INDArray input = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
         INDArray expected = Transforms.exp(input.dup());

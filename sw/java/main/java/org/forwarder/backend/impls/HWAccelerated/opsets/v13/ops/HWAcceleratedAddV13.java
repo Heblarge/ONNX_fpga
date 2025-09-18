@@ -119,7 +119,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
      */
     private INDArray addOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
         // Added fixed-point conversion logic to match Sub operator
-        int fracWidth = 8; // Should be determined from onnx graph for optimal value
+        int fracWidth = 9; // Should be determined from onnx graph for optimal value
         double scaleFactor = Math.pow(2, fracWidth);
 
         int[][] fixedPointA = new int[rows][cols];

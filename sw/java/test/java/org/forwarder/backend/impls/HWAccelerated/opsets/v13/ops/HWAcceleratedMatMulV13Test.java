@@ -17,7 +17,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
      */
     private INDArray calculateSimulatedFixedPointMatMul(INDArray a, INDArray b) {
         // These parameters must EXACTLY match the ones in HWAcceleratedMatMulV13
-        int fracWidth = 8;
+        int fracWidth = 9;
         double scaleFactor = Math.pow(2, fracWidth);
 
         int rowsA = (int) a.size(0);
@@ -66,8 +66,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
         int rowsA = 32;
         int colsA = 3;
         int colsB = 33;
-        int minValue = -3;
-        int maxValue = 3;
+        int minValue = -10;
+        int maxValue = 5;
 
         INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rowsA, colsA, minValue, maxValue));
         INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(colsA, colsB, minValue, maxValue));
@@ -82,11 +82,11 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
     public void testMatMul3D() throws Exception {
         System.out.println("\n--- Testing 3D (Batched) MatMul ---");
         int batchSize = 32;
-        int rowsA = 64; // Using smaller dimensions to keep test fast
+        int rowsA = 32; // Using smaller dimensions to keep test fast
         int colsA = 32;
         int colsB = 32;
-        int minValue = -2;
-        int maxValue = 2;
+        int minValue = -6;
+        int maxValue = 6;
 
         INDArray matrixA = createRandom3DMatrix(batchSize, rowsA, colsA, minValue, maxValue);
         INDArray matrixB = createRandom3DMatrix(batchSize, colsA, colsB, minValue, maxValue);

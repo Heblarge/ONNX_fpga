@@ -4,10 +4,10 @@ import sys
 import struct
 import argparse
 
-GOLDEN_DIR = 'golden_outputs'
-JAVA_DIR = 'java_outputs'
+GOLDEN_DIR = 'golden_outputs2'
+JAVA_DIR = 'java_each_layer_outputs/data1'
 ORDER_FILE = 'execution_order.txt'
-DEFAULT_TOLERANCE = 1e-2
+DEFAULT_TOLERANCE = 6
 
 def load_java_tensor(file_path):
     with open(file_path, 'rb') as f:

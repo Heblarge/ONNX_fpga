@@ -122,7 +122,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
      */
     private INDArray subOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
 
-        int fracWidth = 8;
+        int fracWidth = 9;
         // 需根据onnx图确定最优值
         double scaleFactor = Math.pow(2, fracWidth);
 

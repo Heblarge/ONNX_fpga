@@ -25,8 +25,8 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
         System.out.println("\n--- Testing 2D Relu ---");
         int rows = 32;
         int cols = 32;
-        float minValue = -10.0f;
-        float maxValue = 10.0f;
+        float minValue = -50.0f;
+        float maxValue = 50.0f;
 
         INDArray input = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
         INDArray expected = Transforms.relu(input.dup()); // Use dup to avoid modifying the input

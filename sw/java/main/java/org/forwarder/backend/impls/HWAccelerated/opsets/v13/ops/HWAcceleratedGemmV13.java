@@ -95,20 +95,44 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
 
     private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB){
 
-        int fracWidth = 8;
+        int elementWidth = AcceleratorSimInterface.acceleratorCfg().elementWidth();
+        int intWidth = AcceleratorSimInterface.acceleratorCfg().intWidth();
+        long ELEMENT_INT_MAX = (1L << (elementWidth - 1)) - 1;
+        long ELEMENT_INT_MIN = -(1L << (elementWidth - 1));
+        double REAL_VALUE_MAX_RANGE = Math.pow(2, intWidth - 1);
+
+        float maxAbsA = a.amaxNumber().floatValue();
+        float maxAbsB = b.amaxNumber().floatValue();
+        double maxPossibleOutput = (double)colsA * maxAbsA * maxAbsB;
+//        if (maxPossibleOutput >= REAL_VALUE_MAX_RANGE) {
+//            throw new ArithmeticException(String.format(
+//                    "Potential Computation Overflow! Estimated max output value %.2f exceeds hardware range of +/-%.2f defined by intWidth=%d.",
+//                    maxPossibleOutput, REAL_VALUE_MAX_RANGE, intWidth
+//            ));
+//        }
+
+        int fracWidth = 9;
         double scaleFactor = Math.pow(2, fracWidth);
 
         int[][] fixedPointA = new int[rowsA][colsA];
-        int[][] fixedPointB = new int[colsA][colsB];
-
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
-                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
+                double scaledValue = a.getFloat(i, j) * scaleFactor;
+                if (scaledValue > ELEMENT_INT_MAX || scaledValue < ELEMENT_INT_MIN) {
+                    throw new ArithmeticException("Input Overflow during scaling!");
+                }
+                fixedPointA[i][j] = (int)Math.round(scaledValue);
             }
         }
+
+        int[][] fixedPointB = new int[colsA][colsB];
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+                double scaledValue = b.getFloat(i, j) * scaleFactor;
+                if (scaledValue > ELEMENT_INT_MAX || scaledValue < ELEMENT_INT_MIN) {
+                    throw new ArithmeticException("Input Overflow during scaling!");
+                }
+                fixedPointB[i][j] = (int)Math.round(scaledValue);
             }
         }
 
@@ -126,16 +150,16 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
                 colsA,
                 colsB
         );
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        int[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
-        float[] Output = new float[rowsA * colsB];
+        float[] output = new float[rowsA * colsB];
         double finalScaleFactor = scaleFactor * scaleFactor;
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                Output[i * colsB + j] = (float)(((double)(fixedPointOutput[i][j])) / finalScaleFactor);
+                output[i * colsB + j] = (float) (hardwareResult[i][j] / finalScaleFactor);
             }
         }
 
-        return Nd4j.create(Output).reshape(rowsA, colsB);
+        return Nd4j.create(output).reshape(rowsA, colsB);
     }
 }

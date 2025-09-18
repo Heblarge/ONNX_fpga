@@ -17,7 +17,7 @@ import static org.junit.Assert.assertTrue;
 public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
 
     private INDArray calculateSimulatedFixedPointSub(INDArray a, INDArray b) {
-        int fracWidth = 8;
+        int fracWidth = 9;
         double scaleFactor = Math.pow(2, fracWidth);
         int rows = (int) a.rows();
         int cols = (int) a.columns();
@@ -49,8 +49,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         System.out.println("\n--- Testing 2D Sub ---");
         int rows = 32;
         int cols = 32;
-        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, -10.0f, 10.0f));
-        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, -10.0f, 10.0f));
+        INDArray matrixA = Nd4j.create(generateRandomFloatMatrix(rows, cols, -100.0f, 100.0f));
+        INDArray matrixB = Nd4j.create(generateRandomFloatMatrix(rows, cols, -100.0f, 100.0f));
         INDArray theoreticalExpected = matrixA.sub(matrixB);
         INDArray simulatedExpected = calculateSimulatedFixedPointSub(matrixA, matrixB);
         this.validateSub(theoreticalExpected, simulatedExpected, matrixA, matrixB);
@@ -62,8 +62,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         int batchSize = 2;
         int rows = 28;
         int cols = 32;
-        INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, -10.0f, 10.0f);
-        INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, -10.0f, 10.0f);
+        INDArray matrixA = createRandom3DMatrix(batchSize, rows, cols, -20.0f, 20.0f);
+        INDArray matrixB = createRandom3DMatrix(batchSize, rows, cols, -20.0f, 20.0f);
         INDArray theoreticalExpected = matrixA.sub(matrixB);
         INDArray simulatedExpected = Nd4j.create(matrixA.shape());
         for (int i = 0; i < batchSize; i++) {

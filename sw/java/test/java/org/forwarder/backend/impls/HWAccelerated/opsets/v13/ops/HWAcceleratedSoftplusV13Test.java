@@ -26,7 +26,7 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
         int rows = 32;
         int cols = 32;
         float minValue = -10.0f;
-        float maxValue = 10.0f;
+        float maxValue = 16.0f;
 
         INDArray input = Nd4j.create(generateRandomFloatMatrix(rows, cols, minValue, maxValue));
         INDArray expected = Transforms.log(Transforms.exp(input.dup()).add(1), true);

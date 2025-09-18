@@ -124,7 +124,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     }
 
     private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
-        int fracWidth = 8;
+        int fracWidth = 9;
         double scaleFactor = Math.pow(2, fracWidth);
 
         int[][] fixedPointA = new int[rows][cols];

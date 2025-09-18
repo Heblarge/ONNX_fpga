@@ -17,17 +17,17 @@ import static org.junit.Assert.assertTrue;
 public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
 
     // Using smaller, more reasonable dimensions for unit testing
-    private final int rowsA = 64;
-    private final int colsA = 33;
-    private final int colsB = 60;
-    private final float minValue = -3.0f;
-    private final float maxValue = 3.0f;
+    private final int rowsA = 32;
+    private final int colsA = 4;
+    private final int colsB = 64;
+    private final float minValue = -15.0f;
+    private final float maxValue = 15.0f;
 
     /**
      * Simulates the exact fixed-point arithmetic of the core MatMul hardware operator.
      */
     private INDArray calculateSimulatedFixedPointMatMul(INDArray a, INDArray b) {
-        int fracWidth = 8; // Must match the value in the operator
+        int fracWidth = 9; // Must match the value in the operator
         double scaleFactor = Math.pow(2, fracWidth);
         int m = (int) a.size(0);
         int k = (int) a.size(1);
@@ -39,10 +39,12 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         for (int i = 0; i < k; i++) for (int j = 0; j < n; j++) fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
 
         int[][] fixedPointOutput = new int[m][n];
+        long[][] fixedPointOutputLong = new long[m][n];
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
                 for (int l = 0; l < k; l++) {
-                    fixedPointOutput[i][j] += fixedPointA[i][l] * fixedPointB[l][j];
+                    // 使用 long 进行乘法以避免 int 溢出
+                    fixedPointOutputLong[i][j] += (long)fixedPointA[i][l] * fixedPointB[l][j];
                 }
             }
         }
@@ -51,7 +53,8 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         double finalScaleFactor = scaleFactor * scaleFactor;
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
-                output[i * n + j] = (float) (fixedPointOutput[i][j] / finalScaleFactor);
+                // 从 long 类型的累加器中读取结果
+                output[i * n + j] = (float) (fixedPointOutputLong[i][j] / finalScaleFactor);
             }
         }
         return Nd4j.create(output).reshape(m, n);

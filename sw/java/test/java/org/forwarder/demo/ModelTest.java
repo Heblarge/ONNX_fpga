@@ -76,7 +76,7 @@ public class ModelTest extends FWTestCase {
 
         super.testModel(
                 tensorPairPaths,
-                "/mnist/before_quantized/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_ir_version5.onnx",
+                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_ir_version5.onnx",
                 List.of("seq_pc", "seq_pos"), // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
                 new String[] { "HWAccelerated" },
