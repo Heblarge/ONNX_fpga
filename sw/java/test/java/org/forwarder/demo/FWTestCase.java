@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.List;
 import java.util.ArrayList;
-
+import java.util.HashMap;
 
 import javax.naming.OperationNotSupportedException;
 
@@ -239,5 +239,87 @@ public abstract class FWTestCase extends TestCase {
         String tensorString = tensor.toString().replaceAll("[\n\t]", "");
         return tensorString.length() > TENSOR_MAX_OUTPUT_LEN
                 ? tensorString.subSequence(0, TENSOR_MAX_OUTPUT_LEN) + " ..." : tensorString;
+    }
+
+    /**
+     * 比较两个后端之间的中间张量误差。
+     * @param tensorPairPaths 输入和输出张量路径的映射
+     * @param modelPath 模型路径
+     * @param inputNames 输入张量名称列表
+     * @param outputNames 输出张量名称列表
+     * @param backendNames 后端名称数组（必须包含两个后端名称）
+     * @param tolerance 误差容忍度
+     */
+    protected void compareIntermediateTensors(
+            Map<List<String>, List<String>> tensorPairPaths,
+            String modelPath,
+            List<String> inputNames,
+            List<String> outputNames,
+            String[] backendNames,
+            float tolerance
+    ) throws Exception {
+        if (backendNames.length != 2) {
+            throw new IllegalArgumentException("必须传入两个后端名称进行比较。");
+        }
+
+        // 从资源加载模型
+        String absoluteModelPath = URLDecoder.decode(FWTestCase.class.getResource(modelPath).getFile(), "utf-8");
+        assertNotNull(absoluteModelPath);
+
+        Config cfg = Config.builder()
+                .setDebug(true)
+                .setMemoryByteOrder(ByteOrder.LITTLE_ENDIAN)
+                .setExecutor(SequentialExecutor.class)
+                .build();
+        Forwarder forwarder = new Forwarder();
+        Model loadedModel = forwarder.load(absoluteModelPath, cfg).executor(SequentialExecutor.class);
+        assert forwarder != null;
+        assert loadedModel != null;
+
+        // 遍历待测试的所有输入
+        for (Map.Entry<List<String>, List<String>> tensorPairPath : tensorPairPaths.entrySet()) {
+            List<Tensor> inputTensors = new ArrayList<>();
+
+            // 加载所有输入 tensor
+            for (int i = 0; i < inputNames.size(); i++) {
+                inputTensors.add(this.loadTensor(loadedModel, inputNames.get(i), tensorPairPath.getKey().get(i)));
+            }
+
+            Map<String, Map<String, Tensor>> backendTensors = new HashMap<>();
+
+            for (String backendName : backendNames) {
+                Backend<?> backend = loadedModel.backend(backendName);
+                try (Session<?> session = backend.newSession()) {
+
+                    // 输入全部 feed
+                    for (Tensor input : inputTensors) {
+                        session.feed(input, false);
+                    }
+
+                    // 执行推理
+                    session.forward();
+
+                    // 保存中间张量到内存
+                    Map<String, Tensor> tensors = new HashMap<>();
+                    for (String outputName : outputNames) {
+                        Tensor tensor = session.getIntermediateOutputTensor(outputName);
+                        tensors.put(outputName, tensor);
+                    }
+                    backendTensors.put(backendName, tensors);
+                }
+            }
+
+            // 比较两个后端的张量
+            String backend1 = backendNames[0];
+            String backend2 = backendNames[1];
+            for (String tensorName : outputNames) {
+                Tensor tensor1 = backendTensors.get(backend1).get(tensorName);
+                Tensor tensor2 = backendTensors.get(backend2).get(tensorName);
+
+                // 比较张量误差
+                assertSimilarity(tensor1, tensor2, tolerance);
+                System.out.println("张量 " + tensorName + " 在 " + backend1 + " 和 " + backend2 + " 后端之间一致。");
+            }
+        }
     }
 }

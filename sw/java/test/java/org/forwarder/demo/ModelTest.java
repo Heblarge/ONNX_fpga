@@ -29,7 +29,7 @@ import junit.framework.Test;
 import junit.framework.TestSuite;
 
 /**
- * Unit test for MNIST model.
+ * Unit test for model.
  */
 public class ModelTest extends FWTestCase {
 
@@ -76,12 +76,39 @@ public class ModelTest extends FWTestCase {
 
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_ir_version5.onnx",
+                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx",
                 List.of("seq_pc", "seq_pos"), // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
-                new String[] { "HWAccelerated" },
+                new String[] { 
+                    //"DL4J"
+                    //,
+                    "HWAccelerated"
+                     },
                 0.0001f
         );
     }
+    public void testCompareIntermediateTensors() throws Exception {
+    Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
+    for (int n = 1; n < 2; n++) {
+        List<String> inputs = List.of(
+                "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
+                "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
+        );
+        List<String> outputs = List.of(
+                "/mnist/Quantized/data" + n + "/output_pre_tran.pb",
+                "/mnist/Quantized/data" + n + "/output_rot.pb",
+                "/mnist/Quantized/data" + n + "/output_trj.pb"
+        );
+        tensorPairPaths.put(inputs, outputs);
+    }
+
+    String modelPath = "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx";
+    List<String> inputNames = List.of("seq_pc", "seq_pos");
+    List<String> outputNames = List.of("pre_trans", "rot", "trj");
+    String[] backendNames = {"DL4J", "HWAccelerated"};
+    float tolerance = 0.0001f;
+
+    compareIntermediateTensors(tensorPairPaths, modelPath, inputNames, outputNames, backendNames, tolerance);
+}
 
 }

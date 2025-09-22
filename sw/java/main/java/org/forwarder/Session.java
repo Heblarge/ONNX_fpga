@@ -36,30 +36,42 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 
+/**
+ * ONNX模型推理会话抽象基类
+ * 负责管理一次完整的模型推理过程：输入准备、前向计算、输出获取和资源清理
+ * 实现了AutoCloseable接口，确保资源正确释放
+ *
+ * @param <T_BK_TS> 后端框架特有的张量类型（如ONNX Runtime的OrtTensor）
+ */
 public abstract class Session<T_BK_TS> implements AutoCloseable {
-
+	// 线程本地变量，确保每个线程有自己独立的会话实例
 	protected static final ThreadLocal<Session<?>> TL_SESSION = new ThreadLocal<Session<?>>();
-
+	// 日志记录器示例
 	private static Logger logger = LoggerFactory.getLogger(Session.class);
 
-	// protected Executor<T_BK_TS> executor;
-	protected Backend<T_BK_TS> backend;
-	protected Outputs outputs;
-	protected Map<String, T_BK_TS> intermediateOutputs;
-	protected TensorManager<T_BK_TS> intermediateTensorManager;
-	protected TensorManager<Tensor> exchangeTensorManager;
-
+	protected Backend<T_BK_TS> backend;// 后端计算引擎
+	protected Outputs outputs;// 模型输出结果集合
+	protected Map<String, T_BK_TS> intermediateOutputs;// 中间计算结果缓存（名称->后端张量）
+	protected TensorManager<T_BK_TS> intermediateTensorManager;// 中间张量管理器
+	protected TensorManager<Tensor> exchangeTensorManager;// 交换张量管理器（前端Tensor）
+	/**
+	 * 构造函数，初始化会话
+	 *
+	 * @param backend 后端计算引擎实例
+	 */
 	public Session(Backend<T_BK_TS> backend) {
+		// 检查当前线程是否已存在会话，确保线程安全
 		if (Session.TL_SESSION.get() != null)
 			throw new RuntimeException("Session in this thread has been inited");
 
+		// 将当前会话绑定到线程本地变量
 		Session.TL_SESSION.set(this);
 
-		// this.executor = executor;
 		this.backend = backend;
 		this.intermediateOutputs = new HashMap<String, T_BK_TS>();
 		this.outputs = new Outputs();
 
+		// 初始化中间张量管理器，使用后端特定的释放方法
 		this.intermediateTensorManager = new TensorManager<T_BK_TS>() {
 
 			@Override
@@ -69,22 +81,25 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 
 		};
 
+		// 初始化交换张量管理器，使用Tensor自身的close方法
 		this.exchangeTensorManager = new TensorManager<Tensor>() {
 
 			@Override
 			protected void dispose(Tensor tensor) {
-				tensor.close();
+				tensor.close(); // 调用Tensor自身的close方法
 			}
 
 		};
-
+		//初始化完成输出日志
 		logger.debug("Session binded in thread \"{}\"", Thread.currentThread().getName());
 	}
 
+	//输入数据，从输入的tensor获取张量名，并autoattach
 	public Session<T_BK_TS> feed(Tensor tensor) {
 		return this.feed(tensor, true);
 	}
 
+	//输入数据，从输入的tensor获取张量名，根据输入决定是否autoAttach
 	public Session<T_BK_TS> feed(Tensor tensor, boolean autoAttach) {
 		if (tensor.getName() != null)
 			return this.feed(tensor.getName(), tensor, autoAttach);
@@ -92,10 +107,12 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 			throw new IllegalArgumentException("The name of tensor can not be null.");
 	}
 
+	//输入数据，使用输入的张量名，并autoattach
 	public Session<T_BK_TS> feed(String name, Tensor tensor) {
 		return this.feed(name, tensor, true);
 	}
-	//这个版本是最完整的
+
+	//输入数据，使用输入的张量名，根据输入决定是否autoAttach，以上三个函数最后都是调用的这个函数
 	public Session<T_BK_TS> feed(String name, Tensor tensor, boolean autoAttach) {
 		//获取计算图的输入
 		GraphInput graphInput = this.backend.getModel().getGraph().getInputs(name);
@@ -120,6 +137,11 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 		return this;
 	}
 
+	/**
+	 * 执行模型前向计算（推理）
+	 *
+	 * @return 当前会话实例
+	 */
 	public Session<T_BK_TS> forward() {
 		//
 		// Put all constant resources to session
@@ -131,7 +153,7 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 		Executor<T_BK_TS> executor = this.backend.getModel().getExecutor();
 		//递归执行推理
 		executor.execute(this, this.backend.getOpsets());
-
+// 处理输出：将后端张量转换回前端Tensor并封装为输出结果
 		for (GraphOutput graphOutput : this.backend.getModel().getGraph().getOutputs()) {
 			T_BK_TS backendTensor = this.intermediateOutputs.get(graphOutput.getName());//从中间结果获取所有名字和网络需要的输出一致的张量
 			Tensor tensor = this.backend.toNativeTensor(this.exchangeTensorManager, graphOutput.getName(),
@@ -141,28 +163,43 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 		}
 		return this;
 	}
-
+	//获取中间张量管理器
 	public TensorManager<T_BK_TS> getTensorManager() {
 		return intermediateTensorManager;
 	}
-
+	//获取后端计算引擎
 	public Backend<T_BK_TS> getBackend() {
 		return this.backend;
 	}
-
+	//按名称获取输出张量
 	public Tensor getOutput(String name) {
 		return this.outputs.getTensor(name);
 	}
-
+	//存储中间计算结果
 	public void putIntermediateOutput(String name, T_BK_TS backendTensor) {
 		this.intermediateTensorManager.attach(name, backendTensor);
 		this.intermediateOutputs.put(name, backendTensor);
 	}
-
+	//按名称获取中间计算结果(T_BK_TS)
 	public T_BK_TS getIntermediateOutput(String name) {
 		return this.intermediateOutputs.get(name);
 	}
+	/**
+     * 将中间张量从后端类型转换为前端 Tensor 类型。
+     * @param name 中间张量的名称
+     * @return 转换后的前端 Tensor
+     */
+    public Tensor getIntermediateOutputTensor(String name) {
+        // 从 intermediateOutputs 获取后端张量
+        T_BK_TS backendTensor = this.intermediateOutputs.get(name);
+        if (backendTensor == null) {
+            throw new IllegalArgumentException("中间张量名称不存在: " + name);
+        }
 
+        // 使用 backend 将后端张量转换为前端 Tensor
+        return this.backend.toNativeTensor(this.exchangeTensorManager, name, backendTensor);
+    }
+//实现close接口，以满足AutoClosable类
 	@Override
 	public void close() throws Exception {
 		this.intermediateTensorManager.close();

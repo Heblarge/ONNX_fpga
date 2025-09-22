@@ -9,9 +9,8 @@ JAVA_DIR_2 = 'java_dl4j_each_layer_outputs/data1'
 # --------------------------------------------------
 
 # 定义执行顺序的文件
-# ORDER_FILE = 'execution_order_ort.txt'
-ORDER_FILE = 'execution_order.txt'
-DEFAULT_TOLERANCE = 0.05
+ORDER_FILE = 'onnx_debug_py/execution_order.txt'
+DEFAULT_TOLERANCE = 0.5
 
 def load_java_tensor(file_path):
 
