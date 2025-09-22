@@ -35,7 +35,7 @@ import java.util.Set;
 public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
 
     private final Collection<Node> orderedSequenceNodes;
-    private final File JAVA_OUTPUTS_DIR = new File("/home/user/Workspace/livehps_1/onnx_debug_py/java_hw_each_layer_outputs");
+    private final File JAVA_OUTPUTS_DIR = new File("java_hw_each_layer_outputs");
 
     // 新增一个执行计数器，用于创建 data1, data2, ... 目录
     private int executionCount = 0;
