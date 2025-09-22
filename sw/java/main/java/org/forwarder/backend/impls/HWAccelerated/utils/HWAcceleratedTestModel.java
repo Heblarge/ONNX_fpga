@@ -72,6 +72,51 @@ public final class HWAcceleratedTestModel {
 
 
     /**
+     * NEW: Validation for NON-LINEAR activation functions (Exp, Log, etc.).
+     * This method compares the actual hardware output directly against the theoretical high-precision result.
+     *
+     * @param opName The name of the activation function being tested.
+     * @param theoreticalExpected The high-precision floating-point result.
+     * @param actualOutput The actual result from the hardware-accelerated operator.
+     * @param tolerance The acceptable relative or absolute error.
+     */
+    public static void validateActivationFunction(String opName, INDArray theoreticalExpected, INDArray actualOutput, double tolerance) {
+        assertArrayEquals("The output shape must match the expected shape.", theoreticalExpected.shape(), actualOutput.shape());
+
+        float[] theoreticalVector = theoreticalExpected.dup('c').data().asFloat();
+        float[] actualVector = actualOutput.dup('c').data().asFloat();
+
+        String horizontalLine = new String(new char[100]).replace('\0', '-');
+        String headerFormat = "%-8s | %-20s | %-20s | %-20s | %-20s | %-7s%n";
+        String dataFormat = "%-8d | %-20.6f | %-20.6f | %-20.6f | %-20s | %-7s%n";
+
+        System.out.println("\n\n" + horizontalLine);
+        System.out.printf(headerFormat, "Index", "理论值 (Expected)", "实际硬件值 (Actual)", "绝对误差", "相对误差", "Check");
+        System.out.println(horizontalLine);
+
+        int errorCount = 0;
+
+        for (int i = 0; i < actualVector.length; i++) {
+            double theoreticalVal = theoreticalVector[i];
+            double actualVal = actualVector[i];
+
+            double absError = Math.abs(actualVal - theoreticalVal);
+            double relError = (Math.abs(theoreticalVal) > 1e-9) ? (absError / Math.abs(theoreticalVal)) : 0.0;
+           boolean pass = (relError < 2e-1) || (absError < tolerance);
+
+            if (!pass) {
+                errorCount++;
+            }
+
+            String relErrorStr = String.format("%.2f%%", relError * 100);
+            System.out.printf(dataFormat, i, theoreticalVal, actualVal, absError, relErrorStr, pass ? "Pass" : "Fail");
+        }
+        System.out.println(horizontalLine);
+        assertTrue(String.format("[%s] The calculation result exceeds the allowable error range. %d errors found.", opName, errorCount), errorCount == 0);
+        System.out.println(String.format("\nCongratulations! [%s] test case passed!", opName));
+    }
+
+    /**
      * Generates a 2D matrix with random float values.
      */
     public static float[][] generateRandom2DFloatMatrix(int rows, int cols, float min, float max) {
