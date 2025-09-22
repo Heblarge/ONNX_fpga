@@ -16,6 +16,8 @@ import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.onnx4j.opsets.OperatorSets;
 import org.onnx4j.prototypes.OnnxProto3.TensorProto;
 import java.io.DataOutputStream;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -268,7 +270,23 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
         orderedNodes.add(node);
     }
 
+    // 这个函数是保存执行节点顺序的txt文件
     public void printExecutionSequence() {
+        String fileName = "/home/user/Workspace/livehps_1/onnx_debug_py/execution_order_ort.txt";
+        System.out.println("==== 正在将执行顺序保存到 " + fileName + " ====");
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, false))) { // false表示覆盖旧文件
+            for (Node node : this.orderedSequenceNodes) {
+                for (String outputName : node.getOutputNames()) {
+                    writer.write(outputName);
+                    writer.newLine();
+                }
+            }
+            // 使用 new File(fileName).getAbsolutePath() 来确保打印的是绝对路径
+            System.out.println("成功保存执行顺序到: " + new File(fileName).getAbsolutePath());
+        } catch (IOException e) {
+            System.err.println("保存 execution_order_ort.txt 失败");
+            e.printStackTrace();
+        }
         System.out.println("==== Execution Sequence of Nodes (Topological Order) ====");
         int idx = 0;
         for (Node node : this.orderedSequenceNodes) {
