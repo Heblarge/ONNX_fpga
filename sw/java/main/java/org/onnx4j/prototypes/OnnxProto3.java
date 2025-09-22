@@ -152,7 +152,10 @@ public final class OnnxProto3 {
      *
      * <code>IR_VERSION = 5;</code>
      */
-    public static final int IR_VERSION_VALUE = 5;
+    public static final int IR_VERSION_2019_3_18_VALUE = 5;
+
+
+    public static final int IR_VERSION_VALUE = 7;
 
 
     public final int getNumber() {
