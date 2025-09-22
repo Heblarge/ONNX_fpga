@@ -4,20 +4,17 @@ import sys
 import struct
 import argparse
 
-# --- 配置区 ---
-# 将两个需要比较的文件夹路径固定在这里
 JAVA_DIR_1 = 'java_hw_each_layer_outputs/data1'
 JAVA_DIR_2 = 'java_dl4j_each_layer_outputs/data1'
 # --------------------------------------------------
 
 # 定义执行顺序的文件
+# ORDER_FILE = 'execution_order_ort.txt'
 ORDER_FILE = 'execution_order.txt'
-DEFAULT_TOLERANCE = 4
+DEFAULT_TOLERANCE = 0.05
 
 def load_java_tensor(file_path):
-    """
-    按照 Rank(int32), Shape(int64[]), Data(float32[]) 的大端序格式读取.bin文件
-    """
+
     try:
         with open(file_path, 'rb') as f:
             rank_bytes = f.read(4)

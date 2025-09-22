@@ -94,8 +94,8 @@ public abstract class FWTestCase extends TestCase {
             Forwarder forwarder = new Forwarder();
             Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class);
 
-            //SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
-            //executor.printExecutionSequence();
+            SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
+            executor.printExecutionSequence();
 
             assert forwarder != null;
             assert loadedModel!=null;
