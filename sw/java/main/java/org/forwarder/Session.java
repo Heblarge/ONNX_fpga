@@ -18,6 +18,7 @@ package org.forwarder;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.forwarder.util.TensorUtils;
 import org.forwarder.executor.Executor;
@@ -180,15 +181,32 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 		this.intermediateTensorManager.attach(name, backendTensor);
 		this.intermediateOutputs.put(name, backendTensor);
 	}
-	//按名称获取中间计算结果(T_BK_TS)
+	//按名称获取中间计算结果(T_BK_TS) 获取单个
 	public T_BK_TS getIntermediateOutput(String name) {
 		return this.intermediateOutputs.get(name);
 	}
+
+	// 获取所有张量
+	public Map<String, T_BK_TS> getIntermediateOutputs() {
+		return this.intermediateOutputs;
+	}
+
+	// 获取所有中间层输出
+	public Map<String, Tensor> getAllIntermediateOutputTensors() {
+		return this.intermediateOutputs.entrySet().stream()
+				.collect(Collectors.toMap(
+						Map.Entry::getKey,
+						entry -> this.backend.toNativeTensor(this.exchangeTensorManager, entry.getKey(), entry.getValue())
+				));
+	}
+
 	/**
      * 将中间张量从后端类型转换为前端 Tensor 类型。
      * @param name 中间张量的名称
      * @return 转换后的前端 Tensor
      */
+
+	// 获取输出 用于最终计算结果算子
     public Tensor getIntermediateOutputTensor(String name) {
         // 从 intermediateOutputs 获取后端张量
         T_BK_TS backendTensor = this.intermediateOutputs.get(name);

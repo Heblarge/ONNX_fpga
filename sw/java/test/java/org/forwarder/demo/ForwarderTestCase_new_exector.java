@@ -76,7 +76,7 @@ public abstract class ForwarderTestCase_new_exector extends TestCase {
 			Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class);
 
 			SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
-			executor.printExecutionSequence();
+			//executor.printExecutionSequence();
 
 			assert forwarder != null;
 			assert loadedModel!=null;

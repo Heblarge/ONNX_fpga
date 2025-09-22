@@ -16,11 +16,10 @@
  */
 package org.forwarder.demo;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.Map;
@@ -31,6 +30,7 @@ import java.util.HashMap;
 
 import javax.naming.OperationNotSupportedException;
 
+import com.google.protobuf.ByteString;
 import org.apache.commons.io.FileUtils;
 import org.forwarder.Backend;
 import org.forwarder.Model;
@@ -39,6 +39,7 @@ import org.forwarder.Forwarder;
 import org.forwarder.Session;
 import org.forwarder.executor.impls.RayExecutor;
 import org.forwarder.executor.impls.SequentialExecutor;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Tensor;
 import org.onnx4j.prototypes.OnnxProto3.TensorProto;
 import org.onnx4j.tensor.TensorBuilder;
@@ -58,14 +59,22 @@ public abstract class FWTestCase extends TestCase {
 
     private static Logger logger = LoggerFactory.getLogger(FWTestCase.class);
 
+
+    // 保存模式
+    public enum SaveMode {
+        NONE,             // 不保存任何结果
+        FINAL_ONLY,       // 只保存最终结果
+        ALL_INTERMEDIATE  // 保存所有中间结果
+    }
+
     /**
-     * Create the test case
-     *
-     * @param testName
-     *            name of the test case
-     * @throws IOException
-     * @throws FileNotFoundException
-     */
+         * Create the test case
+         *
+         * @param testName
+         *            name of the test case
+         * @throws IOException
+         * @throws FileNotFoundException
+         */
     public FWTestCase(String testName) {
         super(testName);
     }
@@ -76,7 +85,10 @@ public abstract class FWTestCase extends TestCase {
             List<String> inputNames,
             List<String> outputNames,
             String[] backendNames,
-            float tolerance
+            float tolerance,
+            Map<String, String> backendOutputPaths,
+            SaveMode saveMode
+
     ) throws FileNotFoundException, IOException, NoSuchMethodException,
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException {
@@ -94,15 +106,16 @@ public abstract class FWTestCase extends TestCase {
             Forwarder forwarder = new Forwarder();
             Model loadedModel=forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class);
 
-            SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
-            executor.printExecutionSequence();
+//            SequentialExecutor<?> executor = (SequentialExecutor<?>) loadedModel.getExecutor();
+//            executor.printExecutionSequence();
 
             assert forwarder != null;
             assert loadedModel!=null;
-            //遍历待测试的所有输入
+
             for (Entry<List<String>, List<String>> tensorPairPath : tensorPairPaths.entrySet()) {
                 List<Tensor> inputTensors = new ArrayList<>();
                 List<Tensor> expectedOutputTensors = new ArrayList<>();
+                String dataSubDirName = new File(tensorPairPath.getKey().get(0)).getParentFile().getName();
 
                 // 加载所有输入 tensor
                 for (int i = 0; i < inputNames.size(); i++) {
@@ -126,6 +139,18 @@ public abstract class FWTestCase extends TestCase {
                         // 执行推理
                         session.forward();
 
+                        if (saveMode != SaveMode.NONE) {
+                            String basePath = backendOutputPaths.get(backendName);
+                            if (basePath != null && !basePath.isEmpty()) {
+                                File outputDir = new File(basePath, dataSubDirName);
+                                if(saveMode == SaveMode.ALL_INTERMEDIATE) {
+                                    saveAllTensorsAsBin(session, outputDir);
+                                } else if (saveMode == SaveMode.FINAL_ONLY) {
+                                    saveFinalTensorsAsPb(session, outputNames, outputDir);
+                                }
+                            }
+                        }
+
                         // 获取每个输出并比较
                         for (int i = 0; i < outputNames.size(); i++) {
                             Tensor actual = session.getOutput(outputNames.get(i));
@@ -143,8 +168,84 @@ public abstract class FWTestCase extends TestCase {
             logger.error("Failed to close forwarder instance", e);
         }
 
+
         logger.info("Finished");
     }
+
+    private void saveAllTensorsAsBin(Session<?> session, File outputDir) throws IOException {
+        setupDirectory(outputDir);
+        Map<String, ?> intermediateOutputs = session.getIntermediateOutputs();
+        for(Entry<String, ?> entry : intermediateOutputs.entrySet()) {
+            saveTensorAsBinary(entry.getKey(), (INDArray) entry.getValue(), outputDir);
+        }
+    }
+
+    private void saveFinalTensorsAsPb(Session<?> session, List<String> finalOutputNames, File outputDir) throws IOException {
+        setupDirectory(outputDir);
+        for(String name : finalOutputNames) {
+            INDArray tensorData = (INDArray) session.getIntermediateOutput(name);
+            saveTensorAsPb(name, tensorData, outputDir);
+        }
+    }
+
+    private void setupDirectory(File dir) {
+        if (dir.exists()) {
+            for (File file : dir.listFiles()) file.delete();
+        }
+        dir.mkdirs();
+        System.out.println("输出将被保存到: " + dir.getAbsolutePath());
+    }
+
+    private void saveTensorAsBinary(String name, INDArray tensorData, File outputDir) {
+        if (tensorData != null) {
+            String sanitizedName = name.replace('/', '_').replace(':', '_');
+            String fileName = sanitizedName + ".bin";
+            File outputFile = new File(outputDir, fileName);
+            try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(outputFile))) {
+                dos.writeInt(tensorData.rank());
+                for (long dim : tensorData.shape()) dos.writeLong(dim);
+                INDArray cOrderTensor = tensorData.dup('c');
+                FloatBuffer floatBuffer = cOrderTensor.data().asNioFloat();
+                floatBuffer.rewind();
+                while (floatBuffer.hasRemaining()) dos.writeFloat(floatBuffer.get());
+            } catch (IOException e) {
+                System.err.println("Failed to save tensor as .bin: " + name);
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+    private void saveTensorAsPb(String name, INDArray tensor, File outputDir) throws IOException {
+        if (tensor == null) return;
+        String sanitizedName = name.replace('/', '_').replace(':', '_');
+        File file = new File(outputDir, sanitizedName + ".pb");
+
+        TensorProto.Builder builder = TensorProto.newBuilder();
+        for (long dim : tensor.shape()) {
+            builder.addDims(dim);
+        }
+        builder.setDataType(mapDl4jDataTypeToOnnx(tensor.dataType()).getNumber());
+
+        ByteBuffer byteBuffer = ByteBuffer.allocate((int) (tensor.length() * 4)).order(ByteOrder.LITTLE_ENDIAN);
+        byteBuffer.asFloatBuffer().put(tensor.dup('c').data().asNioFloat());
+        builder.setRawData(ByteString.copyFrom(byteBuffer));
+
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            builder.build().writeTo(fos);
+        }
+    }
+
+    private TensorProto.DataType mapDl4jDataTypeToOnnx(DataType dl4jType) {
+        switch (dl4jType) {
+            case FLOAT: return TensorProto.DataType.FLOAT;
+            case DOUBLE: return TensorProto.DataType.DOUBLE;
+            case INT: return TensorProto.DataType.INT32;
+            case LONG: return TensorProto.DataType.INT64;
+            default: return TensorProto.DataType.UNDEFINED;
+        }
+    }
+
 
     /**
      * Determines whether two compared tensors, data types and shapes are equal and numerically similar (within the specified tolerance range).
@@ -321,5 +422,9 @@ public abstract class FWTestCase extends TestCase {
                 System.out.println("张量 " + tensorName + " 在 " + backend1 + " 和 " + backend2 + " 后端之间一致。");
             }
         }
+
+
+
     }
+
 }

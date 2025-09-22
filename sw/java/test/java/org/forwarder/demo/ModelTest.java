@@ -61,7 +61,12 @@ public class ModelTest extends FWTestCase {
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
-        for (int n = 1; n < 2; n++) {
+        Map<String, String> backendPaths = new HashMap<>();
+        backendPaths.put(
+                "HWAccelerated",
+                // 输出文件夹的位置
+                "/home/user/Workspace/livehps_1/java_hw_each_layer_outputs");
+        for (int n = 1; n < 10; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
                     "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
@@ -71,20 +76,23 @@ public class ModelTest extends FWTestCase {
                     "/mnist/Quantized/data" + n + "/output_rot.pb",
                     "/mnist/Quantized/data" + n + "/output_trj.pb"
             );
-            tensorPairPaths.put(inputs, outputs);
-        }
 
+            tensorPairPaths.put(inputs, outputs);
+
+        }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx",
-                List.of("seq_pc", "seq_pos"), // 假设两个输入名
+                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_ir_version5.onnx",
+                List.of("seq_pc", "seq_pos"),       // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
-                new String[] { 
+                new String[] {
                     //"DL4J"
                     //,
                     "HWAccelerated"
                      },
-                0.0001f
+                0.0001f,
+                backendPaths,
+                SaveMode.FINAL_ONLY
         );
     }
     public void testCompareIntermediateTensors() throws Exception {
