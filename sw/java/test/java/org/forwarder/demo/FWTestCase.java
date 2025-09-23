@@ -41,6 +41,8 @@ import org.forwarder.executor.impls.RayExecutor;
 import org.forwarder.executor.impls.SequentialExecutor;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Tensor;
+import org.onnx4j.model.Graph;
+import org.onnx4j.model.graph.Node;
 import org.onnx4j.prototypes.OnnxProto3.TensorProto;
 import org.onnx4j.tensor.TensorBuilder;
 import java.util.Arrays;
@@ -174,9 +176,20 @@ public abstract class FWTestCase extends TestCase {
 
     private void saveAllTensorsAsBin(Session<?> session, File outputDir) throws IOException {
         setupDirectory(outputDir);
+        Graph graph = session.getBackend().getModel().getGraph();
+        Map<String, Node> outputProducingNodeMap = new HashMap<>();
+        for (Node node : graph.getNodes()) {
+            for (String outputName : node.getOutputNames()) {
+                outputProducingNodeMap.put(outputName, node);
+            }
+        }
         Map<String, ?> intermediateOutputs = session.getIntermediateOutputs();
         for(Entry<String, ?> entry : intermediateOutputs.entrySet()) {
-            saveTensorAsBinary(entry.getKey(), (INDArray) entry.getValue(), outputDir);
+            String name = entry.getKey();
+            Node producingNode = outputProducingNodeMap.get(name);
+            if (producingNode != null && !"Constant".equals(producingNode.getOpType())) {
+                saveTensorAsBinary(name, (INDArray) entry.getValue(), outputDir);
+            }
         }
     }
 
@@ -193,7 +206,7 @@ public abstract class FWTestCase extends TestCase {
             for (File file : dir.listFiles()) file.delete();
         }
         dir.mkdirs();
-        System.out.println("输出将被保存到: " + dir.getAbsolutePath());
+        // System.out.println("输出将被保存到: " + dir.getAbsolutePath());
     }
 
     private void saveTensorAsBinary(String name, INDArray tensorData, File outputDir) {
@@ -254,76 +267,75 @@ public abstract class FWTestCase extends TestCase {
      * @param expected
      * @param tolerance
      */
-//    protected void assertSimilarity(Tensor actual, Tensor expected, float tolerance) {
-//        assertEquals(expected.getValueInfo(), actual.getValueInfo());
-//        assertEquals(expected.getData().capacity(), actual.getData().capacity());
-//
-//        FloatBuffer actualFloat = actual.getData().asFloatBuffer();
-//        FloatBuffer expectedFloat = expected.getData().asFloatBuffer();
-//
-//        for (int n = 0; n < actualFloat.capacity(); n++) {
-//            Float nActual = actualFloat.get();
-//            Float nExpected = expectedFloat.get();
-//            assertTrue(Math.abs((nActual) - (nExpected)) <= tolerance);
-//        }
-//    }
     protected void assertSimilarity(Tensor actual, Tensor expected, float tolerance) {
         assertEquals(expected.getValueInfo(), actual.getValueInfo());
-        long[] shape = actual.getShape();
+        assertEquals(expected.getData().capacity(), actual.getData().capacity());
 
-        FloatBuffer actualBuffer = actual.getData().asFloatBuffer();
-        FloatBuffer expectedBuffer = expected.getData().asFloatBuffer();
-        actualBuffer.rewind();
-        expectedBuffer.rewind();
+        FloatBuffer actualFloat = actual.getData().asFloatBuffer();
+        FloatBuffer expectedFloat = expected.getData().asFloatBuffer();
 
-        // 步骤 1: 尝试直接比较 (假设两者都是行优先)
-        boolean directMatch = true;
-        for (int i = 0; i < expectedBuffer.capacity(); i++) {
-            if (Math.abs(expectedBuffer.get(i) - actualBuffer.get(i)) > tolerance) {
-                directMatch = false;
-                break;
-            }
+        for (int n = 0; n < actualFloat.capacity(); n++) {
+            Float nActual = actualFloat.get();
+            Float nExpected = expectedFloat.get();
+            assertTrue(Math.abs((nActual) - (nExpected)) <= tolerance);
         }
-
-        if (directMatch) {
-            logger.info("--> Tensors match with direct (Row-Major) comparison. No conversion needed.");
-            assertTrue(true); // 断言成功
-            return;
-        }
-
-        // 步骤 2: 如果直接比较失败，则执行列优先到行优先的转换
-        logger.info("--> Direct comparison failed. Assuming Column-Major layout and attempting conversion...");
-
-        if (shape.length != 3) {
-            fail("此方法仅为3D Tensor设计，当前Tensor维度为: " + shape.length);
-            return;
-        }
-        long dim1 = shape[0], dim2 = shape[1], dim3 = shape[2];
-
-        float[] actualRowMajorData = new float[actualBuffer.capacity()];
-        for (int i = 0; i < dim1; i++) {
-            for (int j = 0; j < dim2; j++) {
-                for (int k = 0; k < dim3; k++) {
-                    int sourceIndex = (int) (i + j * dim1 + k * dim1 * dim2);
-                    int destinationIndex = (int) (i * dim2 * dim3 + j * dim3 + k);
-                    actualRowMajorData[destinationIndex] = actualBuffer.get(sourceIndex);
-                }
-            }
-        }
-
-        // 步骤 3: 比较转换后的数据
-        logger.info("  CONVERTED ACTUAL (Row-Major): " + Arrays.toString(actualRowMajorData));
-        for (int i = 0; i < expectedBuffer.capacity(); i++) {
-            float nExpected = expectedBuffer.get(i);
-            float nActual = actualRowMajorData[i];
-            assertTrue(
-                    String.format("转换后，在行优先索引 %d 处不匹配: 期望值是 <%f>, 实际值是 <%f>", i, nExpected, nActual),
-                    Math.abs(nActual - nExpected) <= tolerance
-            );
-        }
-        logger.info("--> Tensors match after Column-to-Row conversion.");
     }
-
+//    protected void assertSimilarity(Tensor actual, Tensor expected, float tolerance) {
+//        assertEquals(expected.getValueInfo(), actual.getValueInfo());
+//        long[] shape = actual.getShape();
+//
+//        FloatBuffer actualBuffer = actual.getData().asFloatBuffer();
+//        FloatBuffer expectedBuffer = expected.getData().asFloatBuffer();
+//        actualBuffer.rewind();
+//        expectedBuffer.rewind();
+//
+//        // 步骤 1: 尝试直接比较 (假设两者都是行优先)
+//        boolean directMatch = true;
+//        for (int i = 0; i < expectedBuffer.capacity(); i++) {
+//            if (Math.abs(expectedBuffer.get(i) - actualBuffer.get(i)) > tolerance) {
+//                directMatch = false;
+//                break;
+//            }
+//        }
+//
+//        if (directMatch) {
+//            logger.info("--> Tensors match with direct (Row-Major) comparison. No conversion needed.");
+//            assertTrue(true); // 断言成功
+//            return;
+//        }
+//
+//        // 步骤 2: 如果直接比较失败，则执行列优先到行优先的转换
+//        logger.info("--> Direct comparison failed. Assuming Column-Major layout and attempting conversion...");
+//
+//        if (shape.length != 3) {
+//            fail("此方法仅为3D Tensor设计，当前Tensor维度为: " + shape.length);
+//            return;
+//        }
+//        long dim1 = shape[0], dim2 = shape[1], dim3 = shape[2];
+//
+//        float[] actualRowMajorData = new float[actualBuffer.capacity()];
+//        for (int i = 0; i < dim1; i++) {
+//            for (int j = 0; j < dim2; j++) {
+//                for (int k = 0; k < dim3; k++) {
+//                    int sourceIndex = (int) (i + j * dim1 + k * dim1 * dim2);
+//                    int destinationIndex = (int) (i * dim2 * dim3 + j * dim3 + k);
+//                    actualRowMajorData[destinationIndex] = actualBuffer.get(sourceIndex);
+//                }
+//            }
+//        }
+//
+//        // 步骤 3: 比较转换后的数据
+//        logger.info("  CONVERTED ACTUAL (Row-Major): " + Arrays.toString(actualRowMajorData));
+//        for (int i = 0; i < expectedBuffer.capacity(); i++) {
+//            float nExpected = expectedBuffer.get(i);
+//            float nActual = actualRowMajorData[i];
+//            assertTrue(
+//                    String.format("转换后，在行优先索引 %d 处不匹配: 期望值是 <%f>, 实际值是 <%f>", i, nExpected, nActual),
+//                    Math.abs(nActual - nExpected) <= tolerance
+//            );
+//        }
+//        logger.info("--> Tensors match after Column-to-Row conversion.");
+//    }
 
     protected Tensor loadTensor(Model model, String inputName, String tensorProtoName)
             throws InvalidProtocolBufferException, IOException, NoSuchFieldException, SecurityException,

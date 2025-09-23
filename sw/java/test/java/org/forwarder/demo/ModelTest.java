@@ -65,7 +65,7 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "HWAccelerated",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/java_hw_each_layer_outputs");
+                "/home/user/Workspace/livehps_1/java_hw_each_layer_outputs_all_tensors");
         for (int n = 1; n < 10; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
@@ -92,7 +92,7 @@ public class ModelTest extends FWTestCase {
                      },
                 0.0001f,
                 backendPaths,
-                SaveMode.FINAL_ONLY
+                SaveMode.ALL_INTERMEDIATE
         );
     }
     public void testCompareIntermediateTensors() throws Exception {
