@@ -18,7 +18,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
      */
     private INDArray calculateSimulatedFixedPointMatMul(INDArray a, INDArray b) {
         // These parameters must EXACTLY match the ones in HWAcceleratedMatMulV13
-        int fracWidth = 9;
+        int fracWidth = 15;
         double scaleFactor = Math.pow(2, fracWidth);
 
         int rowsA = (int) a.size(0);
@@ -65,10 +65,10 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
     public void testMatMul2D() throws Exception {
         System.out.println("\n--- Testing 2D MatMul ---");
         int rowsA = 32;
-        int colsA = 3;
+        int colsA = 32;
         int colsB = 33;
-        int minValue = -10;
-        int maxValue = 5;
+        int minValue = -5;
+        int maxValue = 8;
 
         INDArray matrixA = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rowsA, colsA, minValue, maxValue));
         INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(colsA, colsB, minValue, maxValue));

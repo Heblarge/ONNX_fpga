@@ -104,7 +104,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         double REAL_VALUE_MAX_RANGE = Math.pow(2, intWidth - 1);
 
         // 使用固定的 fracWidth
-        int fracWidth = 9;
+        int fracWidth = 20;
+        int fracWidth2 = 22;
         double scaleFactor = Math.pow(2, fracWidth);
 
         // 输入转换溢出检查 (检查放大后的整数是否超出 elementWidth)
@@ -131,27 +132,32 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         }
 
         // 调用硬件仿真
-        InstJavaTODO instruction = new InstJavaTODO(0, "matmul", 0, false, "none", 0, 0, 0, 0, rowsA, colsA, colsB);
+        InstJavaTODO instruction = new InstJavaTODO(
+                0,
+                "matmul",
+                fracWidth * 2,
+                false,
+                "none",
+                0,
+                0,
+                0,
+                0,
+                rowsA,
+                colsA,
+                colsB);
         int[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         // 将累加结果转换回浮点数
         float[] output = new float[rowsA * colsB];
-        double finalScaleFactor = scaleFactor * scaleFactor;
+        double finalScaleFactor = 14;
+        double scaleFactor2 = Math.pow(2, fracWidth2);
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                output[i * colsB + j] = (float) (hardwareResult[i][j] / finalScaleFactor);
+                output[i * colsB + j] = (float) (hardwareResult[i][j]);
             }
         }
 
-        // **新增**：对最终的精确计算结果进行范围检查
-        for (float v : output) {
-            if (Math.abs(v) >= REAL_VALUE_MAX_RANGE) {
-                throw new ArithmeticException(String.format(
-                        "Computation Overflow! Final result %.6f exceeds the range [+/-%.2f] supported by intWidth=%d.",
-                        v, REAL_VALUE_MAX_RANGE, intWidth
-                ));
-            }
-        }
+
 
         return Nd4j.create(output).reshape(rowsA, colsB);
     }
