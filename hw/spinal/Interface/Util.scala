@@ -3,6 +3,7 @@ import spinal.core.sim._
 
 import scala.math._
 import scala.util.Random
+import scala.reflect.ClassTag
 import Accelerator._
 import ExponentialFunction.EXP_function_sw
 import LogarithmFunction.LN_function_sw
@@ -37,12 +38,12 @@ package object Util {
 
   def matElementwiseMax(matA: Array[Array[Int]], matB: Array[Array[Int]]) = matElementwiseOp(matA, matB, _ max _)
 
-  def matElementwiseOp(mat: Array[Array[Int]], op: Int => Int) = mat.map(_.map(op))
+  def matElementwiseOp[T, U: ClassTag](mat: Array[Array[T]], op: T => U): Array[Array[U]] = mat.map(_.map(op))
 
   def matElementwiseShift(mat: Array[Array[Int]], shiftAmount: Int, satBits: Int) = matElementwiseOp(
     mat,
-    x => {
-      require(satBits > 0 && satBits <= 32, "satBits unsupported".red)
+    (x: Int) => {
+      // require(satBits > 0 && satBits <= 32, "satBits unsupported".red)
       val y =
         if (shiftAmount > 0) x >> shiftAmount
         else x << -shiftAmount
@@ -53,6 +54,24 @@ package object Util {
         case y if y < min => min
         case _            => y
       }
+    }
+  )
+
+  def matElementwiseShift(mat: Array[Array[BigInt]], shiftAmount: Int, satBits: Int) = matElementwiseOp(
+    mat,
+    (x: BigInt) => {
+      // require(satBits > 0 && satBits <= 32, "satBits unsupported".red)
+      val y =
+        if (shiftAmount > 0) x >> shiftAmount
+        else x << -shiftAmount
+      val min = -(1 << (satBits - 1))
+      val max = (1 << (satBits - 1)) - 1
+      y match {
+        case y if y > max => max
+        case y if y < min => min
+        case _            => y
+      }
+      y.toInt
     }
   )
 
@@ -81,7 +100,7 @@ package object Util {
 
   def matMul(matA: Array[Array[Int]], matB: Array[Array[Int]]) = {
     require(matA(0).length == matB.length, "mat shape mismatch".red)
-    matA.map(matARow => matB.transpose.map(matBCol => matARow.zip(matBCol).map { case (a, b) => a * b }.sum))
+    matA.map(matARow => matB.transpose.map(matBCol => matARow.zip(matBCol).map { case (a, b) => BigInt(a) * BigInt(b) }.sum))
   }
 
   def matGetSub(mat: Array[Array[Int]], rowStart: Int, colStart: Int, rowNum: Int, colNum: Int) =
@@ -209,7 +228,7 @@ package object Util {
   case class Cnt(cntMax: UInt, clearCond: Bool, incCond: Bool) extends ImplicitArea[UInt] {
     val cnt = Reg(UInt(cntMax.getWidth bits))
     val willOverflowIfInc = cnt === cntMax
-    val willOverflow = incCond &&  willOverflowIfInc
+    val willOverflow = incCond && willOverflowIfInc
     val value = cnt
     val valueNext = Mux(willOverflowIfInc, U(0), cnt + 1)
     when(clearCond) {
