@@ -176,13 +176,16 @@ class InstSim(
   def transposeSim(mat: Array[Array[Int]]) = if (doTranspose) mat.transpose else mat
 
   def systolicArraySim(matA: Array[Array[Int]], matB: Array[Array[Int]], elementWidth: Int) = {
-    val matZ = matrixOperation match {
-      case MatrixOperation_TypeDef.MatMul     => matMul(matA, matB)
-      case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(matA, matB)
-      case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
-      case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
+    if (matrixOperation == MatrixOperation_TypeDef.MatMul) {
+      transposeSim(matElementwiseShift(matMul(matA, matB), shiftLeft_AfterMatrixOperation, elementWidth))
+    } else {
+      val matZ = matrixOperation match {
+        case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(matA, matB)
+        case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
+        case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
+      }
+      transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
     }
-    transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
   }
 
   def activationSim(matZ: Array[Array[Int]], cfg:AcceleratorCfg) = {
