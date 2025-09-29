@@ -81,7 +81,7 @@ package object Util {
 
   def matMul(matA: Array[Array[Int]], matB: Array[Array[Int]]) = {
     require(matA(0).length == matB.length, "mat shape mismatch".red)
-    matA.map(matARow => matB.transpose.map(matBCol => matARow.zip(matBCol).map { case (a, b) => a * b }.sum))
+    matA.map(matARow => matB.transpose.map(matBCol => matARow.zip(matBCol).map { case (a, b) => BigInt(a) * BigInt(b) }.sum.toInt))
   }
 
   def matGetSub(mat: Array[Array[Int]], rowStart: Int, colStart: Int, rowNum: Int, colNum: Int) =
