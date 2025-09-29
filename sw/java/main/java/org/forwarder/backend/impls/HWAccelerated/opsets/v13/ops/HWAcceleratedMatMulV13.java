@@ -11,6 +11,7 @@ import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MatMulV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
+import scala.tools.nsc.doc.html.HtmlTags;
 
 
 public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements MatMulV13 {
@@ -29,12 +30,15 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
     public INDArray matmul(INDArray a, INDArray b) {
         if (a.rank() == 2 && b.rank() == 2) {
             return matmul2D(a, b);
-        } else if (a.rank() == 3 || b.rank() == 3) {
+        } else if (a.rank() == 3 && b.rank() == 2) {
+            return matmul3D2D(a, b);
+        } else if (a.rank() == 3 && b.rank() == 3) {
             return matmul3D(a, b);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for MatMul: A=" + a.rank() + ", B=" + b.rank());
         }
     }
+
 
     private int ceilToMultiple(int value, int multiple) {
         if (multiple == 0) return value;
@@ -76,6 +80,19 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
     }
 
+    private INDArray matmul3D2D(INDArray a, INDArray b) {
+        long batchSize = a.size(0);
+        long M = a.size(1);
+        long K = a.size(2);
+        long N = b.size(1);
+
+        INDArray a2D = a.reshape('c', batchSize * M, K);
+        INDArray result2D = matmul2D(a2D, b);
+
+        long[] outputShape = {batchSize, M, N};
+        return result2D.reshape('c', outputShape);
+    }
+
     private INDArray matmul3D(INDArray a, INDArray b) {
         long batchA = a.size(0);
         long batchB = b.size(0);
@@ -104,7 +121,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         double REAL_VALUE_MAX_RANGE = Math.pow(2, intWidth - 1);
 
         // 使用固定的 fracWidth
-        int fracWidth = 20;
+        int fracWidth = 10;
         int fracWidth2 = 22;
         double scaleFactor = Math.pow(2, fracWidth);
 

@@ -119,12 +119,12 @@ public final class HWAcceleratedTestModel {
     /**
      * Generates a 2D matrix with random float values.
      */
-    public static float[][] generateRandom2DFloatMatrix(int rows, int cols, float min, float max) {
+    public static float[][] generateRandom2DFloatMatrix(int rows, int cols, float min, float max, long scale) {
         Random random = new Random();
         float[][] matrix = new float[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                matrix[i][j] = min + random.nextFloat() * (max - min);
+                matrix[i][j] = (float) ((min + random.nextFloat() * (max - min)) * Math.pow(2,scale));
             }
         }
         return matrix;
@@ -133,10 +133,10 @@ public final class HWAcceleratedTestModel {
     /**
      * Generates a 3D matrix with random float values.
      */
-    public static INDArray generateRandom3DFloatMatrix(int batch, int rows, int cols, float min, float max) {
+    public static INDArray generateRandom3DFloatMatrix(int batch, int rows, int cols, float min, float max, long scale) {
         INDArray matrix = Nd4j.create(batch, rows, cols);
         for (int i = 0; i < batch; i++) {
-            matrix.putSlice(i, Nd4j.create(generateRandom2DFloatMatrix(rows, cols, min, max)));
+            matrix.putSlice(i, Nd4j.create(generateRandom2DFloatMatrix(rows, cols, min, max, scale)));
         }
         return matrix;
     }

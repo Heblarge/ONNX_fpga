@@ -11,6 +11,7 @@ import org.onnx4j.Inputs;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.GemmV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
+import java.util.List;
 
 /**
  * Implements the Gemm operation using a hardware accelerator.
@@ -31,8 +32,12 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
         float beta = castedInputs.getBeta();
         long transA = castedInputs.getTransA();
         long transB = castedInputs.getTransB();
+        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
+        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
+        Float fpgaOutScale = castedInputs.getFpgaOutScale();
+        Long fpgaOutShift = castedInputs.getFpgaOutShift();
 
-        INDArray result = gemm(a, b, c, alpha, beta, transA, transB);
+        INDArray result = gemm(a, b, c, alpha, beta, transA, transB, fpgaInShift, fpgaOutShift);
 
         return new GeMMOutputV13<>(result);
     }
@@ -42,11 +47,11 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
-    protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB) {
+    protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (transA != 0L) { A = A.transpose(); }
         if (transB != 0L) { B = B.transpose(); }
 
-        INDArray Y = matmul2D(A, B).mul(alpha);
+        INDArray Y = matmul(A, B, fpgaInShift, fpgaOutShift).mul(alpha);
 
         if (C != null) {
             long[] yShape = Y.shape();
@@ -60,8 +65,19 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
 
         return Y;
     }
+    public INDArray matmul(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+        if (a.rank() == 2 && b.rank() == 2) {
+            return matmul2D(a, b, fpgaInShift, fpgaOutShift);
+        } else if (a.rank() == 3 && b.rank() == 2) {
+            return matmul3D2D(a, b, fpgaInShift, fpgaOutShift);
+        } else if (a.rank() == 3 && b.rank() == 3) {
+            return matmul3D(a, b, fpgaInShift, fpgaOutShift);
+        } else {
+            throw new IllegalArgumentException("Unsupported tensor rank for MatMul: A=" + a.rank() + ", B=" + b.rank());
+        }
+    }
 
-    private INDArray matmul2D(INDArray a, INDArray b) {
+    private INDArray matmul2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
@@ -86,60 +102,65 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
         INDArray paddedB = Nd4j.zeros(paddedColsA, paddedColsB);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsB), NDArrayIndex.interval(0, originalColsB)}, b);
 
-        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB);
+        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB, fpgaInShift, fpgaOutShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
 
     }
 
+    private INDArray matmul3D2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+        long batchSize = a.size(0);
+        long M = a.size(1);
+        long K = a.size(2);
+        long N = b.size(1);
 
-    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB){
+        INDArray a2D = a.reshape('c', batchSize * M, K);
+        INDArray result2D = matmul2D(a2D, b, fpgaInShift, fpgaOutShift);
 
-        int elementWidth = AcceleratorSimInterface.acceleratorCfg().elementWidth();
-        int intWidth = AcceleratorSimInterface.acceleratorCfg().intWidth();
-        long ELEMENT_INT_MAX = (1L << (elementWidth - 1)) - 1;
-        long ELEMENT_INT_MIN = -(1L << (elementWidth - 1));
-        double REAL_VALUE_MAX_RANGE = Math.pow(2, intWidth - 1);
+        long[] outputShape = {batchSize, M, N};
+        return result2D.reshape('c', outputShape);
+    }
 
-        float maxAbsA = a.amaxNumber().floatValue();
-        float maxAbsB = b.amaxNumber().floatValue();
-        double maxPossibleOutput = (double)colsA * maxAbsA * maxAbsB;
-//        if (maxPossibleOutput >= REAL_VALUE_MAX_RANGE) {
-//            throw new ArithmeticException(String.format(
-//                    "Potential Computation Overflow! Estimated max output value %.2f exceeds hardware range of +/-%.2f defined by intWidth=%d.",
-//                    maxPossibleOutput, REAL_VALUE_MAX_RANGE, intWidth
-//            ));
-//        }
+    private INDArray matmul3D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+        long batchA = a.size(0);
+        long batchB = b.size(0);
+        long batch = Math.max(batchA, batchB);
+        long m = a.size(1);
+        long n = b.size(2);
 
-        int fracWidth = 9;
-        double scaleFactor = Math.pow(2, fracWidth);
+        INDArray result = Nd4j.createUninitialized(new long[]{batch, m, n}, 'c');
+
+        for (int i = 0; i < (int) batch; i++) {
+            INDArray sliceA = (batchA == 1) ? a.slice(0) : a.slice(i);
+            INDArray sliceB = (batchB == 1) ? b.slice(0) : b.slice(i);
+            INDArray product = matmul2D(sliceA, sliceB, fpgaInShift, fpgaOutShift);
+            result.putSlice(i, product);
+        }
+        return result;
+    }
+
+
+    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, List<Long> fpgaInShift, Long fpgaOutShift){
 
         int[][] fixedPointA = new int[rowsA][colsA];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
-                double scaledValue = a.getFloat(i, j) * scaleFactor;
-                if (scaledValue > ELEMENT_INT_MAX || scaledValue < ELEMENT_INT_MIN) {
-                    throw new ArithmeticException("Input Overflow during scaling!");
-                }
-                fixedPointA[i][j] = (int)Math.round(scaledValue);
+                fixedPointA[i][j] = a.getInt(i, j);
             }
         }
 
         int[][] fixedPointB = new int[colsA][colsB];
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                double scaledValue = b.getFloat(i, j) * scaleFactor;
-                if (scaledValue > ELEMENT_INT_MAX || scaledValue < ELEMENT_INT_MIN) {
-                    throw new ArithmeticException("Input Overflow during scaling!");
-                }
-                fixedPointB[i][j] = (int)Math.round(scaledValue);
+                fixedPointB[i][j] = b.getInt(i, j);
             }
         }
 
+        int shiftAmount = (int) (fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "matmul",
-                0,
+                shiftAmount,
                 false,
                 "none",
                 0,
@@ -153,10 +174,10 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
         int[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         float[] output = new float[rowsA * colsB];
-        double finalScaleFactor = scaleFactor * scaleFactor;
+
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                output[i * colsB + j] = (float) (hardwareResult[i][j] / finalScaleFactor);
+                output[i * colsB + j] = (float) hardwareResult[i][j];
             }
         }
 
