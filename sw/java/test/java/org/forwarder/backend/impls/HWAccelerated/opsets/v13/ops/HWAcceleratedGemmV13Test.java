@@ -59,7 +59,7 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
                 long val = matMulResult_long[i][j];
-                shiftedResult_long[i][j] = (long) (val /Math.pow(2,shiftAmount));
+                shiftedResult_long[i][j] = (long) (val / Math.pow(2,shiftAmount));
             }
         }
         float[] outputFloat = new float[m * n];
@@ -100,8 +100,8 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         float alpha = 1f;
         float beta = 2.0f;
 
-        List<Long> fpgaInShift = Arrays.asList(22L, 23L);
-        Long fpgaOutShift = 19L;
+        List<Long> fpgaInShift = Arrays.asList(24L, 24L);
+        Long fpgaOutShift = 24L;
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 

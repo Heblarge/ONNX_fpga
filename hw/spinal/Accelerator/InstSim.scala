@@ -177,7 +177,7 @@ class InstSim(
 
   def systolicArraySim(matA: Array[Array[Int]], matB: Array[Array[Int]], elementWidth: Int) = {
     if (matrixOperation == MatrixOperation_TypeDef.MatMul) {
-      transposeSim(matElementwiseShift(matMul(matA, matB), shiftLeft_AfterMatrixOperation, elementWidth))
+      transposeSim(matElementwiseShift(matMul(matA, matB), shiftLeft_AfterMatrixOperation, 64))
     } else {
       val matZ = matrixOperation match {
         case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(matA, matB)
