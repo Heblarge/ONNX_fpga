@@ -100,8 +100,8 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         float alpha = 1f;
         float beta = 2.0f;
 
-        List<Long> fpgaInShift = Arrays.asList(11L, 11L);
-        Long fpgaOutShift = 20L;
+        List<Long> fpgaInShift = Arrays.asList(22L, 23L);
+        Long fpgaOutShift = 19L;
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 
