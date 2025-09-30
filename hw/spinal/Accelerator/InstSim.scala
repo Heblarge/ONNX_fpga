@@ -173,22 +173,20 @@ class InstSim(
     payload.outputShape(1) #= outputShape1
   }
 
+  def transposeSim(mat: Array[Array[BigInt]]) = if (doTranspose) mat.transpose else mat
   def transposeSim(mat: Array[Array[Int]]) = if (doTranspose) mat.transpose else mat
 
-  def systolicArraySim(matA: Array[Array[Int]], matB: Array[Array[Int]], elementWidth: Int) = {
-    if (matrixOperation == MatrixOperation_TypeDef.MatMul) {
-      transposeSim(matElementwiseShift(matMul(matA, matB), shiftLeft_AfterMatrixOperation, 64))
-    } else {
-      val matZ = matrixOperation match {
-        case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(matA, matB)
-        case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
-        case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
-      }
-      transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
+  def systolicArraySim(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]], elementWidth: Int) = {
+    val matZ = matrixOperation match {
+      case MatrixOperation_TypeDef.MatMul     => matMul(matA, matB)
+      case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(matA, matB)
+      case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
+      case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
     }
+    transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
   }
 
-  def activationSim(matZ: Array[Array[Int]], cfg:AcceleratorCfg) = {
+  def activationSim(matZ: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
     val matZ2 = activationFunction match {
       case Activation_TypeDef.Exp      => matElementwiseExp(matZ, cfg)
       case Activation_TypeDef.Log      => matElementwiseLog(matZ, cfg)
@@ -199,7 +197,12 @@ class InstSim(
     matElementwiseShift(matZ2, shiftLeft_AfterActivation, cfg.elementWidth)
   }
 
-  def acceleratorSim(matA: Array[Array[Int]], matB: Array[Array[Int]], cfg:AcceleratorCfg) = {
+  def acceleratorSim(matA: Array[Array[Int]], matB: Array[Array[Int]], cfg: AcceleratorCfg) = {
+    val matZ = systolicArraySim(matA.map(_.map(BigInt(_))), matB.map(_.map(BigInt(_))), cfg.elementWidth)
+    activationSim(matZ, cfg).map(_.map(_.toInt))
+  }
+
+  def acceleratorSim(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
     val matZ = systolicArraySim(matA, matB, cfg.elementWidth)
     activationSim(matZ, cfg)
   }

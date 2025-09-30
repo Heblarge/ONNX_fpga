@@ -23,7 +23,7 @@ package object Util {
 
   def vecToStringWithHex(vec: Array[Int]) = vec.map(x => s"$x(${x.toHexString})").mkString("\t")
 
-  def matElementwiseOp(matA: Array[Array[Int]], matB: Array[Array[Int]], op: (Int, Int) => Int) = {
+  def matElementwiseOp[T, U, V: ClassTag](matA: Array[Array[T]], matB: Array[Array[U]], op: (T, U) => V) = {
     require(matA.length == matB.length && matA(0).length == matB(0).length, "mat shape mismatch".red)
     matA.zip(matB).map { case (matARow, matBRow) =>
       matARow.zip(matBRow).map { case (a, b) =>
@@ -32,30 +32,16 @@ package object Util {
     }
   }
 
-  def matElementwiseAdd(matA: Array[Array[Int]], matB: Array[Array[Int]]) = matElementwiseOp(matA, matB, _ + _)
+  def matElementwiseAdd(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]]) =
+    matElementwiseOp(matA, matB, (a: BigInt, b: BigInt) => a + b)
 
-  def matElementwiseMul(matA: Array[Array[Int]], matB: Array[Array[Int]]) = matElementwiseOp(matA, matB, _ * _)
+  def matElementwiseMul(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]]) =
+    matElementwiseOp(matA, matB, (a: BigInt, b: BigInt) => a * b)
 
-  def matElementwiseMax(matA: Array[Array[Int]], matB: Array[Array[Int]]) = matElementwiseOp(matA, matB, _ max _)
+  def matElementwiseMax(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]]) =
+    matElementwiseOp(matA, matB, (a: BigInt, b: BigInt) => a max b)
 
   def matElementwiseOp[T, U: ClassTag](mat: Array[Array[T]], op: T => U): Array[Array[U]] = mat.map(_.map(op))
-
-  def matElementwiseShift(mat: Array[Array[Int]], shiftAmount: Int, satBits: Int) = matElementwiseOp(
-    mat,
-    (x: Int) => {
-      // require(satBits > 0 && satBits <= 32, "satBits unsupported".red)
-      val y =
-        if (shiftAmount > 0) x >> shiftAmount
-        else x << -shiftAmount
-      val min = -(1 << (satBits - 1))
-      val max = (1 << (satBits - 1)) - 1
-      y match {
-        case y if y > max => max
-        case y if y < min => min
-        case _            => y
-      }
-    }
-  )
 
   def matElementwiseShift(mat: Array[Array[BigInt]], shiftAmount: Int, satBits: Int) = matElementwiseOp(
     mat,
@@ -64,43 +50,42 @@ package object Util {
       val y =
         if (shiftAmount > 0) x >> shiftAmount
         else x << -shiftAmount
-      val min = -(1 << (satBits - 1))
-      val max = (1 << (satBits - 1)) - 1
+      val min = -(BigInt(1) << (satBits - 1))
+      val max = (BigInt(1) << (satBits - 1)) - 1
       y match {
         case y if y > max => max
         case y if y < min => min
         case _            => y
       }
-      y.toInt
     }
   )
 
-  def fixOp(fracWidth: Int, op: Double => Double) = (x: Int) =>
-    (op(x.toDouble / pow(2, fracWidth)) * pow(2, fracWidth)).toInt
+  def fixOp(fracWidth: Int, op: Double => Double) = (x: BigInt) =>
+    BigInt((op(x.toDouble / pow(2, fracWidth)) * pow(2, fracWidth)).toInt)
 
-  def matElementwiseExp(mat: Array[Array[Int]], cfg:AcceleratorCfg) = {
-    val EXP_sw=new EXP_function_sw(cfg.activationCfg.expCfg)
+  def matElementwiseExp(mat: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
+    val EXP_sw = new EXP_function_sw(cfg.activationCfg.expCfg)
     matElementwiseOp(mat, fixOp(cfg.fracWidth, EXP_sw.computeFloat))
   }
 
-  def matElementwiseLog(mat: Array[Array[Int]],  cfg:AcceleratorCfg) = {
-    val LN_sw=new LN_function_sw(cfg.activationCfg.lnCfg)
+  def matElementwiseLog(mat: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
+    val LN_sw = new LN_function_sw(cfg.activationCfg.lnCfg)
     matElementwiseOp(mat, fixOp(cfg.fracWidth, LN_sw.computeFloat))
   }
 
-  def matElementwiseRelu(mat: Array[Array[Int]],  cfg:AcceleratorCfg) ={
-    val RELU_sw= new ReLU_function_sw(cfg.activationCfg.reluCfg)
+  def matElementwiseRelu(mat: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
+    val RELU_sw = new ReLU_function_sw(cfg.activationCfg.reluCfg)
     matElementwiseOp(mat, fixOp(cfg.fracWidth, RELU_sw.computeFloat))
   }
 
-  def matElementwiseSoftplus(mat: Array[Array[Int]],  cfg:AcceleratorCfg) ={
-    val SOFTPLUS_sw=new Softplus_function_sw(cfg.activationCfg.softplusCfg)
+  def matElementwiseSoftplus(mat: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
+    val SOFTPLUS_sw = new Softplus_function_sw(cfg.activationCfg.softplusCfg)
     matElementwiseOp(mat, fixOp(cfg.fracWidth, SOFTPLUS_sw.computeFloat))
   }
 
-  def matMul(matA: Array[Array[Int]], matB: Array[Array[Int]]) = {
+  def matMul(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]]) = {
     require(matA(0).length == matB.length, "mat shape mismatch".red)
-    matA.map(matARow => matB.transpose.map(matBCol => matARow.zip(matBCol).map { case (a, b) => BigInt(a) * BigInt(b) }.sum))
+    matA.map(matARow => matB.transpose.map(matBCol => matARow.zip(matBCol).map { case (a, b) => a * b }.sum))
   }
 
   def matGetSub(mat: Array[Array[Int]], rowStart: Int, colStart: Int, rowNum: Int, colNum: Int) =
