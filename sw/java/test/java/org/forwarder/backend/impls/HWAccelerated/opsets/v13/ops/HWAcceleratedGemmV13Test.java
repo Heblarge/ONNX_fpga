@@ -33,8 +33,6 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         int k = (int) A.columns();
         int n = (int) B.columns();
 
-        double scaleFactorA = Math.pow(2, fpgaInShift.get(0));
-        double scaleFactorB = Math.pow(2, fpgaInShift.get(1));
         long[][] matA_long = new long[m][k];
         for (int i = 0; i < m; i++) for (int j = 0; j < k; j++) matA_long[i][j] = A.getInt(i, j);
 
@@ -101,7 +99,7 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         float beta = 2.0f;
 
         List<Long> fpgaInShift = Arrays.asList(24L, 24L);
-        Long fpgaOutShift = 24L;
+        Long fpgaOutShift = 25L;
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 
