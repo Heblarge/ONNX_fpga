@@ -173,6 +173,8 @@ class InstSim(
     payload.outputShape(1) #= outputShape1
   }
 
+  def shiftsatbits = 64;
+
   def transposeSim(mat: Array[Array[BigInt]]) = if (doTranspose) mat.transpose else mat
   def transposeSim(mat: Array[Array[Int]]) = if (doTranspose) mat.transpose else mat
 
@@ -183,7 +185,7 @@ class InstSim(
       case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
       case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
     }
-    transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
+    transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, shiftsatbits))
   }
 
   def activationSim(matZ: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
@@ -194,7 +196,7 @@ class InstSim(
       case Activation_TypeDef.Softplus => matElementwiseSoftplus(matZ, cfg)
       case Activation_TypeDef.None     => matZ
     }
-    matElementwiseShift(matZ2, shiftLeft_AfterActivation, cfg.elementWidth)
+    matElementwiseShift(matZ2, shiftLeft_AfterActivation, shiftsatbits)
   }
 
   def acceleratorSim(matA: Array[Array[Int]], matB: Array[Array[Int]], cfg: AcceleratorCfg) = {

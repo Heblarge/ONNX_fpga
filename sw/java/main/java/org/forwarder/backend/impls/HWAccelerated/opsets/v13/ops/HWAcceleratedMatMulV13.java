@@ -118,17 +118,17 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
 
     private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, List<Long> fpgaInShift, Long fpgaOutShift){
 
-        int[][] fixedPointA = new int[rowsA][colsA];
+        long[][] fixedPointA = new long[rowsA][colsA];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
-                fixedPointA[i][j] = a.getInt(i, j);
+                fixedPointA[i][j] = a.getLong(i, j);
             }
         }
 
-        int[][] fixedPointB = new int[colsA][colsB];
+        long[][] fixedPointB = new long[colsA][colsB];
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                fixedPointB[i][j] = b.getInt(i, j);
+                fixedPointB[i][j] = b.getLong(i, j);
             }
         }
 
@@ -146,7 +146,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
                 rowsA,
                 colsA,
                 colsB);
-        int[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         // 将累加结果转换回浮点数
         float[] output = new float[rowsA * colsB];

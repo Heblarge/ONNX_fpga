@@ -22,11 +22,15 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         MaxInputsV13<INDArray> castedInputs = new MaxInputsV13<>(node, inputs);
         List<INDArray> inputTensors = castedInputs.getInputTensors();
-        INDArray outputTensor = this.max(inputTensors);
+        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
+        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
+        Float fpgaOutScale = castedInputs.getFpgaOutScale();
+        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        INDArray outputTensor = this.max(inputTensors, fpgaInShift, fpgaOutShift);
         return new MaxOutputV13<>(outputTensor);
     }
 
-    public INDArray max(List<INDArray> inputTensors) {
+    public INDArray max(List<INDArray> inputTensors, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (inputTensors == null || inputTensors.isEmpty()) {
             throw new IllegalArgumentException("Max operator requires at least one input tensor.");
         }
@@ -34,7 +38,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         // Iteratively find the element-wise max by pairwise comparison
         INDArray currentMax = inputTensors.get(0);
         for (int i = 1; i < inputTensors.size(); i++) {
-            currentMax = elementwiseMax(currentMax, inputTensors.get(i));
+            currentMax = elementwiseMax(currentMax, inputTensors.get(i), fpgaInShift, fpgaOutShift);
         }
         return currentMax;
     }
@@ -42,17 +46,16 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     /**
      * Refactored to handle broadcasting and reshaping for efficient hardware execution.
      */
-    private INDArray elementwiseMax(INDArray a, INDArray b) {
-        // Step 1: Handle broadcasting
+    private INDArray elementwiseMax(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
             a = a.broadcast(broadcastShape);
             b = b.broadcast(broadcastShape);
         }
 
-        // Step 2: Apply the "Flatten -> Compute -> Restore" pattern
         if (a.rank() == 2) {
-            return max2D(a, b);
+            return max2D(a, b, fpgaInShift, fpgaOutShift);
         } else if (a.rank() > 2) {
             long[] finalShape = a.shape();
             long numCols = finalShape[finalShape.length - 1];
@@ -61,7 +64,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
 
-            INDArray result2D = max2D(reshapedA, reshapedB);
+            INDArray result2D = max2D(reshapedA, reshapedB, fpgaInShift, fpgaOutShift);
 
             return result2D.reshape('c', finalShape);
         } else {
@@ -101,7 +104,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     /**
      * Performs 2D element-wise max with padding and slicing.
      */
-    private INDArray max2D(INDArray a, INDArray b) {
+    private INDArray max2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -118,21 +121,19 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         INDArray paddedB = Nd4j.zeros(paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols);
+        INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
-        int fracWidth = 9;
-        double scaleFactor = Math.pow(2, fracWidth);
+    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
 
-        int[][] fixedPointA = new int[rows][cols];
-        int[][] fixedPointB = new int[rows][cols];
+        long[][] fixedPointA = new long[rows][cols];
+        long[][] fixedPointB = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
-                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+                fixedPointA[i][j] = a.getLong(i, j);
+                fixedPointB[i][j] = b.getLong(i, j);
             }
         }
 
@@ -151,11 +152,12 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
                 cols
         );
 
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
+                output[i * cols + j] = (float) hardwareResult[i][j];
             }
         }
 

@@ -94,8 +94,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
         float minValue = -5f;
         float maxValue = 5f;
 
-        List<Long> fpgaInShift = Arrays.asList(10L, 10L); // Input fractional bits
-        Long fpgaOutShift = 20L;                          // Target output fractional bits
+        List<Long> fpgaInShift = Arrays.asList(25L, 25L); // Input fractional bits
+        Long fpgaOutShift = 23L;                          // Target output fractional bits
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 

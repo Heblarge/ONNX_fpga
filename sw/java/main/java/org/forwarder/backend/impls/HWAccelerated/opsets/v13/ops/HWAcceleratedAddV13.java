@@ -12,6 +12,8 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.AddV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import java.util.List;
+
 /**
  * Implements the Add operation using a hardware accelerator.
  * This version automatically pads inputs to be multiples of 32 for hardware compatibility.
@@ -26,15 +28,27 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         AddInputsV13<INDArray> castedInputs = new AddInputsV13<>(node, inputs);
         INDArray matrixA = castedInputs.getA();
         INDArray matrixB = castedInputs.getB();
-        INDArray outputTensor = this.add(matrixA, matrixB);
+        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
+        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
+        Float fpgaOutScale = castedInputs.getFpgaOutScale();
+        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        INDArray outputTensor = this.add(matrixA, matrixB, fpgaInShift, fpgaOutShift);
         return new AddOutputV13<>(outputTensor);
+    }
+
+    /**
+     * Calculates the ceiling of a value to the nearest multiple.
+     */
+    private int ceilToMultiple(int value, int multiple) {
+        if (multiple == 0) return value;
+        return ((value + multiple - 1) / multiple) * multiple;
     }
 
     /**
      * Public dispatcher for the Add operation.
      * It handles broadcasting and reshapes tensors for efficient hardware execution.
      */
-    public INDArray add(INDArray a, INDArray b) {
+    public INDArray add(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
             a = a.broadcast(broadcastShape);
@@ -42,14 +56,14 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         }
 
         if (a.rank() == 2) {
-            return add2D(a, b);
+            return add2D(a, b, fpgaInShift, fpgaOutShift);
         } else if (a.rank() > 2) {
             long[] finalShape = a.shape();
             long numCols = finalShape[finalShape.length - 1];
             long numRows = a.length() / numCols;
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
-            INDArray result2D = add2D(reshapedA, reshapedB);
+            INDArray result2D = add2D(reshapedA, reshapedB, fpgaInShift, fpgaOutShift);
             return result2D.reshape('c', finalShape);
         } else {
             throw new IllegalArgumentException(
@@ -81,18 +95,11 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         return resultShape;
     }
 
-    /**
-     * Calculates the ceiling of a value to the nearest multiple.
-     */
-    private int ceilToMultiple(int value, int multiple) {
-        if (multiple == 0) return value;
-        return ((value + multiple - 1) / multiple) * multiple;
-    }
 
     /**
      * Performs 2D element-wise addition with padding and slicing.
      */
-    private INDArray add2D(INDArray a, INDArray b) {
+    private INDArray add2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -109,7 +116,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
         INDArray paddedB = Nd4j.zeros(paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        INDArray paddedResult = addOnAccelerator(paddedA, paddedB, paddedRows, paddedCols);
+        INDArray paddedResult = addOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
@@ -117,24 +124,25 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
     /**
      * Private helper to run 2D element-wise addition on the hardware simulator.
      */
-    private INDArray addOnAccelerator(INDArray a, INDArray b, int rows, int cols) {
-        // Added fixed-point conversion logic to match Sub operator
-        int fracWidth = 9; // Should be determined from onnx graph for optimal value
-        double scaleFactor = Math.pow(2, fracWidth);
+    private INDArray addOnAccelerator(INDArray a, INDArray b, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+        if (!fpgaInShift.get(0).equals(fpgaInShift.get(1))) {
+            throw new IllegalArgumentException("For element-wise Add, input shifts (scales) must be identical.");
+        }
 
-        int[][] fixedPointA = new int[rows][cols];
-        int[][] fixedPointB = new int[rows][cols];
+        long[][] fixedPointA = new long[rows][cols];
+        long[][] fixedPointB = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = (int)Math.round(a.getFloat(i, j) * scaleFactor);
-                fixedPointB[i][j] = (int)Math.round(b.getFloat(i, j) * scaleFactor);
+                fixedPointA[i][j] = a.getLong(i, j);
+                fixedPointB[i][j] = b.getLong(i, j);
             }
         }
+        int shiftAmount = (int) (fpgaInShift.get(0) - fpgaOutShift);
 
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                0,
+                shiftAmount,
                 false,
                 "none",
                 0,
@@ -146,12 +154,12 @@ public class HWAcceleratedAddV13 extends HWAcceleratedOperator implements AddV13
                 cols
         );
 
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float)(((double)(fixedPointOutput[i][j])) / scaleFactor);
+                output[i * cols + j] = (float) (hardwareResult[i][j]);
             }
         }
 
