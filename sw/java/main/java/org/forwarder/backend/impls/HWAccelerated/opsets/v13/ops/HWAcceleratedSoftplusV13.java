@@ -12,6 +12,8 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SoftplusV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import java.util.List;
+
 /**
  * Implements the Softplus operation using a hardware accelerator,
  * with support for both 2D and 3D (batched) tensors.
@@ -25,68 +27,48 @@ public class HWAcceleratedSoftplusV13 extends HWAcceleratedOperator implements S
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         SoftplusInputsV13<INDArray> castedInputs = new SoftplusInputsV13<>(node, inputs);
         INDArray inputTensor = castedInputs.getInput();
-        INDArray outputTensor = this.softplus(inputTensor);
+        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
+        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
+        Float fpgaOutScale = castedInputs.getFpgaOutScale();
+        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        INDArray outputTensor = this.softplus(inputTensor, fpgaInShift, fpgaOutShift);
         return new SoftplusOutputV13<>(outputTensor);
     }
 
-    /**
-     * Public dispatcher for the Softplus operation. It checks the tensor rank
-     * and calls the appropriate implementation.
-     *
-     * @param x The input tensor.
-     * @return The result of the Softplus operation.
-     */
-    public INDArray softplus(INDArray x) {
+
+    public INDArray softplus(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (x.rank() == 2) {
-            return softplus2D(x);
+            return softplus2D(x, fpgaInShift, fpgaOutShift);
         } else if (x.rank() == 3) {
-            return softplus3D(x);
+            return softplus3D(x, fpgaInShift, fpgaOutShift);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for Softplus: " + x.rank());
         }
     }
 
-    /**
-     * Calculates the ceiling of a value to the nearest multiple.
-     */
     private int ceilToMultiple(int value, int multiple) {
         if (multiple == 0) return value;
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
-    /**
-     * Performs 2D Softplus operation with padding and slicing.
-     *
-     * @param x The 2D input tensor.
-     * @return The 2D result tensor.
-     */
-    private INDArray softplus2D(INDArray x) {
+    private INDArray softplus2D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
 
-        // 1. Calculate padded dimensions
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        // 2. Create a padded INDArray
         INDArray paddedX = Nd4j.zeros(paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
-        // 3. Call the hardware accelerator with the padded data
-        INDArray paddedResult = softplusOnAccelerator(paddedX, paddedRows, paddedCols);
+        INDArray paddedResult = softplusOnAccelerator(paddedX, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
 
-        // 4. Slice the result back to the original output shape
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-    /**
-     * Performs 3D (batched) Softplus operation.
-     *
-     * @param x The 3D input tensor.
-     * @return The 3D result tensor.
-     */
-    private INDArray softplus3D(INDArray x) {
+
+    private INDArray softplus3D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shape = x.shape();
         long batch = shape[0];
         long rows = shape[1];
@@ -96,7 +78,7 @@ public class HWAcceleratedSoftplusV13 extends HWAcceleratedOperator implements S
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
-            INDArray softplusSlice = softplus2D(slice); // softplus2D now handles padding
+            INDArray softplusSlice = softplus2D(slice, fpgaInShift, fpgaOutShift);
             result.putSlice(i, softplusSlice);
         }
 
@@ -107,22 +89,32 @@ public class HWAcceleratedSoftplusV13 extends HWAcceleratedOperator implements S
      * Private helper to run the Softplus operation on the hardware simulator.
      * This method's logic is preserved exactly as requested.
      */
-    private INDArray softplusOnAccelerator(INDArray x, int rows, int cols) {
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        int[][] fixedPointInput = new int[rows][cols];
+    private INDArray softplusOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+        if (fpgaInShift == null || fpgaInShift.isEmpty() || fpgaOutShift == null) {
+            throw new IllegalArgumentException("FPGA shift parameters must be provided for Softplus operation.");
+        }
+
+        long s_in = fpgaInShift.get(0);
+        long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        long s_out = fpgaOutShift;
+
+        long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointInput[i][j] = Math.round((float)(x.getFloat(i, j)*Math.pow(2, fracWidth)));
+                fixedPointInput[i][j] = x.getLong(i, j);
             }
         }
+
+        int preShiftAmount = (int) (s_in - s_hw);
+        int postShiftAmount = (int) (s_hw - s_out);
 
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                0,
+                preShiftAmount,
                 false,
                 "softplus",
-                0,
+                postShiftAmount,
                 0,
                 0,
                 0,
@@ -131,13 +123,13 @@ public class HWAcceleratedSoftplusV13 extends HWAcceleratedOperator implements S
                 cols
         );
 
-        int[][] matrixB_zero = new int[rows][cols];
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
+        long[][] matrixB_zero = new long[rows][cols];
+        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
 
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float)(( (double)(fixedPointOutput[i][j]))/ Math.pow(2, fracWidth));
+                output[i * cols + j] = (float) hardwareResult[i][j];
             }
         }
 

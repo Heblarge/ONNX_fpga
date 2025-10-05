@@ -12,6 +12,8 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReluV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import java.util.List;
+
 /**
  * Implements the Relu operation using a hardware accelerator,
  * with support for both 2D and 3D (batched) tensors.
@@ -25,7 +27,11 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         ReluInputsV13<INDArray> castedInputs = new ReluInputsV13<>(node, inputs);
         INDArray inputTensor = castedInputs.getInput();
-        INDArray outputTensor = this.relu(inputTensor);
+        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
+        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
+        Float fpgaOutScale = castedInputs.getFpgaOutScale();
+        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        INDArray outputTensor = this.relu(inputTensor, fpgaInShift, fpgaOutShift);
         return new ReluOutputV13<>(outputTensor);
     }
 
@@ -36,11 +42,11 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The input tensor.
      * @return The result of the Relu operation.
      */
-    public INDArray relu(INDArray x) {
+    public INDArray relu(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (x.rank() == 2) {
-            return relu2D(x);
+            return relu2D(x, fpgaInShift, fpgaOutShift);
         } else if (x.rank() == 3) {
-            return relu3D(x);
+            return relu3D(x, fpgaInShift, fpgaOutShift);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for Relu: " + x.rank());
         }
@@ -60,23 +66,19 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The 2D input tensor.
      * @return The 2D result tensor.
      */
-    private INDArray relu2D(INDArray x) {
+    private INDArray relu2D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
 
-        // 1. Calculate padded dimensions
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        // 2. Create a padded INDArray
         INDArray paddedX = Nd4j.zeros(paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
-        // 3. Call the hardware accelerator with the padded data
-        INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols);
+        INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
 
-        // 4. Slice the result back to the original output shape
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
@@ -86,7 +88,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The 3D input tensor.
      * @return The 3D result tensor.
      */
-    private INDArray relu3D(INDArray x) {
+    private INDArray relu3D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shape = x.shape();
         long batch = shape[0];
         long rows = shape[1];
@@ -96,7 +98,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
-            INDArray reluSlice = relu2D(slice); // relu2D now handles padding
+            INDArray reluSlice = relu2D(slice, fpgaInShift, fpgaOutShift);
             result.putSlice(i, reluSlice);
         }
 
@@ -107,22 +109,29 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * Private helper to run the Relu operation on the hardware simulator.
      * This method's logic is preserved exactly as requested.
      */
-    private INDArray reluOnAccelerator(INDArray x, int rows, int cols) {
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        int[][] fixedPointInput = new int[rows][cols];
+    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+        if (fpgaInShift == null || fpgaInShift.isEmpty() || fpgaOutShift == null) {
+            throw new IllegalArgumentException("FPGA shift parameters must be provided for Relu operation.");
+        }
+        long s_in = fpgaInShift.get(0);
+        long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        long s_out = fpgaOutShift;
+
+        long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointInput[i][j] = Math.round((float)(x.getFloat(i, j)*Math.pow(2, fracWidth)));
+                fixedPointInput[i][j] = x.getLong(i, j);
             }
         }
-
+        int preShiftAmount = (int) (s_in - s_hw);
+        int postShiftAmount = (int) (s_hw - s_out);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                0,
+                preShiftAmount,
                 false,
                 "relu",
-                0,
+                postShiftAmount,
                 0,
                 0,
                 0,
@@ -131,13 +140,13 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
                 cols
         );
 
-        int[][] matrixB_zero = new int[rows][cols];
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
+        long[][] matrixB_zero = new long[rows][cols];
+        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
 
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float)(( (double)(fixedPointOutput[i][j]))/ Math.pow(2, fracWidth));
+                output[i * cols + j] = (float) hardwareResult[i][j];
             }
         }
 
