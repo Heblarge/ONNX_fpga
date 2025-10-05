@@ -1,59 +1,226 @@
-//package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
-//
-//import Accelerator.AcceleratorSimInterface;
-//import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
-//import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTestModel;
-//import org.junit.Test;
-//import org.nd4j.linalg.api.ndarray.INDArray;
-//import org.nd4j.linalg.factory.Nd4j;
-//import org.nd4j.linalg.ops.transforms.Transforms;
-//
-//import java.util.Random;
-//
-//import static org.junit.Assert.assertArrayEquals;
-//import static org.junit.Assert.assertTrue;
-//
-///**
-// * This test class validates the HWAcceleratedExpV13 operator for
-// * both 2D and 3D (batched) tensors.
-// */
-//public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
-//
-//    @Test
-//    public void testExp2D() throws Exception {
-//        System.out.println("\n--- Testing 2D Exp ---");
-//        int rows = 32;
-//        int cols = 32;
-//        int minValue = -3;
-//        int maxValue = 3;
-//
-//        INDArray input = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue));
-//        INDArray theoreticalExpected = Transforms.exp(input.dup());
-//
-//        HWAcceleratedExpV13 operator = new HWAcceleratedExpV13();
-//        INDArray actualOutput = operator.exp(input.dup());
-//        double hardwareLogicTolerance = 1e-4;
-//        HWAcceleratedTestModel.validateActivationFunction("Exp - 2D", theoreticalExpected, actualOutput, hardwareLogicTolerance);
-//    }
-//
-//    /**
-//     * Tests 3D (batched) Exp operation.
-//     */
-//    @Test
-//    public void testExp3D() throws Exception {
-//        System.out.println("\n--- Testing 3D (Batched) Exp ---");
-//        int batchSize = 1;
-//        int rows = 28;
-//        int cols = 512;
-//        int minValue = -3;
-//        int maxValue = 4;
-//
-//        INDArray input = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue);
-//        INDArray theoreticalExpected = Transforms.exp(input.dup());
-//
-//        HWAcceleratedExpV13 operator = new HWAcceleratedExpV13();
-//        INDArray actualOutput = operator.exp(input.dup());
-//        double hardwareLogicTolerance = 1e-4;
-//        HWAcceleratedTestModel.validateActivationFunction("Exp - 3D", theoreticalExpected, actualOutput, hardwareLogicTolerance);
-//    }
-//}
+package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
+
+import Accelerator.AcceleratorSimInterface;
+import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTestModel;
+import org.junit.Test;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.ops.transforms.Transforms;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
+
+    private static class ExpCordicSimulator {
+        private final int bit_int;
+        private final int bit_frac;
+        private final int x_max;
+        private final int rotate;
+        private final int expx_int_bit;
+
+        private final long[] exp_frac_table;
+        private final long[] exp_int_pos_table;
+        private final long[] exp_int_neg_table;
+        private final long[] poweroftwo_table;
+
+        public ExpCordicSimulator(int bit_int_magnitude, int bit_frac, int x_max) {
+            this.bit_int = bit_int_magnitude;
+            this.bit_frac = bit_frac;
+            this.x_max = x_max;
+            // 关键：根据您的硬件RTL，迭代次数 rotate 等于整数部分的位数
+            this.rotate = this.bit_int;
+            this.expx_int_bit = (int)Math.ceil(Math.log(Math.ceil(Math.exp(x_max))) / Math.log(2));
+
+            this.exp_frac_table = generateExpFracTable();
+            this.exp_int_pos_table = generateExpIntPosTable();
+            this.exp_int_neg_table = generateExpIntNegTable();
+            this.poweroftwo_table = generatePowerOfTwoTable();
+        }
+
+        private int log2Up(int x) {
+            if (x <= 0) return 0;
+            return 32 - Integer.numberOfLeadingZeros(x - 1);
+        }
+
+        private long[] generateExpFracTable() {
+            long[] table = new long[rotate];
+            for (int i = 0; i < rotate; i++) {
+                table[i] = Math.round(Math.exp(1.0 / Math.pow(2, i + 1)) * Math.pow(2, bit_frac));
+            }
+            return table;
+        }
+
+        private long[] generateExpIntPosTable() {
+            int len = log2Up(x_max);
+            long[] table = new long[len];
+            for (int i = 0; i < len; i++) {
+                table[i] = Math.round(Math.exp(Math.pow(2, i)) * Math.pow(2, bit_frac));
+            }
+            return table;
+        }
+
+        private long[] generateExpIntNegTable() {
+            long[] table = new long[bit_int];
+            for (int i = 0; i < bit_int; i++) {
+                table[i] = Math.round(Math.exp(-Math.pow(2, i)) * Math.pow(2, bit_frac));
+            }
+            return table;
+        }
+
+        private long[] generatePowerOfTwoTable() {
+            long[] table = new long[rotate];
+            for (int i = 0; i < rotate; i++) {
+                table[i] = (long) ((1.0 / Math.pow(2, i + 1)) * Math.pow(2, bit_frac));
+            }
+            return table;
+        }
+
+        private boolean getBit(long n, int k) { return (n & (1L << k)) != 0; }
+        private long floor(long value) { return value >> bit_frac; }
+        private long sat(long value) {
+            long max_val = (1L << (expx_int_bit + bit_frac)) - 1;
+            return Math.min(value, max_val);
+        }
+
+        public long compute(int x_fixed) {
+            int int_x = x_fixed >> bit_frac;
+            long abs_int_x = Math.abs(int_x);
+            boolean neg = int_x < 0;
+            long frac_x = (long)x_fixed & ((1L << bit_frac) - 1);
+
+            long expx_frac_reg = 1L << bit_frac;
+            long current_frac_x = frac_x;
+
+            for (int i = 0; i < rotate; i++) {
+                if (current_frac_x > poweroftwo_table[i]) {
+                    current_frac_x -= poweroftwo_table[i];
+                    expx_frac_reg = sat(floor(expx_frac_reg * exp_frac_table[i]));
+                }
+            }
+
+            long expx_int_reg = 1L << bit_frac;
+            for (int i = 0; i < bit_int; i++) {
+                if (getBit(abs_int_x, i)) {
+                    if (neg) {
+                        expx_int_reg = sat(floor(expx_int_reg * exp_int_neg_table[i]));
+                    } else {
+                        if (i < exp_int_pos_table.length) {
+                            expx_int_reg = sat(floor(expx_int_reg * exp_int_pos_table[i]));
+                        }
+                    }
+                }
+            }
+
+            return sat(floor(expx_frac_reg * expx_int_reg));
+        }
+    }
+
+    private INDArray calculateSimulatedFixedPointExp(
+            INDArray x, List<Long> fpgaInShift, Long fpgaOutShift
+    ) {
+        if (x.rank() > 2) {
+            long[] finalShape = x.shape();
+            long numCols = finalShape[finalShape.length - 1];
+            long numRows = x.length() / numCols;
+            INDArray reshapedX = x.reshape('c', numRows, numCols);
+            INDArray result2D = calculateSimulatedFixedPointExp(reshapedX, fpgaInShift, fpgaOutShift);
+            return result2D.reshape('c', finalShape);
+        }
+
+        long s_in = fpgaInShift.get(0);
+        long s_hw_frac = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        long s_out = fpgaOutShift;
+
+        int bit_int_magnitude = AcceleratorSimInterface.acceleratorCfg().intWidth() - 1;
+        ExpCordicSimulator simulator = new ExpCordicSimulator(bit_int_magnitude, (int)s_hw_frac, 9);
+
+        long preShiftAmount = s_in - s_hw_frac;
+        int rows = (int) x.rows();
+        int cols = (int) x.columns();
+        long[][] preShifted_long = new long[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                long val = x.getLong(i, j);
+                preShifted_long[i][j] = (preShiftAmount >= 0) ? (val >> preShiftAmount) : (val << -preShiftAmount);
+            }
+        }
+
+        long[][] expResult_long = new long[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                expResult_long[i][j] = simulator.compute((int)preShifted_long[i][j]);
+            }
+        }
+
+        long postShiftAmount = s_hw_frac - s_out;
+        long[][] postShifted_long = new long[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                postShifted_long[i][j] = (postShiftAmount >= 0) ? (expResult_long[i][j] >> postShiftAmount) : (expResult_long[i][j] << -postShiftAmount);
+            }
+        }
+
+        float[] flatResult = new float[rows * cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                flatResult[i * cols + j] = postShifted_long[i][j];
+            }
+        }
+        return Nd4j.create(flatResult, new long[]{rows, cols});
+    }
+
+    @Test
+    public void testExpWithShifts() throws Exception {
+        System.out.println("\n--- Testing Exp 2D with Two-Stage Quantization Shifts ---");
+        int rows = 32;
+        int cols = 32;
+        float minValue = -8.0f;
+        float maxValue = 6.0f;
+
+        List<Long> fpgaInShift = Arrays.asList(23L);
+        Long fpgaOutShift = 25L;
+
+        INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
+
+        INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
+        INDArray theoreticalExpected_float = Transforms.exp(matrix_float, true);
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift)));
+
+        INDArray simulatedExpected = calculateSimulatedFixedPointExp(matrix_int, fpgaInShift, fpgaOutShift);
+
+        HWAcceleratedExpV13 operator = new HWAcceleratedExpV13();
+        INDArray actualOutput = operator.exp(matrix_int, fpgaInShift, fpgaOutShift);
+
+        double tolerance = 0.0;
+        HWAcceleratedTestModel.validate("Exp - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+    }
+
+    @Test
+    public void testExp3DWithShifts() throws Exception {
+        System.out.println("\n--- Testing Exp 3D (Batched) with Two-Stage Quantization Shifts ---");
+        int batchSize = 2;
+        int rows = 32;
+        int cols = 64;
+        float minValue = -8.0f;
+        float maxValue = 6.0f;
+
+        List<Long> fpgaInShift = Arrays.asList(22L);
+        Long fpgaOutShift = 20L;
+
+        INDArray matrix_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
+
+        INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
+        INDArray theoreticalExpected_float = Transforms.exp(matrix_float, true);
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift)));
+
+        INDArray simulatedExpected = calculateSimulatedFixedPointExp(matrix_int, fpgaInShift, fpgaOutShift);
+
+        HWAcceleratedExpV13 operator = new HWAcceleratedExpV13();
+        INDArray actualOutput = operator.exp(matrix_int, fpgaInShift, fpgaOutShift);
+
+        double tolerance = 0.0;
+        HWAcceleratedTestModel.validate("Exp - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+    }
+}

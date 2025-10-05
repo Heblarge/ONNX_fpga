@@ -22,7 +22,8 @@ public interface ReluV13 extends AiOnnxOperatorV13 {
             DataType.BFLOAT16,
             DataType.FLOAT16,
             DataType.FLOAT,
-            DataType.DOUBLE
+            DataType.DOUBLE,
+            DataType.INT32
     );
 
     @Override

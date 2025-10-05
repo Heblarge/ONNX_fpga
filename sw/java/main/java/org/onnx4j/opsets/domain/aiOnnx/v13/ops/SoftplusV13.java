@@ -19,7 +19,11 @@ import java.util.List;
 public interface SoftplusV13 extends AiOnnxOperatorV13 {
 
     public static final String OP_TYPE = "Softplus";
-    public static final TypeConstraint TPYE_CONSTRAINT_T = new Field.TypeConstraint(DataType.numericTypes());
+    public static final TypeConstraint TYPE_CONSTRAINT_T = new Field.TypeConstraint(
+            DataType.FLOAT, DataType.DOUBLE, DataType.FLOAT16, DataType.BFLOAT16,
+            DataType.INT8, DataType.INT16, DataType.INT32, DataType.INT64,
+            DataType.UINT8, DataType.UINT16, DataType.UINT32, DataType.UINT64
+    );
 
     @Override
     default OperatorStatus getStatus() {
@@ -46,7 +50,7 @@ public interface SoftplusV13 extends AiOnnxOperatorV13 {
 
         public SoftplusInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
-            this.xField = new InputField<>(this, TPYE_CONSTRAINT_T, inputArray[0]);
+            this.xField = new InputField<>(this, TYPE_CONSTRAINT_T, inputArray[0]);
             this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class, null, true);
             this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class, null, true);
             this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatAttribute.class, null, true);
@@ -71,7 +75,7 @@ public interface SoftplusV13 extends AiOnnxOperatorV13 {
 
         @Override
         public TypeConstraint getTypeConstraint() {
-            return TPYE_CONSTRAINT_T;
+            return TYPE_CONSTRAINT_T;
         }
     }
 }

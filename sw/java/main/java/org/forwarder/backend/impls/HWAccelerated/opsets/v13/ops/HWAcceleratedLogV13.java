@@ -12,6 +12,8 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.LogV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import java.util.List;
+
 /**
  * Implements the Log operation using a hardware accelerator,
  * with support for both 2D and 3D (batched) tensors.
@@ -25,7 +27,11 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         LogInputsV13<INDArray> castedInputs = new LogInputsV13<>(node, inputs);
         INDArray inputTensor = castedInputs.getInput();
-        INDArray outputTensor = this.log(inputTensor);
+        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
+        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
+        Float fpgaOutScale = castedInputs.getFpgaOutScale();
+        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        INDArray outputTensor = this.log(inputTensor, fpgaInShift, fpgaOutShift);
         return new LogOutputV13<>(outputTensor);
     }
 
@@ -36,11 +42,11 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
      * @param x The input tensor.
      * @return The result of the Log operation.
      */
-    public INDArray log(INDArray x) {
+    public INDArray log(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         if (x.rank() == 2) {
-            return log2D(x);
+            return log2D(x, fpgaInShift, fpgaOutShift);
         } else if (x.rank() == 3) {
-            return log3D(x);
+            return log3D(x, fpgaInShift, fpgaOutShift);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for Log: " + x.rank());
         }
@@ -60,23 +66,19 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
      * @param x The 2D input tensor.
      * @return The 2D result tensor.
      */
-    private INDArray log2D(INDArray x) {
+    private INDArray log2D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
 
-        // 1. Calculate padded dimensions
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        // 2. Create a padded INDArray
         INDArray paddedX = Nd4j.zeros(paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
-        // 3. Call the hardware accelerator with the padded data
-        INDArray paddedResult = logOnAccelerator(paddedX, paddedRows, paddedCols);
+        INDArray paddedResult = logOnAccelerator(paddedX, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
 
-        // 4. Slice the result back to the original output shape
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
@@ -86,7 +88,7 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
      * @param x The 3D input tensor.
      * @return The 3D result tensor.
      */
-    private INDArray log3D(INDArray x) {
+    private INDArray log3D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
         long[] shape = x.shape();
         long batch = shape[0];
         long rows = shape[1];
@@ -96,7 +98,7 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
-            INDArray logSlice = log2D(slice); // log2D now handles padding
+            INDArray logSlice = log2D(slice, fpgaInShift, fpgaOutShift);
             result.putSlice(i, logSlice);
         }
 
@@ -107,22 +109,31 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
      * Private helper to run the Log operation on the hardware simulator.
      * This method's logic is preserved exactly as requested.
      */
-    private INDArray logOnAccelerator(INDArray x, int rows, int cols) {
-        int fracWidth = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        int[][] fixedPointInput = new int[rows][cols];
+    private INDArray logOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+        if (fpgaInShift == null || fpgaInShift.isEmpty() || fpgaOutShift == null) {
+            throw new IllegalArgumentException("FPGA shift parameters must be provided for Log operation.");
+        }
+
+        long s_in = fpgaInShift.get(0);
+        long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        long s_out = fpgaOutShift;
+
+        long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointInput[i][j] = Math.round((float)(x.getFloat(i, j)*Math.pow(2, fracWidth)));                
+                fixedPointInput[i][j] = x.getLong(i, j);
             }
         }
 
+        int preShiftAmount = (int) (s_in - s_hw);
+        int postShiftAmount = (int) (s_hw - s_out);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                0,
+                preShiftAmount,
                 false,
                 "log",
-                0,
+                postShiftAmount,
                 0,
                 0,
                 0,
@@ -131,13 +142,14 @@ public class HWAcceleratedLogV13 extends HWAcceleratedOperator implements LogV13
                 cols
         );
 
-        int[][] matrixB_zero = new int[rows][cols];
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
+        long[][] matrixB_zero = new long[rows][cols];
+        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
+
 
         float[] output = new float[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float)(( (double)(fixedPointOutput[i][j]))/ Math.pow(2, fracWidth));
+                output[i * cols + j] = (float) hardwareResult[i][j];
             }
         }
 
