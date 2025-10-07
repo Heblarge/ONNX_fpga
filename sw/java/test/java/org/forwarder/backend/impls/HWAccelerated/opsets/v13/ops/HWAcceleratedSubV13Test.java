@@ -79,7 +79,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         for (int i = 1; i <= maxRank; i++) {
             long dimA = (rankA - i >= 0) ? shapeA[rankA - i] : 1;
             long dimB = (rankB - i >= 0) ? shapeB[rankB - i] : 1;
-            if (dimA != dimB && dimA != 1 && dimB != 1) throw new IllegalArgumentException("Shapes are not broadcastable.");
+            if (dimA != dimB && dimA != 1 && dimB != 1)
+                throw new IllegalArgumentException("Shapes are not broadcastable.");
             resultShape[maxRank - i] = Math.max(dimA, dimB);
         }
         return resultShape;
@@ -169,5 +170,35 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
 
         double tolerance = 0.0;
         HWAcceleratedTestModel.validate("Sub - Broadcast [1]", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+    }
+
+    @Test
+    public void testSub3DInt32() throws Exception {
+        System.out.println("\n--- Testing 3D (Batched) Sub with Quantization Params ---");
+        int batchSize = 2;
+        int rows = 31;
+        int cols = 512;
+        int minValue = -10;
+        int maxValue = 10;
+
+        List<Long> fpgaInShift = Arrays.asList(14L, 14L);
+        Long fpgaOutShift = 20L; // Results in left shift
+
+        INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DIntMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
+        INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DIntMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(1));
+
+        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift;
+        INDArray integerSub = matrixA_int.sub(matrixB_int);
+        INDArray theoreticalExpected = (shiftAmount >= 0)
+                ? integerSub.div(1L << shiftAmount)
+                : integerSub.mul(1L << -shiftAmount);
+
+        INDArray simulatedExpected = calculateSimulatedFixedPointSub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
+
+        HWAcceleratedSubV13 operator = new HWAcceleratedSubV13();
+        INDArray actualOutput = operator.sub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
+
+        double tolerance = 1.0 / Math.pow(2, fpgaOutShift);
+        HWAcceleratedTestModel.validate("Sub - 3D Int", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
     }
 }

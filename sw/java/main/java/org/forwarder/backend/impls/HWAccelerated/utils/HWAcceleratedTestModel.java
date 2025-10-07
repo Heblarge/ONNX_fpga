@@ -140,5 +140,28 @@ public final class HWAcceleratedTestModel {
         }
         return matrix;
     }
+
+    public static int[][] generateRandom2DIntMatrix(int rows, int cols, float min, float max, long scale) {
+        Random random = new Random();
+        int[][] matrix = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                double randomFloat = (min + random.nextDouble() * (max - min)) * Math.pow(2, scale);
+                matrix[i][j] = (int) Math.round(randomFloat);
+            }
+        }
+        return matrix;
+    }
+
+    /**
+     * Generates a 3D INDArray of DataType.INT32 with random integer values.
+     */
+    public static INDArray generateRandom3DIntMatrix(int batch, int rows, int cols, int min, int max, long scale) {
+        INDArray matrix = Nd4j.create(batch, rows, cols);
+        for (int i = 0; i < batch; i++) {
+            matrix.putSlice(i, Nd4j.create(generateRandom2DFloatMatrix(rows, cols, min, max, scale)));
+        }
+        return matrix;
+    }
 }
 
