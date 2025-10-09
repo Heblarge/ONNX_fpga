@@ -95,20 +95,24 @@ object ActivationTest1 extends App {
   def genActivationSel(): Activation_TypeDef.E =
     Activation_TypeDef.randomSpinalEnum(new Random())
 
+  val fractionalBits = cfg.expCfg.bit_frac
+  val scalingFactor  = math.pow(2, fractionalBits)
+  val sfInt = scalingFactor.toInt
+
   def genInput(sel: Activation_TypeDef.E): BigInt = {
     val rnd = new Random()
     sel match {
       case Activation_TypeDef.Exp =>
-        val (min, max) = (-2 * 4096, 3 * 4096)
+        val (min, max) = (-2 * sfInt, 3 * sfInt)
         BigInt(rnd.nextInt(max - min + 1) + min)
       case Activation_TypeDef.Log =>
-        val (min, max) = (1, 20 * 4096)
+        val (min, max) = (1, 20 * sfInt)
         BigInt(rnd.nextInt(max - min + 1) + min)
       case Activation_TypeDef.Softplus =>
-        val (min, max) = (-16 * 4096, 16 * 4096)
+        val (min, max) = (-16 * sfInt, 16 * sfInt)
         BigInt(rnd.nextInt(max - min + 1) + min)
       case _ =>
-        val mag = rnd.nextInt(1 << 12)
+        val mag = rnd.nextInt(sfInt)
         if (rnd.nextBoolean()) BigInt(mag) else BigInt(-mag)
     }
   }
@@ -132,19 +136,19 @@ object ActivationTest1 extends App {
     }
 
     val outWidth = cfg.element_out_Width
-    val rawFixed = (activated * 4096.0).round.toLong
+    val rawFixed = (activated * sfInt).round.toLong
     val effShift = if(shiftAmt > outWidth) outWidth else if(shiftAmt < -outWidth) -outWidth else shiftAmt
     val shifted = if(effShift >= 0) rawFixed >> effShift else rawFixed << (-effShift)
     val maxFixed = (math.pow(2, outWidth - 1) - 1)
     val minFixed = -math.pow(2, outWidth - 1)
     val saturated = if(shifted > maxFixed) maxFixed else if(shifted < minFixed) minFixed else shifted
-    saturated / 4096
+    saturated / sfInt
 
   }
 
   val sel      = genActivationSel()
-  //val sel      = Activation_TypeDef.None
-  val shiftAmt = 0
+  //val sel      = Activation_TypeDef.Exp
+  val shiftAmt = -5
   //val shiftAmt  = genShift(cfg.element_out_Width)
 
   val tolerance = sel match {

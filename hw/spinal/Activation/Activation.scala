@@ -16,6 +16,7 @@ case class Activation_Config(
                               MatX_Width   : Int,                   // 输出矩阵宽度
                               element_in_Width: Int,                // 输入元素位宽
                               element_out_Width: Int,               // 输出元素位宽
+                              intermediate_width : Int = 32,        // 计算后移位前中间位宽
                               max_indepth  :Int,                    // 最大缓存深度
                               expCfg       : EXP_function_cfg,      // 指数函数配置
                               lnCfg        : LN_function_cfg,       // 对数函数配置
@@ -27,7 +28,7 @@ case class Activation_Config(
                             ) {
   require((max_indepth >= MatX_Width) && (max_indepth >= Matx_Width))
   def in_type = SInt(element_in_Width bits)   // 定义输入类型
-  def out_type = SInt(element_out_Width bits) // 定义输出类型
+  def outintermediate_type = SInt(intermediate_width bits) // 定义输出类型
 }
 
 // 定义激活函数模块
@@ -71,7 +72,7 @@ case class Activation(cfg: Activation_Config) extends Component {
   val busyOut = RegInit(False)   // 定义输出忙信号寄存器
   val instrReg = Reg(io.in_Mats.payload.CoreInstruction_AfterMatrixOperation) // 定义指令寄存器
 
-  val activation_dataReg = Reg(Vec.fill(cfg.Matx_Width)(cfg.out_type)) // 定义激活函数输出寄存器
+  val activation_dataReg = Reg(Vec.fill(cfg.Matx_Width)(cfg.outintermediate_type)) // 定义激活函数输出寄存器
 
   val Outvalid = RegInit(False) // 定义输出有效信号寄存器
   val ValidVec = Vec(Reg(Bool()) init False, 1) // 定义有效信号向量
@@ -81,19 +82,20 @@ case class Activation(cfg: Activation_Config) extends Component {
   val in_final = Reg(Bool()) init False   // 定义输入final信号寄存器
   val out_final = Reg(Bool()) init False  // 定义输出final信号寄存器
 
-  val DEPTH   = cfg.max_indepth          // 定义缓存深度
-  val PTRW    = log2Up(DEPTH)            // 定义指针位宽
-  val out_databuffer  = Vec.fill(DEPTH)(Vec(Reg(SInt(cfg.element_out_Width bits)) init(0), cfg.MatX_Width)) // 定义输出数据缓存
-  val finalbuffer  = Vec.fill(DEPTH)(Reg(Bool()) init(False)) // 定义final信号缓存
+  val DEPTH = cfg.max_indepth          // 定义缓存深度
+  val PTRW  = log2Up(DEPTH)            // 定义指针位宽
+  val out_databuffer = Vec.fill(DEPTH)(Vec(Reg(SInt(cfg.element_out_Width bits)) init(0), cfg.MatX_Width)) // 定义输出数据缓存
+  val finalbuffer = Vec.fill(DEPTH)(Reg(Bool()) init(False)) // 定义final信号缓存
 
-  val writePtr   = Reg(UInt(PTRW bits)) init(0) // 定义写指针寄存器
-  val readPtr    = Reg(UInt(PTRW bits)) init(0) // 定义读指针寄存器
-  val count      = Reg(UInt((PTRW+1) bits)) init(0) // 定义缓存计数寄存器
-  val sawFinal   = RegInit(False) // 定义是否遇到final信号寄存器
+  val writePtr = Reg(UInt(PTRW bits)) init(0) // 定义写指针寄存器
+  val readPtr  = Reg(UInt(PTRW bits)) init(0) // 定义读指针寄存器
+  val count    = Reg(UInt((PTRW+1) bits)) init(0) // 定义缓存计数寄存器
+  val sawFinal = RegInit(False) // 定义是否遇到final信号寄存器
 
   val notFull = count < DEPTH     // 判断缓存是否未满
   val notEmpty = count =/= 0      // 判断缓存是否非空
   val doWrite = ValidVec.last && !sawFinal && notFull // 判断是否写入缓存
+
 
   // 处理输入valid信号
   when(io.in_Mats.fire) {
@@ -108,10 +110,10 @@ case class Activation(cfg: Activation_Config) extends Component {
   when(io.in_Mats.fire && !busyIn && !busyOut) {
     busyIn   := True
     instrReg := io.in_Mats.payload.CoreInstruction_AfterMatrixOperation
-    sawFinal   := False
-    writePtr   := 0
-    readPtr    := 0
-    count      := 0
+    sawFinal := False
+    writePtr := 0
+    readPtr  := 0
+    count    := 0
     for(i <- 0 until DEPTH) {
       finalbuffer(i) := False
     }
@@ -140,29 +142,29 @@ case class Activation(cfg: Activation_Config) extends Component {
       is(Activation_TypeDef.Exp) {
         expI(i).io.x.payload  := inRegData(i)
         expI(i).io.x.valid    := inRegValid
-        activation_dataReg(i) := expI(i).io.expx.payload.resize(cfg.element_out_Width).asSInt
+        activation_dataReg(i) := expI(i).io.expx.payload.resize(cfg.intermediate_width).asSInt
       }
 
       is(Activation_TypeDef.Log) {
         lnI(i).io.x.payload   := inRegData(i).resize(cfg.element_out_Width - 1 bits).asUInt
         lnI(i).io.x.valid     := inRegValid
-        activation_dataReg(i) := lnI(i).io.lnx.payload.resize(cfg.element_out_Width).asBits.asSInt
+        activation_dataReg(i) := lnI(i).io.lnx.payload.resize(cfg.intermediate_width).asBits.asSInt
       }
 
       is(Activation_TypeDef.Relu) {
         reluI(i).io.x.payload := inRegData(i)
         reluI(i).io.x.valid   := inRegValid
-        activation_dataReg(i) := reluI(i).io.relux.payload.resize(cfg.element_out_Width).asSInt
+        activation_dataReg(i) := reluI(i).io.relux.payload.resize(cfg.intermediate_width).asSInt
       }
 
       is(Activation_TypeDef.Softplus) {
         softplusI(i).io.x.payload := inRegData(i)
         softplusI(i).io.x.valid   := inRegValid
-        activation_dataReg(i)     := softplusI(i).io.softplusx.payload.resize(cfg.element_out_Width)
+        activation_dataReg(i)     := softplusI(i).io.softplusx.payload.resize(cfg.intermediate_width)
       }
 
       is(Activation_TypeDef.None) {
-        activation_dataReg(i) := inRegData(i).resize(cfg.element_out_Width)
+        activation_dataReg(i) := inRegData(i).resize(cfg.intermediate_width)
       }
     }
   }
@@ -177,7 +179,7 @@ case class Activation(cfg: Activation_Config) extends Component {
   )
 
   // 计算结果移位
-  val shifters  = Seq.fill(cfg.Matx_Width) {SIntShifter(cfg.element_out_Width, cfg.element_out_Width)} // 实例化移位器
+  val shifters  = Seq.fill(cfg.Matx_Width) {SIntShifter(cfg.intermediate_width, cfg.element_out_Width)} // 实例化移位器
   val shift_data = Vec(Reg(SInt(cfg.element_out_Width bits)) init(0), cfg.MatX_Width)                  // 定义移位后数据寄存器
   for(i <- 0 until cfg.Matx_Width) {
     shifters(i).io.input       := activation_dataReg(i)
@@ -186,12 +188,12 @@ case class Activation(cfg: Activation_Config) extends Component {
   }
 
   // 处理final信号延迟
-  val FinalVec = Vec(Reg(Bool()) init False, Math.max(cfg.lnCfg.bit_frac + 3 + 2 + 1,cfg.expCfg.bit_int + 3 + 1))
+  val FinalVec = Vec(Reg(Bool()) init False, Math.max(cfg.lnCfg.bit_frac + 3 + 2 + 1,cfg.expCfg.bit_int + 2 + 1 + 1))
   FinalVec.reduceLeft((a, b) => {b := a;b})
   FinalVec(0) := io.in_Mats.payload.Final && io.in_Mats.fire
   out_final := instrReg.Activation_Instruction.activationFunction.mux(
     Activation_TypeDef.Exp      -> FinalVec(cfg.expCfg.bit_int + 1 + 2),  // exp延迟 11 = 1 + bit_int + 2
-    Activation_TypeDef.Log      -> FinalVec(cfg.lnCfg.bit_frac + 3 + 2), // ln延迟
+    Activation_TypeDef.Log      -> FinalVec(cfg.lnCfg.bit_frac + 3 + 2),  // ln延迟
     Activation_TypeDef.Relu     -> FinalVec(4),   // relu延迟
     Activation_TypeDef.Softplus -> FinalVec(2),   // softplus延迟
     Activation_TypeDef.None     -> FinalVec(1)    // 无函数延迟
@@ -205,7 +207,7 @@ case class Activation(cfg: Activation_Config) extends Component {
     when(io.out_Mats.fire) {
       count := count
     } elsewhen(!io.out_Mats.fire) {
-      count    := count + 1
+      count := count + 1
     }
     when(out_final) {  // 遇到final停止写入
       sawFinal := True
@@ -246,8 +248,8 @@ object Activation_01 {
     lnCfg       = LN_function_cfg(bit_int = 8, bit_frac = 12),
     reluCfg     = ReLU_function_cfg(bit_int = 8, bit_frac = 12),
     softplusCfg = Softplus_function_cfg(bit_int = 8, bit_frac = 12),
-    UIDWidth      = 32,
-    ShiftWidth   = 6,
+    UIDWidth    = 32,
+    ShiftWidth  = 6,
     SlicecntWidth = 16
   )
 
