@@ -14,7 +14,7 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
 
     private INDArray calculateSimulatedMatmulWithAlpha(
             INDArray A, INDArray B, float alpha,
-            List<Long> fpgaInShift, Long fpgaOutShift
+            List<Long> fpgaInShift, List<Long> fpgaOutShift
     ) {
         int rankA = A.rank();
         int rankB = B.rank();
@@ -62,7 +62,7 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
             }
         }
 
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
         long[][] shiftedResult_long = new long[m][n];
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
@@ -97,12 +97,12 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         float alpha = 2.0f;
 
         List<Long> fpgaInShift = Arrays.asList(20L, 20L);
-        Long fpgaOutShift = 25L;
+        List<Long> fpgaOutShift =  Arrays.asList(20L);
 
         INDArray matrixA = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rowsA, colsA, minValue, maxValue, fpgaInShift.get(0)));
         INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(colsA, colsB, minValue, maxValue, fpgaInShift.get(1)));
 
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
         INDArray integerMatMul = matrixA.mmul(matrixB);
         INDArray theoreticalExpected = (shiftAmount >= 0)
                 ? integerMatMul.div(1L << shiftAmount)
@@ -130,12 +130,12 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         float alpha = 1.0f;
 
         List<Long> fpgaInShift = Arrays.asList(20L, 20L);
-        Long fpgaOutShift = 25L;
+        List<Long> fpgaOutShift = Arrays.asList(25L);
 
         INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rowsA, colsA, minValue, maxValue, fpgaInShift.get(0));
         INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, colsA, colsB, minValue, maxValue, fpgaInShift.get(1));
 
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
         INDArray theoreticalExpected = Nd4j.create(batchSize, rowsA, colsB);
         for (int i = 0; i < batchSize; i++) {
             INDArray sliceA = matrixA_int.slice(i, 0);
@@ -153,7 +153,7 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         HWAcceleratedGemmV13 operator = new HWAcceleratedGemmV13();
         INDArray actualOutput = operator.gemm(matrixA_int, matrixB_int, null, alpha, 1.0f, 0L, 0L, fpgaInShift, fpgaOutShift);
 
-        double tolerance = 1.0 / Math.pow(2, fpgaOutShift);
+        double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
         HWAcceleratedTestModel.validate("Gemm - 3D", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
     }
 }

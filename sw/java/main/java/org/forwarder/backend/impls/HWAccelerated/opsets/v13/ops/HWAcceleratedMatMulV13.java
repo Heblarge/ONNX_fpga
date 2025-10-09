@@ -27,8 +27,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         INDArray matrixB = castedInputs.getB();
         List<Float> fpgaInScales = castedInputs.getFpgaInScales();
         List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        Float fpgaOutScale = castedInputs.getFpgaOutScale();
-        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
+        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
         INDArray outputTensor = this.matmul(matrixA, matrixB, fpgaInShift, fpgaOutShift);
         return new MatMulOutputV13<>(outputTensor);
     }
@@ -38,7 +38,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
-    public INDArray matmul(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+    public INDArray matmul(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (a.rank() == 2 && b.rank() == 2) {
             return matmul2D(a, b, fpgaInShift, fpgaOutShift);
         } else if (a.rank() == 3 && b.rank() == 2) {
@@ -52,7 +52,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
 
 
 
-    private INDArray matmul2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray matmul2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
@@ -84,7 +84,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
     }
 
-    private INDArray matmul3D2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray matmul3D2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long batchSize = a.size(0);
         long M = a.size(1);
         long K = a.size(2);
@@ -97,7 +97,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         return result2D.reshape('c', outputShape);
     }
 
-    private INDArray matmul3D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray matmul3D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long batchA = a.size(0);
         long batchB = b.size(0);
         long batch = Math.max(batchA, batchB);
@@ -116,7 +116,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
     }
 
 
-    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, List<Long> fpgaInShift, Long fpgaOutShift){
+    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, List<Long> fpgaInShift, List<Long> fpgaOutShift){
 
         long[][] fixedPointA = new long[rowsA][colsA];
         for (int i = 0; i < rowsA; i++) {
@@ -132,7 +132,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
             }
         }
 
-        int shiftAmount = (int) (fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift);
+        int shiftAmount = (int) (fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0));
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "matmul",
@@ -149,15 +149,14 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
         // 将累加结果转换回浮点数
-        float[] output = new float[rowsA * colsB];
-
+        long[] output = new long[rowsA * colsB];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                output[i * colsB + j] = (float) (hardwareResult[i][j]);
+                output[i * colsB + j] = hardwareResult[i][j];
             }
         }
 
-        return Nd4j.create(output).reshape(rowsA, colsB);
+        return Nd4j.create(output, new long[]{rowsA, colsB}, a.dataType());
     }
 
 }

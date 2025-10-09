@@ -65,20 +65,18 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "HWAccelerated",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/java_hw_each_layer_outputs_all_tensors");
+                "/home/user/Workspace/livehps_1/java_hw_each_layer_outputs");
         for (int n = 1; n < 10; n++) {
             List<String> inputs = List.of(
-                    "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
-                    "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
+                    "/mnist/int32_refpb/int32/data" + n + "/input_seq_pc.pb",
+                    "/mnist/int32_refpb/int32/data" + n + "/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/Quantized/data" + n + "/output_pre_tran.pb",
-                    "/mnist/Quantized/data" + n + "/output_rot.pb",
-                    "/mnist/Quantized/data" + n + "/output_trj.pb"
+                    "/mnist/int32_refpb/int32/data" + n + "/output_pre_tran.pb",
+                    "/mnist/int32_refpb/int32/data" + n + "/output_rot.pb",
+                    "/mnist/int32_refpb/int32/data" + n + "/output_trj.pb"
             );
-
             tensorPairPaths.put(inputs, outputs);
-
         }
         super.testModel(
                 tensorPairPaths,
@@ -92,7 +90,8 @@ public class ModelTest extends FWTestCase {
                      },
                 0.0001f,
                 backendPaths,
-                SaveMode.FINAL_ONLY
+                SaveMode.FINAL_ONLY,
+                OutputMode.Dequantize
         );
     }
     public void testCompareIntermediateTensors() throws Exception {
@@ -110,7 +109,7 @@ public class ModelTest extends FWTestCase {
         tensorPairPaths.put(inputs, outputs);
     }
 
-    String modelPath = "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx";
+    String modelPath = "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx";
     List<String> inputNames = List.of("seq_pc", "seq_pos");
     List<String> outputNames = List.of("pre_trans", "rot", "trj");
     String[] backendNames = {"DL4J", "HWAccelerated"};

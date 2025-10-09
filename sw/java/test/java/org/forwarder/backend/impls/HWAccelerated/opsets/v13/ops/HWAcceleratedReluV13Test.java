@@ -14,7 +14,7 @@ import java.util.List;
 public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
 
     private INDArray calculateSimulatedFixedPointRelu(
-            INDArray x, List<Long> fpgaInShift, Long fpgaOutShift
+            INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift
     ) {
 
         if (x.rank() > 2) {
@@ -28,7 +28,7 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
 
         long s_in = fpgaInShift.get(0);
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift;
+        long s_out = fpgaOutShift.get(0);
 
         long preShiftAmount = s_in - s_hw;
         int rows = (int) x.rows();
@@ -79,7 +79,7 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
 
         List<Long> fpgaInShift = Arrays.asList(22L);
         long s_hw = AcceleratorSimInterface.acceleratorCfg().intWidth();
-        Long fpgaOutShift = 15L;
+        List<Long> fpgaOutShift = Arrays.asList(15L);
 
         INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
 
@@ -90,7 +90,7 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
 
         INDArray reluResult_int = Transforms.relu(preShifted_int);
 
-        long postShiftAmount = s_hw - fpgaOutShift;
+        long postShiftAmount = s_hw - fpgaOutShift.get(0);
         INDArray theoreticalExpected = (postShiftAmount >= 0)
                 ? reluResult_int.div(1L << postShiftAmount)
                 : reluResult_int.mul(1L << -postShiftAmount);

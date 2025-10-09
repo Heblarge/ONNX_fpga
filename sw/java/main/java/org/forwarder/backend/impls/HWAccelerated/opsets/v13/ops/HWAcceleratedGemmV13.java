@@ -34,8 +34,8 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
         long transB = castedInputs.getTransB();
         List<Float> fpgaInScales = castedInputs.getFpgaInScales();
         List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        Float fpgaOutScale = castedInputs.getFpgaOutScale();
-        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
+        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
 
         INDArray result = gemm(a, b, c, alpha, beta, transA, transB, fpgaInShift, fpgaOutShift);
 
@@ -43,7 +43,7 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
     }
 
 
-    protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB, List<Long> fpgaInShift, Long fpgaOutShift) {
+    protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (transA != 0L) { A = A.transpose(); }
         if (transB != 0L) { B = B.transpose(); }
 

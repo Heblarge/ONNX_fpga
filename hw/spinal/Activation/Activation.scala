@@ -17,14 +17,14 @@ case class Activation_Config(
                               element_in_Width: Int,                // 输入元素位宽
                               element_out_Width: Int,               // 输出元素位宽
                               intermediate_width : Int = 32,        // 计算后移位前中间位宽
-                              max_indepth  :Int,                    // 最大缓存深度
-                              expCfg       : EXP_function_cfg,      // 指数函数配置
-                              lnCfg        : LN_function_cfg,       // 对数函数配置
-                              reluCfg      : ReLU_function_cfg,     // ReLU函数配置
-                              softplusCfg  : Softplus_function_cfg, // Softplus函数配置
-                              UIDWidth     : Int,                   // UID位宽
-                              ShiftWidth   : Int,                   // 移位位宽
-                              SlicecntWidth: Int                    // Slice计数位宽
+                              max_indepth   : Int,                    // 最大缓存深度
+                              expCfg        : EXP_function_cfg,      // 指数函数配置
+                              lnCfg         : LN_function_cfg,       // 对数函数配置
+                              reluCfg       : ReLU_function_cfg,     // ReLU函数配置
+                              softplusCfg   : Softplus_function_cfg, // Softplus函数配置
+                              UIDWidth      : Int,                   // UID位宽
+                              ShiftWidth    : Int,                   // 移位位宽
+                              SlicecntWidth : Int                    // Slice计数位宽
                             ) {
   require((max_indepth >= MatX_Width) && (max_indepth >= Matx_Width))
   def in_type = SInt(element_in_Width bits)   // 定义输入类型

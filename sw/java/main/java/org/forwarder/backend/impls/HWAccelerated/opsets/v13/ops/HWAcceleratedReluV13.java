@@ -29,8 +29,8 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
         INDArray inputTensor = castedInputs.getInput();
         List<Float> fpgaInScales = castedInputs.getFpgaInScales();
         List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        Float fpgaOutScale = castedInputs.getFpgaOutScale();
-        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
+        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
         INDArray outputTensor = this.relu(inputTensor, fpgaInShift, fpgaOutShift);
         return new ReluOutputV13<>(outputTensor);
     }
@@ -42,7 +42,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The input tensor.
      * @return The result of the Relu operation.
      */
-    public INDArray relu(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
+    public INDArray relu(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (x.rank() == 2) {
             return relu2D(x, fpgaInShift, fpgaOutShift);
         } else if (x.rank() == 3) {
@@ -66,7 +66,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The 2D input tensor.
      * @return The 2D result tensor.
      */
-    private INDArray relu2D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray relu2D(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
@@ -88,7 +88,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The 3D input tensor.
      * @return The 3D result tensor.
      */
-    private INDArray relu3D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray relu3D(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long[] shape = x.shape();
         long batch = shape[0];
         long rows = shape[1];
@@ -109,13 +109,13 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * Private helper to run the Relu operation on the hardware simulator.
      * This method's logic is preserved exactly as requested.
      */
-    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (fpgaInShift == null || fpgaInShift.isEmpty() || fpgaOutShift == null) {
             throw new IllegalArgumentException("FPGA shift parameters must be provided for Relu operation.");
         }
         long s_in = fpgaInShift.get(0);
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift;
+        long s_out = fpgaOutShift.get(0);
 
         long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
@@ -143,13 +143,15 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
         long[][] matrixB_zero = new long[rows][cols];
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
 
-        float[] output = new float[rows * cols];
+        long[] output = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) hardwareResult[i][j];
+                output[i * cols + j] = hardwareResult[i][j];
             }
         }
 
-        return Nd4j.create(output).reshape(rows, cols);
+        INDArray fianlOutput =  Nd4j.create(output, new long[]{rows, cols}, x.dataType());
+
+        return fianlOutput;
     }
 }

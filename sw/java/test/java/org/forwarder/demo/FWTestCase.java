@@ -61,12 +61,20 @@ public abstract class FWTestCase extends TestCase {
 
     private static Logger logger = LoggerFactory.getLogger(FWTestCase.class);
 
-
     // 保存模式
     public enum SaveMode {
         NONE,             // 不保存任何结果
         FINAL_ONLY,       // 只保存最终结果
         ALL_INTERMEDIATE  // 保存所有中间结果
+    }
+
+    // 输出数据模式
+    public enum OutputMode {
+        Normal,      // 不对输出做任何处理
+        Dequantize   // 缩小输出倍数
+        // rot       22
+        // trj       25
+        // pre_trans 24
     }
 
     /**
@@ -89,7 +97,8 @@ public abstract class FWTestCase extends TestCase {
             String[] backendNames,
             float tolerance,
             Map<String, String> backendOutputPaths,
-            SaveMode saveMode
+            SaveMode saveMode,
+            OutputMode outputMode
 
     ) throws FileNotFoundException, IOException, NoSuchMethodException,
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,

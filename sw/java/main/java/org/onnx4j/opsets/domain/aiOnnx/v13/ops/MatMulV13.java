@@ -49,8 +49,8 @@ public interface MatMulV13 extends MatMulV1, AiOnnxOperatorV13 {
         protected InputField<T_TENSOR> bField;
         protected Field<List<Float>> fpgaInScalesField;
         protected Field<List<Long>> fpgaInShiftField;
-        protected Field<Float> fpgaOutScalesField;
-        protected Field<Long> fpgaOutShiftField;
+        protected Field<List<Float>> fpgaOutScalesField;
+        protected Field<List<Long>> fpgaOutShiftField;
 
         public MatMulInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
@@ -60,8 +60,8 @@ public interface MatMulV13 extends MatMulV1, AiOnnxOperatorV13 {
 
             this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class, null, true);
             this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class, null, true);
-            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatAttribute.class, null, true);
-            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntAttribute.class, null, true);
+            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatsAttribute.class, null, true);
+            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntsAttribute.class, null, true);
         }
 
         public T_TENSOR getA() { return aField.getData(); }
@@ -72,10 +72,10 @@ public interface MatMulV13 extends MatMulV1, AiOnnxOperatorV13 {
         public List<Long> getFpgaInShift() {
             return fpgaInShiftField.getData();
         }
-        public Float getFpgaOutScale() {
+        public List<Float> getFpgaOutScale() {
             return fpgaOutScalesField.getData();
         }
-        public Long getFpgaOutShift() {
+        public List<Long> getFpgaOutShift() {
             return fpgaOutShiftField.getData();
         }
 

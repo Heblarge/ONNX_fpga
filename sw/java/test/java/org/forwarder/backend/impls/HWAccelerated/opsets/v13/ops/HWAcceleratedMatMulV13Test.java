@@ -17,7 +17,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
 
     private INDArray calculateSimulatedFixedPointMatMul(
             INDArray A_int, INDArray B_int,
-            List<Long> fpgaInShift, Long fpgaOutShift
+            List<Long> fpgaInShift,  List<Long> fpgaOutShift
     ) {
         int rankA = A_int.rank();
         int rankB = B_int.rank();
@@ -65,7 +65,7 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
             }
         }
 
-     long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+     long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
 
         long[][] shiftedResult_long = new long[m][n];
         for (int i = 0; i < m; i++) {
@@ -95,14 +95,14 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
         float maxValue = 5f;
 
         List<Long> fpgaInShift = Arrays.asList(25L, 25L); // Input fractional bits
-        Long fpgaOutShift = 23L;                          // Target output fractional bits
+        List<Long> fpgaOutShift = Arrays.asList(23L);                          // Target output fractional bits
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 
         INDArray matrixA = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rowsA, colsA, minValue, maxValue, shift1));
         INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(colsA, colsB, minValue, maxValue, shift2));
 
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
 
         INDArray theoreticalExpected = matrixA.mmul(matrixB).div(1L << shiftAmount);
         INDArray simulatedExpected = calculateSimulatedFixedPointMatMul(matrixA, matrixB, fpgaInShift, fpgaOutShift);
@@ -125,13 +125,13 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
         float maxValue = 5f;
 
         List<Long> fpgaInShift = Arrays.asList(10L, 10L);
-        Long fpgaOutShift = 20L;
+        List<Long> fpgaOutShift = Arrays.asList(20L);
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 
         INDArray matrixA = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rowsA, colsA, minValue, maxValue, shift1);
         INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(colsA, colsB, minValue, maxValue, shift2));
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
         // INDArray theoreticalExpected = matrixA.mmul(matrixB).div(1L << shiftAmount);
         INDArray expectedOutput = calculateSimulatedFixedPointMatMul(matrixA, matrixB, fpgaInShift, fpgaOutShift);
 
@@ -153,13 +153,13 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
         float maxValue = 5f;
 
         List<Long> fpgaInShift = Arrays.asList(10L, 13L);
-        Long fpgaOutShift = 20L;
+        List<Long> fpgaOutShift = Arrays.asList(20L);
         long shift1 = fpgaInShift.get(0);
         long shift2 = fpgaInShift.get(1);
 
         INDArray matrixA = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rowsA, colsA, minValue, maxValue, shift1);
         INDArray matrixB = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, colsA, colsB, minValue, maxValue, shift2);
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
         INDArray theoreticalExpected = Nd4j.create(DataType.FLOAT, batchSize, rowsA, colsB);
 
         for (int i = 0; i < batchSize; i++) {
