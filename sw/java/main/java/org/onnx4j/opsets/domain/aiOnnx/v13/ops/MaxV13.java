@@ -56,8 +56,8 @@ public interface MaxV13 extends AiOnnxOperatorV13 {
 
         protected Field<List<Float>> fpgaInScalesField;
         protected Field<List<Long>> fpgaInShiftField;
-        protected Field<Float> fpgaOutScalesField;
-        protected Field<Long> fpgaOutShiftField;
+        protected Field<List<Float>> fpgaOutScalesField;
+        protected Field<List<Long>> fpgaOutShiftField;
 
         public MaxInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
@@ -66,10 +66,10 @@ public interface MaxV13 extends AiOnnxOperatorV13 {
             for (org.onnx4j.Inputs.Input rawInput : super.inputArray) {
                 this.inputField.add(new InputField<>(this, TYPE_CONSTRAINT_T, rawInput));
             }
-            this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class, null, true);
-            this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class, null, true);
-            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatAttribute.class, null, true);
-            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntAttribute.class, null, true);
+            this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class, List.of(0.0f), true);
+            this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class, List.of(0L), true);
+            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatsAttribute.class, List.of(0.0f), true);
+            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntsAttribute.class, List.of(0L), true);
 
         }
 
@@ -82,8 +82,8 @@ public interface MaxV13 extends AiOnnxOperatorV13 {
 
         public List<Float> getFpgaInScales() { return fpgaInScalesField.getData(); }
         public List<Long> getFpgaInShift() { return fpgaInShiftField.getData(); }
-        public Float getFpgaOutScale() { return fpgaOutScalesField.getData(); }
-        public Long getFpgaOutShift() { return fpgaOutShiftField.getData(); }
+        public List<Float> getFpgaOutScale() { return fpgaOutScalesField.getData(); }
+        public List<Long> getFpgaOutShift() { return fpgaOutShiftField.getData(); }
     }
 
     /**

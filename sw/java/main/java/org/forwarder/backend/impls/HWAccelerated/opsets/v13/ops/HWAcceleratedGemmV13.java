@@ -49,7 +49,7 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedOperator implements GemmV
 
         HWAcceleratedMatMulV13 matmulOp = new HWAcceleratedMatMulV13();
         INDArray matmulResult = matmulOp.matmul(A, B, fpgaInShift, fpgaOutShift);
-        INDArray Y = matmulResult.mul(alpha);
+        INDArray Y = matmulResult.mul((int)alpha);
 
         if (C != null) {
             long[] yShape = Y.shape();

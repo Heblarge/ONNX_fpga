@@ -25,16 +25,28 @@ public class HWAcceleratedGreaterV13 extends HWAcceleratedOperator implements Gr
      */
     protected INDArray greater(INDArray a, INDArray b) {
         // 获取广播后形状
-        long[] shapeA = a.shape();
-        long[] shapeB = b.shape();
+        INDArray aProc = a;
+        INDArray bProc = b;
+
+        // 检查两个输入的数据类型是否一致
+        if (a.dataType() != b.dataType()) {
+            System.out.printf(
+                    "WARNING: Greater operator received mismatched data types (%s vs %s). Casting second input to match first.%n",
+                    a.dataType(), b.dataType()
+            );
+            // 如果不一致，将第二个张量(b)的类型转换为与第一个(a)一致
+            bProc = b.castTo(a.dataType()).dup();
+        }
+
+        // 使用处理后、类型一致的张量 aProc 和 bProc
+        long[] shapeA = aProc.shape();
+        long[] shapeB = bProc.shape();
         long[] broadcastShape = Shape.broadcastOutputShape(shapeA, shapeB);
 
-        // 创建布尔类型输出张量
-        INDArray output = Nd4j.create(broadcastShape).castTo(DataType.BOOL);
+        INDArray output = Nd4j.create(DataType.BOOL, broadcastShape);
 
-        // 构建 op 并执行
         DynamicCustomOp op = DynamicCustomOp.builder("greater")
-                .addInputs(a, b)
+                .addInputs(aProc, bProc)
                 .addOutputs(output)
                 .build();
 

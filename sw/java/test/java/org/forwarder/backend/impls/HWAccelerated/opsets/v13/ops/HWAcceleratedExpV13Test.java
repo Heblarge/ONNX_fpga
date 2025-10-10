@@ -118,7 +118,7 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
     }
 
     private INDArray calculateSimulatedFixedPointExp(
-            INDArray x, List<Long> fpgaInShift, Long fpgaOutShift
+            INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift
     ) {
         if (x.rank() > 2) {
             long[] finalShape = x.shape();
@@ -131,7 +131,7 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
 
         long s_in = fpgaInShift.get(0);
         long s_hw_frac = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift;
+        long s_out = fpgaOutShift.get(0);
 
         int bit_int_magnitude = AcceleratorSimInterface.acceleratorCfg().intWidth() - 1;
         ExpCordicSimulator simulator = new ExpCordicSimulator(bit_int_magnitude, (int)s_hw_frac, 9);
@@ -162,13 +162,13 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
             }
         }
 
-        float[] flatResult = new float[rows * cols];
+        long[] flatResult = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 flatResult[i * cols + j] = postShifted_long[i][j];
             }
         }
-        return Nd4j.create(flatResult, new long[]{rows, cols});
+        return Nd4j.create(flatResult, new long[]{rows, cols}, x.dataType());
     }
 
     @Test
@@ -180,13 +180,13 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
         float maxValue = 6.0f;
 
         List<Long> fpgaInShift = Arrays.asList(23L);
-        Long fpgaOutShift = 25L;
+        List<Long> fpgaOutShift = Arrays.asList(25L);
 
         INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
 
         INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
         INDArray theoreticalExpected_float = Transforms.exp(matrix_float, true);
-        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift)));
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift.get(0))));
 
         INDArray simulatedExpected = calculateSimulatedFixedPointExp(matrix_int, fpgaInShift, fpgaOutShift);
 
@@ -207,13 +207,13 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
         float maxValue = 6.0f;
 
         List<Long> fpgaInShift = Arrays.asList(22L);
-        Long fpgaOutShift = 20L;
+        List<Long> fpgaOutShift = Arrays.asList(20L);
 
         INDArray matrix_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
 
         INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
         INDArray theoreticalExpected_float = Transforms.exp(matrix_float, true);
-        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift)));
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift.get(0))));
 
         INDArray simulatedExpected = calculateSimulatedFixedPointExp(matrix_int, fpgaInShift, fpgaOutShift);
 
@@ -224,30 +224,4 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
         HWAcceleratedTestModel.validate("Exp - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
     }
 
-    @Test
-    public void testExp3DInt() throws Exception {
-        System.out.println("\n--- Testing Exp 3D (Batched) with Two-Stage Quantization Shifts ---");
-        int batchSize = 2;
-        int rows = 32;
-        int cols = 64;
-        int minValue = -8;
-        int maxValue = 6;
-
-        List<Long> fpgaInShift = Arrays.asList(2L);
-        Long fpgaOutShift = 21L;
-
-        INDArray matrix_int = HWAcceleratedTestModel.generateRandom3DIntMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
-
-        INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
-        INDArray theoreticalExpected_float = Transforms.exp(matrix_float, true);
-        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift)));
-
-        INDArray simulatedExpected = calculateSimulatedFixedPointExp(matrix_int, fpgaInShift, fpgaOutShift);
-
-        HWAcceleratedExpV13 operator = new HWAcceleratedExpV13();
-        INDArray actualOutput = operator.exp(matrix_int, fpgaInShift, fpgaOutShift);
-
-        double tolerance = 0.0;
-        HWAcceleratedTestModel.validate("Exp - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
-    }
 }

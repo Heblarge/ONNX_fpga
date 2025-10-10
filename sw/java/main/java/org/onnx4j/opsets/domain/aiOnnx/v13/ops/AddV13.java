@@ -31,8 +31,8 @@ public interface AddV13 extends AddV7, AiOnnxOperatorV13 {
 
         protected Field<List<Float>> fpgaInScalesField;
         protected Field<List<Long>> fpgaInShiftField;
-        protected Field<Float> fpgaOutScalesField;
-        protected Field<Long> fpgaOutShiftField;
+        protected Field<List<Float>> fpgaOutScalesField;
+        protected Field<List<Long>> fpgaOutShiftField;
 
         public AddInputsV13(Node node, Inputs inputs) {
             super(node, inputs);
@@ -41,8 +41,8 @@ public interface AddV13 extends AddV7, AiOnnxOperatorV13 {
 
             this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class, null, true);
             this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class, null, true);
-            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatAttribute.class, null, true);
-            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntAttribute.class, null, true);
+            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatsAttribute.class, null, true);
+            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntsAttribute.class, null, true);
         }
         public T_TENSOR getA() { return aField.getData(); }
         public T_TENSOR getB() { return bField.getData(); }
@@ -55,11 +55,11 @@ public interface AddV13 extends AddV7, AiOnnxOperatorV13 {
             return fpgaInShiftField.getData();
         }
 
-        public Float getFpgaOutScale() {
+        public List<Float> getFpgaOutScale() {
             return fpgaOutScalesField.getData();
         }
 
-        public Long getFpgaOutShift() {
+        public List<Long> getFpgaOutShift() {
             return fpgaOutShiftField.getData();
         }
 

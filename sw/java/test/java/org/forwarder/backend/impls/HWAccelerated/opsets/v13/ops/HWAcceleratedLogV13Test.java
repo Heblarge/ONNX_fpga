@@ -114,7 +114,7 @@ private static class LogCordicSimulator {
 }
 
     private INDArray calculateSimulatedFixedPointLog(
-            INDArray x, List<Long> fpgaInShift, Long fpgaOutShift
+            INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift
     ) {
         if (x.rank() > 2) {
             long[] finalShape = x.shape();
@@ -128,7 +128,7 @@ private static class LogCordicSimulator {
         long s_in = fpgaInShift.get(0);
         long s_hw_int = AcceleratorSimInterface.acceleratorCfg().intWidth();
         long s_hw_frac = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift;
+        long s_out = fpgaOutShift.get(0);
 
         LogCordicSimulator simulator = new LogCordicSimulator((int)s_hw_int - 1, (int)s_hw_frac);
 
@@ -158,13 +158,13 @@ private static class LogCordicSimulator {
             }
         }
 
-        float[] flatResult = new float[rows * cols];
+        long[] flatResult = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 flatResult[i * cols + j] = postShifted_long[i][j];
             }
         }
-        return Nd4j.create(flatResult, new long[]{rows, cols});
+        return Nd4j.create(flatResult, new long[]{rows, cols}, x.dataType());
     }
 
     @Test
@@ -176,13 +176,13 @@ private static class LogCordicSimulator {
         float maxValue = 10.0f;
 
         List<Long> fpgaInShift = Arrays.asList(15L);
-        Long fpgaOutShift = 30L;
+        List<Long> fpgaOutShift = Arrays.asList(30L);
 
         INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
 
         INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
         INDArray theoreticalExpected_float = Transforms.log(matrix_float, true);
-        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift)));
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift.get(0))));
 
         INDArray simulatedExpected = calculateSimulatedFixedPointLog(matrix_int, fpgaInShift, fpgaOutShift);
 

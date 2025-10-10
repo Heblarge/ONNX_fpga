@@ -29,8 +29,8 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
         INDArray inputTensor = castedInputs.getInput();
         List<Float> fpgaInScales = castedInputs.getFpgaInScales();
         List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        Float fpgaOutScale = castedInputs.getFpgaOutScale();
-        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
+        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
         INDArray outputTensor = this.exp(inputTensor, fpgaInShift, fpgaOutShift);
         return new ExpOutputV13<>(outputTensor);
     }
@@ -42,7 +42,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
      * @param x The input tensor.
      * @return The result of the Exp operation.
      */
-    public INDArray exp(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
+    public INDArray exp(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (x.rank() == 2) {
             return exp2D(x, fpgaInShift, fpgaOutShift);
         } else if (x.rank() == 3) {
@@ -66,7 +66,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
      * @param x The 2D input tensor.
      * @return The 2D result tensor.
      */
-    private INDArray exp2D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray exp2D(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
@@ -74,7 +74,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        INDArray paddedX = Nd4j.zeros(paddedRows, paddedCols);
+        INDArray paddedX = Nd4j.zeros(x.dataType(), paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
         INDArray paddedResult = expOnAccelerator(paddedX, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
@@ -88,13 +88,13 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
      * @param x The 3D input tensor.
      * @return The 3D result tensor.
      */
-    private INDArray exp3D(INDArray x, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray exp3D(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         long[] shape = x.shape();
         long batch = shape[0];
         long rows = shape[1];
         long cols = shape[2];
 
-        INDArray result = Nd4j.createUninitialized(shape, 'c');
+        INDArray result = Nd4j.createUninitialized(x.dataType(), shape, 'c');
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
@@ -109,14 +109,14 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
      * Private helper to run the Exp operation on the hardware simulator.
      * This method's logic is preserved exactly as requested.
      */
-    private INDArray expOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray expOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (fpgaInShift == null || fpgaInShift.isEmpty() || fpgaOutShift == null) {
             throw new IllegalArgumentException("FPGA shift parameters must be provided for Exp operation.");
         }
 
         long s_in = fpgaInShift.get(0);
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift;
+        long s_out = fpgaOutShift.get(0);
 
         long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
@@ -144,13 +144,15 @@ public class HWAcceleratedExpV13 extends HWAcceleratedOperator implements ExpV13
         long[][] matrixB_zero = new long[rows][cols];
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
 
-        float[] output = new float[rows * cols];
+        long[] output = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) hardwareResult[i][j];
+                output[i * cols + j] = hardwareResult[i][j];
             }
         }
 
-        return Nd4j.create(output).reshape(rows, cols);
+        INDArray fianlOutput =  Nd4j.create(output, new long[]{rows, cols}, x.dataType());
+
+        return fianlOutput;
     }
 }

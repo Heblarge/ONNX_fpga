@@ -14,7 +14,7 @@ import java.util.List;
 public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
 
     private INDArray calculateSimulatedFixedPointAdd(
-            INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift
+            INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift
     ) {
         if (!fpgaInShift.get(0).equals(fpgaInShift.get(1))) {
             throw new IllegalArgumentException("Input shifts must be identical for simulated add.");
@@ -55,7 +55,7 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
             }
         }
 
-        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift.get(0);
 
         long[][] shiftedResult_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
@@ -64,7 +64,7 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
             }
         }
 
-        float[] flatResult = new float[rows * cols];
+        long[] flatResult = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 flatResult[i * cols + j] = shiftedResult_long[i][j];
@@ -92,16 +92,16 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
         System.out.println("\n--- Testing 2D Add with Quantization Params ---");
         int rows = 32;
         int cols = 32;
-        float minValue = -10f;
-        float maxValue = 10f;
+        float minValue = -10;
+        float maxValue = 10;
 
         List<Long> fpgaInShift = Arrays.asList(25L, 25L);
-        Long fpgaOutShift = 30L;
+        List<Long> fpgaOutShift = Arrays.asList(30L);
 
         INDArray matrixA = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
         INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(1)));
 
-        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift.get(0);
         INDArray integerSum = matrixA.add(matrixB);
         INDArray theoreticalExpected = (shiftAmount >= 0)
                 ? integerSum.div(1L << shiftAmount)
@@ -123,12 +123,12 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
         float maxValue = 10f;
 
         List<Long> fpgaInShift = Arrays.asList(14L, 14L);
-        Long fpgaOutShift = 12L;
+        List<Long> fpgaOutShift = Arrays.asList(12L);
 
         INDArray matrixA = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
         INDArray matrixB = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(1));
 
-        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift.get(0);
         INDArray integerSum = matrixA.add(matrixB);
         INDArray theoreticalExpected = (shiftAmount >= 0)
                 ? integerSum.div(1L << shiftAmount)
@@ -147,12 +147,12 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
         float maxValue = 5f;
 
         List<Long> fpgaInShift = Arrays.asList(15L, 15L);
-        Long fpgaOutShift = 25L;
+        List<Long> fpgaOutShift = Arrays.asList(25L);
 
         INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(1, 32, 32, minValue, maxValue, fpgaInShift.get(0));
         INDArray matrixB_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(1, 1, minValue, maxValue, fpgaInShift.get(1)));
 
-        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift.get(0);
         INDArray integerSum = matrixA_int.add(matrixB_int);
         INDArray theoreticalExpected = (shiftAmount >= 0)
                 ? integerSum.div(1L << shiftAmount)
@@ -173,12 +173,12 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
         float maxValue = 5f;
 
         List<Long> fpgaInShift = Arrays.asList(18L, 18L);
-        Long fpgaOutShift = 20L;
+        List<Long> fpgaOutShift = Arrays.asList(25L);
 
         INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(1, 32, 512, minValue, maxValue, fpgaInShift.get(0));
         INDArray matrixB_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(1, 1, minValue, maxValue, fpgaInShift.get(1))).reshape(1);
 
-        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift;
+        long shiftAmount = fpgaInShift.get(0) - fpgaOutShift.get(0);
         INDArray integerSum = matrixA_int.add(matrixB_int);
         INDArray theoreticalExpected = (shiftAmount >= 0)
                 ? integerSum.div(1L << shiftAmount)

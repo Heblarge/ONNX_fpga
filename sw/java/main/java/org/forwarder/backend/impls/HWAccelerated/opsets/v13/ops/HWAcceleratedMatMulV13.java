@@ -73,10 +73,10 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         int paddedColsB = ceilToMultiple(originalColsB, HW_DIM_MULTIPLE);
 
 
-        INDArray paddedA = Nd4j.zeros(paddedRowsA, paddedColsA);
+        INDArray paddedA = Nd4j.zeros(a.dataType(),paddedRowsA, paddedColsA);
         paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsA)}, a);
 
-        INDArray paddedB = Nd4j.zeros(paddedColsA, paddedColsB);
+        INDArray paddedB = Nd4j.zeros(b.dataType(),paddedColsA, paddedColsB);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsB), NDArrayIndex.interval(0, originalColsB)}, b);
 
         INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB, fpgaInShift, fpgaOutShift);
@@ -104,7 +104,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         long m = a.size(1);
         long n = b.size(2);
 
-        INDArray result = Nd4j.createUninitialized(new long[]{batch, m, n}, 'c');
+        INDArray result = Nd4j.createUninitialized(a.dataType(), new long[]{batch, m, n}, 'c');
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray sliceA = (batchA == 1) ? a.slice(0) : a.slice(i);

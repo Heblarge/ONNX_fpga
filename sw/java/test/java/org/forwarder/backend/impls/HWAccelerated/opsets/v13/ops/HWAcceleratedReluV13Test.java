@@ -77,9 +77,9 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
         float minValue = -10.0f;
         float maxValue = 10.0f;
 
-        List<Long> fpgaInShift = Arrays.asList(22L);
+        List<Long> fpgaInShift = Arrays.asList(0L);
         long s_hw = AcceleratorSimInterface.acceleratorCfg().intWidth();
-        List<Long> fpgaOutShift = Arrays.asList(15L);
+        List<Long> fpgaOutShift = Arrays.asList(0L);
 
         INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
 
@@ -98,7 +98,7 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
         INDArray simulatedExpected = calculateSimulatedFixedPointRelu(matrix_int, fpgaInShift, fpgaOutShift);
 
         HWAcceleratedReluV13 operator = new HWAcceleratedReluV13();
-        INDArray actualOutput = operator.relu(matrix_int, fpgaInShift, fpgaOutShift);
+        INDArray actualOutput = operator.relu(matrix_int, null, fpgaOutShift);
 
         // 5. Validate all three results
         double tolerance = 50;

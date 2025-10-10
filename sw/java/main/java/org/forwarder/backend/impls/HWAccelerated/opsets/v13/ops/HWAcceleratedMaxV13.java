@@ -24,13 +24,13 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         List<INDArray> inputTensors = castedInputs.getInputTensors();
         List<Float> fpgaInScales = castedInputs.getFpgaInScales();
         List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        Float fpgaOutScale = castedInputs.getFpgaOutScale();
-        Long fpgaOutShift = castedInputs.getFpgaOutShift();
+        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
+        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
         INDArray outputTensor = this.max(inputTensors, fpgaInShift, fpgaOutShift);
         return new MaxOutputV13<>(outputTensor);
     }
 
-    public INDArray max(List<INDArray> inputTensors, List<Long> fpgaInShift, Long fpgaOutShift) {
+    public INDArray max(List<INDArray> inputTensors, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (inputTensors == null || inputTensors.isEmpty()) {
             throw new IllegalArgumentException("Max operator requires at least one input tensor.");
         }
@@ -46,7 +46,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     /**
      * Refactored to handle broadcasting and reshaping for efficient hardware execution.
      */
-    private INDArray elementwiseMax(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray elementwiseMax(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
 
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
@@ -104,7 +104,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     /**
      * Performs 2D element-wise max with padding and slicing.
      */
-    private INDArray max2D(INDArray a, INDArray b, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray max2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -115,10 +115,10 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        INDArray paddedA = Nd4j.zeros(paddedRows, paddedCols);
+        INDArray paddedA = Nd4j.zeros(a.dataType(), paddedRows, paddedCols);
         paddedA.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, a);
 
-        INDArray paddedB = Nd4j.zeros(paddedRows, paddedCols);
+        INDArray paddedB = Nd4j.zeros(b.dataType(), paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
         INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
@@ -126,7 +126,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, List<Long> fpgaInShift, Long fpgaOutShift) {
+    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
 
         long[][] fixedPointA = new long[rows][cols];
         long[][] fixedPointB = new long[rows][cols];
@@ -154,13 +154,13 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
 
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
-        float[] output = new float[rows * cols];
+        long[] output = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                output[i * cols + j] = (float) hardwareResult[i][j];
+                output[i * cols + j] = hardwareResult[i][j];
             }
         }
 
-        return Nd4j.create(output).reshape(rows, cols);
+        return Nd4j.create(output, new long[]{rows, cols}, a.dataType());
     }
 }

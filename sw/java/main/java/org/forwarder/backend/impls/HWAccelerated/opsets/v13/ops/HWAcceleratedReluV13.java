@@ -74,7 +74,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
         int paddedRows = ceilToMultiple(originalRows, HW_DIM_MULTIPLE);
         int paddedCols = ceilToMultiple(originalCols, HW_DIM_MULTIPLE);
 
-        INDArray paddedX = Nd4j.zeros(paddedRows, paddedCols);
+        INDArray paddedX = Nd4j.zeros(x.dataType(), paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
         INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
@@ -94,7 +94,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
         long rows = shape[1];
         long cols = shape[2];
 
-        INDArray result = Nd4j.createUninitialized(shape, 'c');
+        INDArray result = Nd4j.createUninitialized(x.dataType(), shape, 'c');
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
@@ -110,9 +110,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * This method's logic is preserved exactly as requested.
      */
     private INDArray reluOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
-        if (fpgaInShift == null || fpgaInShift.isEmpty() || fpgaOutShift == null) {
-            throw new IllegalArgumentException("FPGA shift parameters must be provided for Relu operation.");
-        }
+
         long s_in = fpgaInShift.get(0);
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
         long s_out = fpgaOutShift.get(0);
