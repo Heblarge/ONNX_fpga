@@ -1,4 +1,5 @@
 import os
+import fnmatch
 from pathlib import Path
 
 def generate_project_structure(
@@ -19,11 +20,53 @@ def generate_project_structure(
     project_root = Path(root_dir)
     markdown = ["# 项目结构文档\n\n"]
     
+    def load_gitignore_patterns() -> list:
+        """加载并解析.gitignore文件中的模式"""
+        gitignore_path = project_root / ".gitignore"
+        patterns = []
+        if gitignore_path.exists():
+            with open(gitignore_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    # 跳过空行和注释
+                    if not line or line.startswith("#"):
+                        continue
+                    patterns.append(line)
+        return patterns
+    
     def should_ignore(path: Path) -> bool:
+        # 检查硬编码的忽略目录
         if any(part in ignore_dirs for part in path.parts):
             return True
+        
+        # 检查硬编码的忽略文件模式
         if any(path.match(pattern) for pattern in ignore_files):
             return True
+        
+        # 检查.gitignore规则
+        gitignore_patterns = load_gitignore_patterns()
+        relative_path = path.relative_to(project_root) if path.is_relative_to(project_root) else path
+        
+        for pattern in gitignore_patterns:
+            # 处理目录模式（以/结尾）
+            if pattern.endswith("/"):
+                dir_pattern = pattern.rstrip("/")
+                if path.is_dir() and fnmatch.fnmatch(str(relative_path), dir_pattern):
+                    return True
+                if fnmatch.fnmatch(str(relative_path), dir_pattern + "/*"):
+                    return True
+            # 处理通配符模式
+            else:
+                if fnmatch.fnmatch(str(relative_path), pattern):
+                    return True
+                # 对于文件，也检查父目录是否匹配模式
+                if path.is_file():
+                    parent_dir = path.parent
+                    if parent_dir.is_relative_to(project_root):
+                        parent_relative = parent_dir.relative_to(project_root)
+                        if fnmatch.fnmatch(str(parent_relative), pattern):
+                            return True
+        
         return False
     
     def get_file_description(file_path: Path) -> str:
