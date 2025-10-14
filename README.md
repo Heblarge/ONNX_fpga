@@ -151,17 +151,47 @@
 - 性能测试: `performanceTest.scala`
 - 仿真验证: 使用生成的RTL进行仿真
 
-## 构建和运行
+## 运行
 
-### 软件部分构建
+### 软件
+在当前目录下运行以下指令执行最基础的单元测试
 ```bash
-cd sw/java
-./gradlew build  # 或使用相应的构建命令
+sbt "testOnly org.forwarder.demo.SimpleTest"
+```
+顺利的话，输出应该如下：
+```bash
+[info] welcome to sbt 1.6.0 (Red Hat, Inc. Java 17.0.16)
+...
+[forwarder-session-9aaceaee-d0cb-4e8d-b644-55360fc82102] device_0, current cycle: 16; max cycle: 0
+[pool-1-thread-1] INFO org.forwarder.demo.SimpleTest - Total time: 33s  Avg time: 33.0ms
+[info] Passed: Total 1, Failed 0, Errors 0, Passed 1
+[success] Total time: 6 s, completed Oct 14, 2025, 10:09:22 AM
 ```
 
-### 硬件部分构建
+### 硬件
+运行以下指令运行加速器的测试类
 ```bash
-sbt "runMain hw.spinal.Accelerator.Accelerator"  # 生成硬件设计
+sbt "runMain Accelerator.AcceleratorTb"
+```
+顺利的话应该会输出：
+```bash
+...
+test 43 pass
+test 44 pass
+test 45 pass
+test 46 pass
+test 47 pass
+test 48 pass
+test 49 pass
+TEST PASS
+Total cycles: 74348, Cycles/test: 1486.96
+Total operations: 8102912, FLOPS/cycle: 108.98628073384624
+Unexpected termination of the simulation
+           V C S   S i m u l a t i o n   R e p o r t 
+Time: 743650 ps
+CPU Time:     11.940 seconds;       Data structure size: 215.6Mb
+Tue Oct 14 10:20:23 2025
+[Done] Simulation done in 9930.138 ms
 ```
 
 ### 项目结构文档生成
