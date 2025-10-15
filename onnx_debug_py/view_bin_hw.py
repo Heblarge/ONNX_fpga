@@ -8,7 +8,8 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
 
 if len(sys.argv) < 2:
     print("\n错误: 请提供一个 .bin 文件作为参数。")
-    print("用法示例: python view_bin.py java_each_layer_outputs/data1/PPQ_Variable_1770.bin\n")
+    print("用法示例: python view_bin_hw.py java_hw_each_layer_outputs_all/data1/PPQ_Variable_1201.bin\n")
+
 
     sys.exit(1)
 
@@ -28,8 +29,8 @@ try:
             dim = struct.unpack('>q', dim_bytes)[0]
             shape.append(dim)
         shape = tuple(shape)
-
-        flat_data = np.fromfile(f, dtype='>f4')
+        f.read(4)
+        flat_data = np.fromfile(f, dtype='>i4')
 
         if np.prod(shape) != flat_data.size:
             print(f"警告：文件中的形状和数据大小不匹配! Shape={shape}, Data Size={flat_data.size}")

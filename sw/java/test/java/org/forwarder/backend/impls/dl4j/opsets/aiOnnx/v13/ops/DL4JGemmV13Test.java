@@ -70,6 +70,9 @@ public class DL4JGemmV13Test extends DL4JTestCase {
     private INDArray matrix(float[][] data) {
         return Nd4j.create(data);
     }
+    private INDArray matrix(float[][][] data) {
+        return Nd4j.create(data);
+    }
 
 
     @Test
@@ -273,7 +276,46 @@ public class DL4JGemmV13Test extends DL4JTestCase {
         );
     }
 
+    @Test
+    public void testBatchedMultiplication3D() {
+        INDArray a = matrix(new float[][][]{
+                {{1, 2, 3}, {4, 5, 6}},      // 第1个矩阵 (2x3)
+                {{7, 8, 9}, {10, 11, 12}}    // 第2个矩阵 (2x3)
+        });
 
+        INDArray b = matrix(new float[][][]{
+                {{10, 11}, {20, 21}, {30, 31}}, // 第1个矩阵 (3x2)
+                {{1, 2}, {3, 4}, {5, 6}}        // 第2个矩阵 (3x2)
+        });
+
+        INDArray expected = matrix(new float[][][]{
+                {{140, 146}, {320, 335}},     // A[0] @ B[0] 的结果
+                {{76, 100}, {103, 136}}       // A[1] @ B[1] 的结果
+        });
+
+        testGemm(expected, a, b, null, 1.0f, 0.0f, 0L, 0L);
+    }
+
+    @Test
+    public void testBatchedMultiplication3D2D() {
+        INDArray a = matrix(new float[][][]{
+                {{1, 2, 3}, {4, 5, 6}},      // 第1个批次
+                {{7, 8, 9}, {10, 11, 12}}    // 第2个批次
+        }); // Shape: [2, 2, 3]
+
+        INDArray b = matrix(new float[][]{
+                {10, 11},
+                {20, 21},
+                {30, 31}
+        }); // Shape: [3, 2]
+
+        INDArray expected = matrix(new float[][][]{
+                {{140, 146}, {320, 335}},     // A[0] @ B 的结果
+                {{500, 524}, {680, 713}}       // A[1] @ B 的结果
+        }); // Shape: [2, 2, 2]
+
+        testGemm(expected, a, b, null, 1.0f, 0.0f, 0L, 0L);
+    }
 
 
 }

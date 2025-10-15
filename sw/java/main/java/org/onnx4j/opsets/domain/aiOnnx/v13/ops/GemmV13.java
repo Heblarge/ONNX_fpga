@@ -74,10 +74,10 @@ public interface GemmV13 extends AiOnnxOperatorV13 {
             this.betaField  = new AttributeField<>(super.attrs, ATTR_BETA, FloatAttribute.class, 1.0f, false);
             this.transAField = new AttributeField<>(super.attrs, ATTR_TRANSA, IntAttribute.class, 0L, false);
             this.transBField = new AttributeField<>(super.attrs, ATTR_TRANSB, IntAttribute.class, 0L, false);
-            this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class, null, true);
-            this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class, null, true);
-            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatsAttribute.class, null, true);
-            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntsAttribute.class, null, true);
+            this.fpgaInScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SCALES, FloatsAttribute.class,  List.of(0.0f), true);
+            this.fpgaInShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_IN_SHIFT, IntsAttribute.class,  List.of(0L), true);
+            this.fpgaOutScalesField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SCALES, FloatsAttribute.class,  List.of(0.0f), true);
+            this.fpgaOutShiftField = new AttributeField<>(super.attrs, ATTR_FPGA_OUT_SHIFT, IntsAttribute.class,  List.of(0L), true);
 
         }
 

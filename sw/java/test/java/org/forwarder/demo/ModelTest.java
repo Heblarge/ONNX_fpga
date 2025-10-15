@@ -57,7 +57,7 @@ public class ModelTest extends FWTestCase {
     }
 
 
-    public void testModelWithOpsetV13() throws FileNotFoundException, NoSuchMethodException,
+    public void testModelWithOpsetV13_hw() throws FileNotFoundException, NoSuchMethodException,
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
@@ -65,7 +65,7 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "HWAccelerated",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/java_hw_each_layer_outputs");
+                "/home/user/Workspace/livehps_1/onnx_debug_py/java_hw_each_layer_outputs_all");
         for (int n = 1; n < 2; n++) {
             List<String> inputs = List.of(
                     "/mnist/int32_refpb/int32/data" + n + "/input_seq_pc.pb",
@@ -94,6 +94,47 @@ public class ModelTest extends FWTestCase {
                 OutputMode.Dequantize
         );
     }
+
+    public void testModelWithOpsetV13_dl4j() throws FileNotFoundException, NoSuchMethodException,
+            SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
+            InvocationTargetException, OperationNotSupportedException, IOException {
+        Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
+        Map<String, String> backendPaths = new HashMap<>();
+        backendPaths.put(
+                "DL4J",
+                // 输出文件夹的位置
+                "/home/user/Workspace/livehps_1/onnx_debug_py/java_dl4j_each_layer_outputs_all");
+        for (int n = 1; n < 2; n++) {
+            List<String> inputs = List.of(
+                    "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
+                    "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
+            );
+            List<String> outputs = List.of(
+                    "/mnist/Quantized/data" + n + "/output_pre_tran.pb",
+                    "/mnist/Quantized/data" + n + "/output_rot.pb",
+                    "/mnist/Quantized/data" + n + "/output_trj.pb"
+            );
+            tensorPairPaths.put(inputs, outputs);
+        }
+        super.testModel(
+                tensorPairPaths,
+                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx",
+                List.of("seq_pc", "seq_pos"),       // 假设两个输入名
+                List.of("pre_trans", "rot", "trj"), // 假设三个输出名
+                new String[] {
+                        "DL4J"
+                        //,
+                        //"HWAccelerated"
+                },
+                0.0001f,
+                backendPaths,
+                SaveMode.ALL_INTERMEDIATE,
+                OutputMode.Dequantize
+        );
+    }
+
+
+
     public void testCompareIntermediateTensors() throws Exception {
     Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
     for (int n = 1; n < 2; n++) {

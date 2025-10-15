@@ -223,13 +223,47 @@ public abstract class FWTestCase extends TestCase {
             String sanitizedName = name.replace('/', '_').replace(':', '_');
             String fileName = sanitizedName + ".bin";
             File outputFile = new File(outputDir, fileName);
+
             try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(outputFile))) {
                 dos.writeInt(tensorData.rank());
-                for (long dim : tensorData.shape()) dos.writeLong(dim);
+                for (long dim : tensorData.shape()) {
+                    dos.writeLong(dim);
+                }
+                dos.writeInt(tensorData.dataType().ordinal());
                 INDArray cOrderTensor = tensorData.dup('c');
-                FloatBuffer floatBuffer = cOrderTensor.data().asNioFloat();
-                floatBuffer.rewind();
-                while (floatBuffer.hasRemaining()) dos.writeFloat(floatBuffer.get());
+
+                switch (cOrderTensor.dataType()) {
+                    case INT:
+                        int[] intData = cOrderTensor.data().asInt();
+                        for (int val : intData) {
+                            dos.writeInt(val);
+                        }
+                        break;
+                    case LONG:
+                        long[] longData = cOrderTensor.data().asLong();
+                        for (long val : longData) {
+                            dos.writeLong(val);
+                        }
+                        break;
+                    case FLOAT:
+                        float[] floatData = cOrderTensor.data().asFloat();
+                        for (float val : floatData) {
+                            dos.writeFloat(val);
+                        }
+                        break;
+                    case DOUBLE:
+                        double[] doubleData = cOrderTensor.data().asDouble();
+                        for (double val : doubleData) {
+                            dos.writeDouble(val);
+                        }
+                        break;
+                    case BOOL:
+                        byte[] boolDataAsBytes = cOrderTensor.data().asBytes();
+                        dos.write(boolDataAsBytes);
+                        break;
+                    default:
+                        throw new IOException("Unsupported data type for binary serialization: " + cOrderTensor.dataType());
+                }
             } catch (IOException e) {
                 System.err.println("Failed to save tensor as .bin: " + name);
                 e.printStackTrace();
@@ -443,8 +477,6 @@ public abstract class FWTestCase extends TestCase {
                 System.out.println("张量 " + tensorName + " 在 " + backend1 + " 和 " + backend2 + " 后端之间一致。");
             }
         }
-
-
 
     }
 

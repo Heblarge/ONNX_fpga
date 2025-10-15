@@ -1,19 +1,27 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 import os
 import sys
 import struct
 import argparse
 
-JAVA_DIR_1 = 'java_hw_each_layer_outputs/data1'
+# --- 配置区 ---
+# HW 后端（整数.bin文件）的输出目录
+JAVA_DIR_1 = 'java_hw_each_layer_outputs_all/data1'
+# DL4J 后端（浮点数.bin文件）的输出目录
 JAVA_DIR_2 = 'java_dl4j_each_layer_outputs/data1'
 # --------------------------------------------------
 
 # 定义执行顺序的文件
-ORDER_FILE = 'onnx_debug_py/execution_order.txt'
+ORDER_FILE = 'execution_order.txt'
 DEFAULT_TOLERANCE = 0.5
 
-def load_java_tensor(file_path):
-
+def load_hw_tensor(file_path):
+    """
+    专门用于加载 HW 后端的 .bin 文件。
+    它会跳过4字节的数据类型字段，并假定数据是 int32 类型。
+    """
     try:
         with open(file_path, 'rb') as f:
             rank_bytes = f.read(4)
@@ -28,19 +36,54 @@ def load_java_tensor(file_path):
                 shape.append(dim)
             shape = tuple(shape)
 
-            flat_data = np.fromfile(f, dtype='>f4')
+            # <<< 关键逻辑 1：跳过4字节的数据类型标识 >>>
+            f.read(4)
+
+            # <<< 关键逻辑 2：按大端4字节整数读取 >>>
+            flat_data = np.fromfile(f, dtype='>i4')
 
             if np.prod(shape) != flat_data.size:
-                print(f"警告：文件 {os.path.basename(file_path)} 中的形状和数据大小不匹配! Shape={shape}, Data Size={flat_data.size}")
+                print(f"警告 (HW)：文件 {os.path.basename(file_path)} 中的形状和数据大小不匹配! Shape={shape}, Data Size={flat_data.size}")
                 return None, None
 
             return flat_data.reshape(shape), shape
     except Exception as e:
-        print(f"错误: 读取文件 {file_path} 时发生异常: {e}")
+        print(f"错误 (HW): 读取文件 {file_path} 时发生异常: {e}")
+        return None, None
+
+def load_dl4j_tensor(file_path):
+    """
+    专门用于加载 DL4J 后端的 .bin 文件。
+    它假定文件格式为 [rank][shape][data]，且数据是 float32 类型。
+    """
+    try:
+        with open(file_path, 'rb') as f:
+            rank_bytes = f.read(4)
+            if len(rank_bytes) < 4: raise IOError("文件损坏或格式不正确，无法读取rank。")
+            rank = struct.unpack('>i', rank_bytes)[0]
+
+            shape = []
+            for _ in range(rank):
+                dim_bytes = f.read(8)
+                if len(dim_bytes) < 8: raise IOError("文件损坏，无法完整读取shape信息。")
+                dim = struct.unpack('>q', dim_bytes)[0]
+                shape.append(dim)
+            shape = tuple(shape)
+
+            # <<< 关键逻辑：不跳过任何字节，直接按大端4字节浮点数读取 >>>
+            flat_data = np.fromfile(f, dtype='>f4')
+
+            if np.prod(shape) != flat_data.size:
+                print(f"警告 (DL4J)：文件 {os.path.basename(file_path)} 中的形状和数据大小不匹配! Shape={shape}, Data Size={flat_data.size}")
+                return None, None
+
+            return flat_data.reshape(shape), shape
+    except Exception as e:
+        print(f"错误 (DL4J): 读取文件 {file_path} 时发生异常: {e}")
         return None, None
 
 def main(args):
-    # 检查两个目录是否存在
+    # (主函数逻辑与您提供的版本完全一致，只是调用了不同的加载函数)
     if not os.path.isdir(JAVA_DIR_1):
         print(f"错误：找不到HW目录 '{JAVA_DIR_1}'")
         return
@@ -83,8 +126,8 @@ def main(args):
             skipped_count += 1
             continue
 
-        tensor1, shape1 = load_java_tensor(path1)
-        tensor2, shape2 = load_java_tensor(path2)
+        tensor1, shape1 = load_hw_tensor(path1)
+        tensor2, shape2 = load_dl4j_tensor(path2)
 
         if tensor1 is None or tensor2 is None or shape1 != shape2:
             failed_count += 1
@@ -110,8 +153,7 @@ def main(args):
             print(f"  - 未通过数值个数: {mismatch_count} / {total_elements}")
             print(f"  - 最大绝对误差: {np.max(diff):.8f}")
             print(f"  - 误差最大位置: {max_diff_index}")
-            # **修改点**: 更新打印标签
-            print(f"  - HW中的值   @ {max_diff_index}: {tensor1[max_diff_index]}")
+            print(f"  - HW中的值    @ {max_diff_index}: {tensor1[max_diff_index]}")
             print(f"  - DL4J中的值 @ {max_diff_index}: {tensor2[max_diff_index]}")
             if not args.full_report:
                 break
@@ -138,4 +180,3 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args)
-
