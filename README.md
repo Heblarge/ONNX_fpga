@@ -173,7 +173,7 @@ sbt "testOnly org.forwarder.demo.SimpleTest"
 ```bash
 sbt "runMain Accelerator.AcceleratorTb"
 ```
-顺利的话应该会输出：
+顺利的话应该会输出： 
 ```bash
 ...
 test 43 pass
