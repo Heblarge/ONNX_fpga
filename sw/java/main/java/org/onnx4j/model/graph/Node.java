@@ -23,6 +23,7 @@ import org.onnx4j.NamedOnnxObject;
 import org.onnx4j.Tensor;
 import org.onnx4j.model.graph.node.Attributes;
 import org.onnx4j.prototypes.OnnxProto3.NodeProto;
+import org.onnx4j.model.Graph;
 
 public final class Node extends NamedOnnxObject {
 
@@ -42,7 +43,11 @@ public final class Node extends NamedOnnxObject {
 		this.domain = nodeProto.getDomain();
 		this.opType = nodeProto.getOpType();
 		this.attributes = new Attributes(model, nodeProto.getAttributeList());
+
+		this.model = model;
 	}
+
+
 
 	public String[] getInputNames() {
 		return inputNames;
@@ -64,6 +69,10 @@ public final class Node extends NamedOnnxObject {
 	public String toString() {
 		return "Node [domain=" + domain + ", opType=" + opType + ", inputNames=" + Arrays.toString(inputNames)
 				+ ", outputNames=" + Arrays.toString(outputNames) + ", attributes=" + attributes + "]";
+	}
+
+	public Graph getGraph() {
+		return this.model.getGraph();
 	}
 
 }
