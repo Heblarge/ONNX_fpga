@@ -3,11 +3,13 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
+import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MatMulV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
@@ -16,7 +18,7 @@ import scala.tools.nsc.doc.html.HtmlTags;
 import java.util.List;
 
 
-public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements MatMulV13 {
+public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator implements MatMulV13 {
 
     private final int HW_DIM_MULTIPLE = 32;
 
@@ -25,11 +27,26 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         MatMulInputsV13<INDArray> castedInputs = new MatMulInputsV13<>(node, inputs);
         INDArray matrixA = castedInputs.getA();
         INDArray matrixB = castedInputs.getB();
-        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
-        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
-        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
-        INDArray outputTensor = this.matmul(matrixA, matrixB, fpgaInShift, fpgaOutShift);
+
+        Graph graph = node.getGraph();
+        List<Long> targetInputShifts = castedInputs.getFpgaInShift();
+        long targetInputShiftA = targetInputShifts.get(0);
+        long targetInputShiftB = targetInputShifts.get(1);
+        String inputAName = node.getInputNames()[0];
+        long sourceShiftA = this.getProducerOutputShift(graph, inputAName, targetInputShiftA);
+        String inputBName = node.getInputNames()[1];
+        long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
+        long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
+
+        INDArray outputTensor = this.matmul(
+                matrixA,
+                matrixB,
+                sourceShiftA,
+                sourceShiftB,
+                targetInputShiftA,
+                targetInputShiftB,
+                targetOutputShift
+        );
         return new MatMulOutputV13<>(outputTensor);
     }
 
@@ -38,13 +55,13 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
-    public INDArray matmul(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    public INDArray matmul(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         if (a.rank() == 2 && b.rank() == 2) {
-            return matmul2D(a, b, fpgaInShift, fpgaOutShift);
+            return matmul2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
         } else if (a.rank() == 3 && b.rank() == 2) {
-            return matmul3D2D(a, b, fpgaInShift, fpgaOutShift);
+            return matmul3D2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
         } else if (a.rank() == 3 && b.rank() == 3) {
-            return matmul3D(a, b, fpgaInShift, fpgaOutShift);
+            return matmul3D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for MatMul: A=" + a.rank() + ", B=" + b.rank());
         }
@@ -52,7 +69,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
 
 
 
-    private INDArray matmul2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray matmul2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
@@ -79,25 +96,25 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         INDArray paddedB = Nd4j.zeros(b.dataType(),paddedColsA, paddedColsB);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsB), NDArrayIndex.interval(0, originalColsB)}, b);
 
-        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB, fpgaInShift, fpgaOutShift);
+        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
     }
 
-    private INDArray matmul3D2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray matmul3D2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         long batchSize = a.size(0);
         long M = a.size(1);
         long K = a.size(2);
         long N = b.size(1);
 
         INDArray a2D = a.reshape('c', batchSize * M, K);
-        INDArray result2D = matmul2D(a2D, b, fpgaInShift, fpgaOutShift);
+        INDArray result2D = matmul2D(a2D, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
 
         long[] outputShape = {batchSize, M, N};
         return result2D.reshape('c', outputShape);
     }
 
-    private INDArray matmul3D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray matmul3D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         long batchA = a.size(0);
         long batchB = b.size(0);
         long batch = Math.max(batchA, batchB);
@@ -109,30 +126,35 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedOperator implements Mat
         for (int i = 0; i < (int) batch; i++) {
             INDArray sliceA = (batchA == 1) ? a.slice(0) : a.slice(i);
             INDArray sliceB = (batchB == 1) ? b.slice(0) : b.slice(i);
-            INDArray product = matmul2D(sliceA, sliceB, fpgaInShift, fpgaOutShift);
+            INDArray product = matmul2D(sliceA, sliceB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
             result.putSlice(i, product);
         }
         return result;
     }
 
 
-    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, List<Long> fpgaInShift, List<Long> fpgaOutShift){
+    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift){
+
+        int rescaleShiftA = (int) (sourceShiftA - targetInputShiftA);
+        int rescaleShiftB = (int) (sourceShiftB - targetInputShiftB);
 
         long[][] fixedPointA = new long[rowsA][colsA];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsA; j++) {
-                fixedPointA[i][j] = a.getLong(i, j);
+                long valA = a.getLong(i, j);
+                fixedPointA[i][j] = (rescaleShiftA < 0) ? (valA << -rescaleShiftA) : (valA >> rescaleShiftA);
             }
         }
 
         long[][] fixedPointB = new long[colsA][colsB];
         for (int i = 0; i < colsA; i++) {
             for (int j = 0; j < colsB; j++) {
-                fixedPointB[i][j] = b.getLong(i, j);
+                long valB = b.getLong(i, j);
+                fixedPointB[i][j] = (rescaleShiftB < 0) ? (valB << -rescaleShiftB) : (valB >> rescaleShiftB);
             }
         }
 
-        int shiftAmount = (int) (fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0));
+        int shiftAmount = (int) (targetInputShiftA + targetInputShiftB - targetOutputShift);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "matmul",

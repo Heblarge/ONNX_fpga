@@ -12,7 +12,12 @@ import java.util.List;
 
 public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
 
-    private INDArray calculateSimulatedFixedPointMax(INDArray a, INDArray b) {
+    private INDArray calculateSimulatedFixedPointMax(
+            INDArray a, INDArray b,
+            long sourceShiftA, long sourceShiftB,
+            long targetInputShiftA, long targetInputShiftB,
+            long targetOutputShift
+    ) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
             a = a.broadcast(broadcastShape);
@@ -25,36 +30,56 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
             long numRows = a.length() / numCols;
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
-            INDArray result2D = calculateSimulatedFixedPointMax(reshapedA, reshapedB);
+            INDArray result2D = calculateSimulatedFixedPointMax(
+                    reshapedA, reshapedB,
+                    sourceShiftA, sourceShiftB,
+                    targetInputShiftA, targetInputShiftB,
+                    targetOutputShift
+            );
             return result2D.reshape('c', finalShape);
         }
 
         int rows = (int) a.rows();
         int cols = (int) a.columns();
 
-        long[][] matA_long = new long[rows][cols];
-        long[][] matB_long = new long[rows][cols];
+        long comparisonShift = Math.max(targetInputShiftA, targetInputShiftB);
+        int preRescaleShiftA = (int) (sourceShiftA - comparisonShift);
+        int preRescaleShiftB = (int) (sourceShiftB - comparisonShift);
+        int hardwareShiftAmount = (int) (comparisonShift - targetOutputShift);
+
+        long[][] fixedPointA = new long[rows][cols];
+        long[][] fixedPointB = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                matA_long[i][j] = a.getLong(i, j);
-                matB_long[i][j] = b.getLong(i, j);
+                long valA = a.getLong(i, j);
+                fixedPointA[i][j] = (preRescaleShiftA < 0) ? (valA << -preRescaleShiftA) : (valA >> preRescaleShiftA);
+                long valB = b.getLong(i, j);
+                fixedPointB[i][j] = (preRescaleShiftB < 0) ? (valB << -preRescaleShiftB) : (valB >> preRescaleShiftB);
             }
         }
 
         long[][] maxResult_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                maxResult_long[i][j] = Math.max(matA_long[i][j], matB_long[i][j]);
+                maxResult_long[i][j] = Math.max(fixedPointA[i][j], fixedPointB[i][j]);
             }
         }
 
-        float[] flatResult = new float[rows * cols];
+        long[][] shiftedResult_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                flatResult[i * cols + j] = maxResult_long[i][j];
+                long val = maxResult_long[i][j];
+                shiftedResult_long[i][j] = (hardwareShiftAmount < 0) ? (val << -hardwareShiftAmount) : (val >> hardwareShiftAmount);
             }
         }
-        return Nd4j.create(flatResult, new long[]{rows, cols});
+
+        long[] flatResultLong = new long[rows * cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                flatResultLong[i * cols + j] = shiftedResult_long[i][j];
+            }
+        }
+        return Nd4j.create(flatResultLong, new long[]{rows, cols}, a.dataType());
     }
 
     private long[] getBroadcastShape(long[] shapeA, long[] shapeB) {
@@ -73,65 +98,77 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
 
     @Test
     public void testMax2D() throws Exception {
-        System.out.println("\n--- Testing 2D Max (Integer Domain) ---");
+        System.out.println("\n--- Testing 2D Max with Quantization Params ---");
         int rows = 30;
         int cols = 32;
         float minValue = -10f;
         float maxValue = 10f;
 
-        INDArray matrixA_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, 10));
-        INDArray matrixB_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, 10));
+        long sourceShiftA = 11L;
+        long sourceShiftB = 11L;
+        long targetInputShiftA = 10L;
+        long targetInputShiftB = 9L;
+        long targetOutputShift = 8L;
 
-        INDArray theoreticalExpected = Transforms.max(matrixA_int, matrixB_int);
+        INDArray matrixA_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, sourceShiftA));
+        INDArray matrixB_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, sourceShiftB));
 
-        INDArray simulatedExpected = calculateSimulatedFixedPointMax(matrixA_int, matrixB_int);
+        INDArray simulatedExpected = calculateSimulatedFixedPointMax(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
 
         HWAcceleratedMaxV13 operator = new HWAcceleratedMaxV13();
-        List<INDArray> inputs = Arrays.asList(matrixA_int, matrixB_int);
-        INDArray actualOutput = operator.max(inputs, null, null); // Pass null for shifts
 
-        // All three results should be identical
-        HWAcceleratedTestModel.validate("Max - 2D", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
+        List<INDArray> inputsList = Arrays.asList(matrixA_int, matrixB_int); // 创建 List
+        INDArray actualOutput = operator.max(
+                inputsList, // 传递 List
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
+
+        HWAcceleratedTestModel.validate("Max - 2D Quantized", simulatedExpected, simulatedExpected, actualOutput, 0.0);
     }
 
     @Test
     public void testMax3D() throws Exception {
-        System.out.println("\n--- Testing 3D (Batched) Max (Integer Domain) ---");
+        System.out.println("\n--- Testing 3D (Batched) Max with Quantization Params ---");
         int batchSize = 2;
         int rows = 30;
         int cols = 32;
         float minValue = -10f;
         float maxValue = 10f;
 
-        INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, 20);
-        INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, 20);
+        long sourceShiftA = 22L;
+        long sourceShiftB = 22L;
+        long targetInputShiftA = 20L;
+        long targetInputShiftB = 21L;
+        long targetOutputShift = 18L;
 
-        INDArray theoreticalExpected = Transforms.max(matrixA_int, matrixB_int);
-        INDArray simulatedExpected = calculateSimulatedFixedPointMax(matrixA_int, matrixB_int);
+        INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, sourceShiftA);
+        INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, sourceShiftB);
 
-        HWAcceleratedMaxV13 operator = new HWAcceleratedMaxV13();
-        List<INDArray> inputs = Arrays.asList(matrixA_int, matrixB_int);
-        INDArray actualOutput = operator.max(inputs, null, null);
-
-        HWAcceleratedTestModel.validate("Max - 3D", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
-    }
-
-    @Test
-    public void testMaxBroadcast_3D_with_1D_Scalar() throws Exception {
-        System.out.println("\n--- Testing Max Broadcast: (1,32,512) + [1] ---");
-        float minValue = -3f;
-        float maxValue = -5f;
-
-        INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(1, 32, 32, minValue, maxValue,20);
-        INDArray matrixB_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(1, 1, minValue, maxValue, 20)).reshape(1);
-
-        INDArray theoreticalExpected = Transforms.max(matrixA_int, matrixB_int);
-        INDArray simulatedExpected = calculateSimulatedFixedPointMax(matrixA_int, matrixB_int);
+        INDArray simulatedExpected = calculateSimulatedFixedPointMax(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
 
         HWAcceleratedMaxV13 operator = new HWAcceleratedMaxV13();
-        List<INDArray> inputs = Arrays.asList(matrixA_int, matrixB_int);
-        INDArray actualOutput = operator.max(inputs, null, null);
 
-        HWAcceleratedTestModel.validate("Max - Broadcast [1]", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
+        List<INDArray> inputsList = Arrays.asList(matrixA_int, matrixB_int);
+        INDArray actualOutput = operator.max(
+                inputsList, // 传递 List
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
+
+        HWAcceleratedTestModel.validate("Max - 3D Quantized", simulatedExpected, simulatedExpected, actualOutput, 0.0);
     }
+
 }

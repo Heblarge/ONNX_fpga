@@ -119,8 +119,8 @@ public class ModelTest extends FWTestCase {
         super.testModel(
                 tensorPairPaths,
                 "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime.onnx",
-                List.of("seq_pc", "seq_pos"),       // 假设两个输入名
-                List.of("pre_trans", "rot", "trj"), // 假设三个输出名
+                List.of("seq_pc", "seq_pos_fp"),       // 假设两个输入名
+                List.of("pre_trans_fp", "rot", "trj"), // 假设三个输出名
                 new String[] {
                         "DL4J"
                         //,
@@ -128,7 +128,7 @@ public class ModelTest extends FWTestCase {
                 },
                 0.0001f,
                 backendPaths,
-                SaveMode.ALL_INTERMEDIATE,
+                SaveMode.FINAL_ONLY,
                 OutputMode.Dequantize
         );
     }

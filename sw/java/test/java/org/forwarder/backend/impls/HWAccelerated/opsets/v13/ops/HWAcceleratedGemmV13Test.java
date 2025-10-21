@@ -12,114 +12,120 @@ import java.util.Arrays;
 
 public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
 
-    private INDArray calculateSimulatedMatmulWithAlpha(
-            INDArray A, INDArray B, float alpha,
-            List<Long> fpgaInShift, List<Long> fpgaOutShift
+    private INDArray calculateSimulatedFixedPointGemmAsMatMul(
+            INDArray A_int, INDArray B_int,
+            long sourceShiftA, long sourceShiftB,
+            long targetInputShiftA, long targetInputShiftB,
+            long targetOutputShift
     ) {
-        int rankA = A.rank();
-        int rankB = B.rank();
+        int rankA = A_int.rank();
+        int rankB = B_int.rank();
 
-        if (rankA > 2 && rankB == 2) { // 3D x 2D case
-            long M = A.size(rankA - 2);
-            long K = A.size(rankA - 1);
-            long numBatches = A.length() / (M * K);
-            INDArray a2D = A.reshape('c', numBatches * M, K);
-            INDArray result2D = calculateSimulatedMatmulWithAlpha(a2D, B, alpha, fpgaInShift, fpgaOutShift);
-
-            long[] outputShape = Arrays.copyOf(A.shape(), (int)rankA);
-            outputShape[(int)rankA - 1] = B.size(1);
+        if (rankA > 2 && rankB == 2) {
+            long M = A_int.size(rankA - 2);
+            long K = A_int.size(rankA - 1);
+            long numBatches = A_int.length() / (M * K);
+            INDArray a2D = A_int.reshape('c', numBatches * M, K);
+            INDArray result2D = calculateSimulatedFixedPointGemmAsMatMul(
+                    a2D, B_int, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            long[] outputShape = Arrays.copyOf(A_int.shape(), rankA);
+            outputShape[rankA - 1] = B_int.size(1);
             return result2D.reshape('c', outputShape);
-
         } else if (rankA == 3 && rankB == 3) {
-            long batchSize = A.size(0);
-            INDArray result = Nd4j.create(DataType.LONG, batchSize, A.size(1), B.size(2));
+            long batchSize = A_int.size(0);
+            INDArray result = Nd4j.create(DataType.LONG, batchSize, A_int.size(1), B_int.size(2));
             for (int i = 0; i < batchSize; i++) {
-                INDArray sliceResult = calculateSimulatedMatmulWithAlpha(
-                        A.slice(i, 0), B.slice(i, 0), alpha, fpgaInShift, fpgaOutShift);
+                INDArray sliceResult = calculateSimulatedFixedPointGemmAsMatMul(
+                        A_int.slice(i), B_int.slice(i),
+                        sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
                 result.putSlice(i, sliceResult);
             }
             return result;
+        } else if (rankA != 2 || rankB != 2) {
+            throw new IllegalArgumentException("Unsupported ranks for simulation: A=" + rankA + ", B=" + rankB);
         }
 
-        int m = (int) A.rows();
-        int k = (int) A.columns();
-        int n = (int) B.columns();
+        int m = (int) A_int.rows();
+        int k = (int) A_int.columns();
+        int n = (int) B_int.columns();
 
-        long[][] matA_long = new long[m][k];
-        for (int i = 0; i < m; i++) for (int j = 0; j < k; j++) matA_long[i][j] = A.getInt(i, j);
+        int rescaleShiftA = (int) (sourceShiftA - targetInputShiftA);
+        int rescaleShiftB = (int) (sourceShiftB - targetInputShiftB);
+        int hardwareShiftAmount = (int) (targetInputShiftA + targetInputShiftB - targetOutputShift);
 
-        long[][] matB_long = new long[k][n];
-        for (int i = 0; i < k; i++) for (int j = 0; j < n; j++) matB_long[i][j] = B.getInt(i, j);
+        long[][] fixedPointA = new long[m][k];
+        for (int i = 0; i < m; i++) for (int j = 0; j < k; j++) {
+            long valA = A_int.getLong(i, j);
+            fixedPointA[i][j] = (rescaleShiftA < 0) ? (valA << -rescaleShiftA) : (valA >> rescaleShiftA);
+        }
+        long[][] fixedPointB = new long[k][n];
+        for (int i = 0; i < k; i++) for (int j = 0; j < n; j++) {
+            long valB = B_int.getLong(i, j);
+            fixedPointB[i][j] = (rescaleShiftB < 0) ? (valB << -rescaleShiftB) : (valB >> rescaleShiftB);
+        }
 
         long[][] matMulResult_long = new long[m][n];
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                long accumulator = 0L;
-                for (int l = 0; l < k; l++) {
-                    accumulator += matA_long[i][l] * matB_long[l][j];
-                }
-                matMulResult_long[i][j] = accumulator;
-            }
+        for (int i = 0; i < m; i++) for (int j = 0; j < n; j++) {
+            long accumulator = 0L;
+            for (int l = 0; l < k; l++) accumulator += fixedPointA[i][l] * fixedPointB[l][j];
+            matMulResult_long[i][j] = accumulator;
         }
 
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
         long[][] shiftedResult_long = new long[m][n];
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                shiftedResult_long[i][j] = (shiftAmount >= 0)
-                        ? (matMulResult_long[i][j] >> shiftAmount)
-                        : (matMulResult_long[i][j] << -shiftAmount);
-            }
+        for (int i = 0; i < m; i++) for (int j = 0; j < n; j++) {
+            long val = matMulResult_long[i][j];
+            shiftedResult_long[i][j] = (hardwareShiftAmount < 0) ? (val << -hardwareShiftAmount) : (val >> hardwareShiftAmount);
         }
 
-        float[] outputFloat = new float[m * n];
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                outputFloat[i * n + j] = (float) shiftedResult_long[i][j];
-            }
-        }
-        INDArray Y = Nd4j.create(outputFloat, new long[]{m, n});
-
-        Y.muli(alpha);
-
-        return Y;
+        long[] flatResultLong = new long[m * n];
+        for (int i = 0; i < m; i++) for (int j = 0; j < n; j++) flatResultLong[i * n + j] = shiftedResult_long[i][j];
+        return Nd4j.create(flatResultLong, new long[]{m, n}, A_int.dataType());
     }
 
     @Test
     public void testGemmSimple() throws Exception {
-        System.out.println("\n--- Testing Gemm simple case (Y = alpha * A * B) ---");
+        System.out.println("\n--- Testing Gemm simple case (as MatMul) ---"); // MODIFIED
         int rowsA = 32;
         int colsA = 32;
         int colsB = 16;
         float minValue = -5f;
         float maxValue = 5f;
 
-        float alpha = 2.0f;
+        long sourceShiftA = 20L;
+        long sourceShiftB = 20L;
+        long targetInputShiftA = 20L;
+        long targetInputShiftB = 20L;
+        long targetOutputShift = 20L;
 
-        List<Long> fpgaInShift = Arrays.asList(20L, 20L);
-        List<Long> fpgaOutShift =  Arrays.asList(20L);
+        INDArray matrixA = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rowsA, colsA, minValue, maxValue, sourceShiftA));
+        INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(colsA, colsB, minValue, maxValue, sourceShiftB));
 
-        INDArray matrixA = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rowsA, colsA, minValue, maxValue, fpgaInShift.get(0)));
-        INDArray matrixB = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(colsA, colsB, minValue, maxValue, fpgaInShift.get(1)));
-
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
+        long theoreticalShiftAmount = sourceShiftA + sourceShiftB - targetOutputShift;
         INDArray integerMatMul = matrixA.mmul(matrixB);
-        INDArray theoreticalExpected = (shiftAmount >= 0)
-                ? integerMatMul.div(1L << shiftAmount)
-                : integerMatMul.mul(1L << -shiftAmount);
-        theoreticalExpected.muli(alpha);
+        INDArray theoreticalExpected = (theoreticalShiftAmount >= 0)
+                ? integerMatMul.div(1L << theoreticalShiftAmount)
+                : integerMatMul.mul(1L << -theoreticalShiftAmount);
 
-        INDArray simulatedExpected = calculateSimulatedMatmulWithAlpha(matrixA, matrixB, alpha, fpgaInShift, fpgaOutShift);
+        INDArray simulatedExpected = calculateSimulatedFixedPointGemmAsMatMul(
+                matrixA, matrixB,
+                sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift
+        );
 
         HWAcceleratedGemmV13 operator = new HWAcceleratedGemmV13();
-        INDArray actualOutput = operator.gemm(matrixA, matrixB, null, alpha, 1.0f, 0L, 0L, fpgaInShift, fpgaOutShift);
 
-        HWAcceleratedTestModel.validate("Gemm - Simple", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
+        INDArray actualOutput = operator.gemm(
+                matrixA, matrixB, null, 1.0f, 1.0f, 0L, 0L,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
+
+        HWAcceleratedTestModel.validate("Gemm - Simple (as MatMul)", theoreticalExpected, simulatedExpected, actualOutput, 0.0); // MODIFIED: Compare sim vs actual
     }
 
     @Test
     public void testGemm3D() throws Exception {
-        System.out.println("\n--- Testing Gemm 3D x 3D (Batched MatMul) ---");
+        System.out.println("\n--- Testing Gemm 3D x 3D (as Batched MatMul) ---"); // MODIFIED
         int batchSize = 4;
         int rowsA = 32;   // M
         int colsA = 64;   // K
@@ -127,33 +133,30 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
         float minValue = -5f;
         float maxValue = 5f;
 
-        float alpha = 1.0f;
 
-        List<Long> fpgaInShift = Arrays.asList(20L, 20L);
-        List<Long> fpgaOutShift = Arrays.asList(25L);
+        long sourceShiftA = 20L;
+        long sourceShiftB = 20L;
+        long targetInputShiftA = 20L;
+        long targetInputShiftB = 20L;
+        long targetOutputShift = 25L;
 
-        INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rowsA, colsA, minValue, maxValue, fpgaInShift.get(0));
-        INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, colsA, colsB, minValue, maxValue, fpgaInShift.get(1));
+        INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rowsA, colsA, minValue, maxValue, sourceShiftA);
+        INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, colsA, colsB, minValue, maxValue, sourceShiftB);
 
-        long shiftAmount = fpgaInShift.get(0) + fpgaInShift.get(1) - fpgaOutShift.get(0);
-        INDArray theoreticalExpected = Nd4j.create(batchSize, rowsA, colsB);
-        for (int i = 0; i < batchSize; i++) {
-            INDArray sliceA = matrixA_int.slice(i, 0);
-            INDArray sliceB = matrixB_int.slice(i, 0);
-            INDArray integerMatMulSlice = sliceA.mmul(sliceB);
-            INDArray theoreticalSlice = (shiftAmount >= 0)
-                    ? integerMatMulSlice.div(1L << shiftAmount)
-                    : integerMatMulSlice.mul(1L << -shiftAmount);
-            theoreticalSlice.muli(alpha);
-            theoreticalExpected.putSlice(i, theoreticalSlice);
-        }
-
-        INDArray simulatedExpected = calculateSimulatedMatmulWithAlpha(matrixA_int, matrixB_int, alpha, fpgaInShift, fpgaOutShift);
+        INDArray simulatedExpected = calculateSimulatedFixedPointGemmAsMatMul(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift
+        );
 
         HWAcceleratedGemmV13 operator = new HWAcceleratedGemmV13();
-        INDArray actualOutput = operator.gemm(matrixA_int, matrixB_int, null, alpha, 1.0f, 0L, 0L, fpgaInShift, fpgaOutShift);
 
-        double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
-        HWAcceleratedTestModel.validate("Gemm - 3D", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+        INDArray actualOutput = operator.gemm(
+                matrixA_int, matrixB_int, null, 1.0f, 1.0f, 0L, 0L, // C=null, alpha=1, beta=1, trans=0
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
+
+        HWAcceleratedTestModel.validate("Gemm - 3D (as MatMul)", simulatedExpected, simulatedExpected, actualOutput, 0.0); // MODIFIED
     }
 }

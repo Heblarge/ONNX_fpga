@@ -68,7 +68,7 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
                 flatResult[i * cols + j] = shiftedResult_long[i][j];
             }
         }
-        return Nd4j.create(flatResult, new long[]{rows, cols});
+        return Nd4j.create(flatResult, new long[]{rows, cols}, a.dataType());
     }
 
     private long[] getBroadcastShape(long[] shapeA, long[] shapeB) {
@@ -94,8 +94,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         float minValue = -10f;
         float maxValue = 10f;
 
-        List<Long> fpgaInShift = Arrays.asList(25L, 25L);
-        List<Long> fpgaOutShift = Arrays.asList(30L);
+        List<Long> fpgaInShift = Arrays.asList(20L, 20L);
+        List<Long> fpgaOutShift = Arrays.asList(25L);
 
         INDArray matrixA_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
         INDArray matrixB_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(1)));
@@ -109,7 +109,18 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         INDArray simulatedExpected = calculateSimulatedFixedPointSub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
 
         HWAcceleratedSubV13 operator = new HWAcceleratedSubV13();
-        INDArray actualOutput = operator.sub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
+        long sourceShiftA = fpgaInShift.get(0);
+        long sourceShiftB = fpgaInShift.get(1);
+        long targetInputShiftA = fpgaInShift.get(0);
+        long targetInputShiftB = fpgaInShift.get(1);
+        long targetOutputShift = fpgaOutShift.get(0);
+
+        INDArray actualOutput = operator.sub(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
 
         double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
         HWAcceleratedTestModel.validate("Sub - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
@@ -125,7 +136,7 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         float maxValue = 10f;
 
         List<Long> fpgaInShift = Arrays.asList(14L, 14L);
-        List<Long> fpgaOutShift = Arrays.asList(12L); // Results in left shift
+        List<Long> fpgaOutShift = Arrays.asList(12L);
 
         INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
         INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(1));
@@ -139,7 +150,18 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         INDArray simulatedExpected = calculateSimulatedFixedPointSub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
 
         HWAcceleratedSubV13 operator = new HWAcceleratedSubV13();
-        INDArray actualOutput = operator.sub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
+        long sourceShiftA = fpgaInShift.get(0);
+        long sourceShiftB = fpgaInShift.get(1);
+        long targetInputShiftA = fpgaInShift.get(0);
+        long targetInputShiftB = fpgaInShift.get(1);
+        long targetOutputShift = fpgaOutShift.get(0);
+
+        INDArray actualOutput = operator.sub(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
 
         double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
         HWAcceleratedTestModel.validate("Sub - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
@@ -166,7 +188,18 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         INDArray simulatedExpected = calculateSimulatedFixedPointSub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
 
         HWAcceleratedSubV13 operator = new HWAcceleratedSubV13();
-        INDArray actualOutput = operator.sub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
+        long sourceShiftA = fpgaInShift.get(0);
+        long sourceShiftB = fpgaInShift.get(1);
+        long targetInputShiftA = fpgaInShift.get(0);
+        long targetInputShiftB = fpgaInShift.get(1);
+        long targetOutputShift = fpgaOutShift.get(0);
+
+        INDArray actualOutput = operator.sub(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
 
         double tolerance = 0.0;
         HWAcceleratedTestModel.validate("Sub - Broadcast [1]", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
@@ -182,7 +215,7 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         int maxValue = 10;
 
         List<Long> fpgaInShift = Arrays.asList(14L, 14L);
-        List<Long> fpgaOutShift = Arrays.asList(20L); // Results in left shift
+        List<Long> fpgaOutShift = Arrays.asList(20L);
 
         INDArray matrixA_int = HWAcceleratedTestModel.generateRandom3DIntMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
         INDArray matrixB_int = HWAcceleratedTestModel.generateRandom3DIntMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(1));
@@ -196,7 +229,18 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
         INDArray simulatedExpected = calculateSimulatedFixedPointSub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
 
         HWAcceleratedSubV13 operator = new HWAcceleratedSubV13();
-        INDArray actualOutput = operator.sub(matrixA_int, matrixB_int, fpgaInShift, fpgaOutShift);
+        long sourceShiftA = fpgaInShift.get(0);
+        long sourceShiftB = fpgaInShift.get(1);
+        long targetInputShiftA = fpgaInShift.get(0);
+        long targetInputShiftB = fpgaInShift.get(1);
+        long targetOutputShift = fpgaOutShift.get(0);
+
+        INDArray actualOutput = operator.sub(
+                matrixA_int, matrixB_int,
+                sourceShiftA, sourceShiftB,
+                targetInputShiftA, targetInputShiftB,
+                targetOutputShift
+        );
 
         double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
         HWAcceleratedTestModel.validate("Sub - 3D Int", theoreticalExpected, simulatedExpected, actualOutput, tolerance);

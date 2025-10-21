@@ -3,11 +3,13 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
+import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.SubV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
@@ -19,7 +21,7 @@ import java.util.List;
  * This version automatically pads inputs to be multiples of 32 for hardware compatibility.
  * It handles tensors of any rank >= 2 and supports Numpy-style broadcasting.
  */
-public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13 {
+public class HWAcceleratedSubV13 extends HWAcceleratedQuantizedOperator implements SubV13 {
 
     private final int HW_DIM_MULTIPLE = 32;
 
@@ -28,11 +30,26 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         SubInputsV13<INDArray> castedInputs = new SubInputsV13<>(node, inputs);
         INDArray matrixA = castedInputs.getA();
         INDArray matrixB = castedInputs.getB();
-        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
-        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
-        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
-        INDArray outputTensor = this.sub(matrixA, matrixB, fpgaInShift, fpgaOutShift);
+
+        Graph graph = node.getGraph();
+        List<Long> targetInputShifts = castedInputs.getFpgaInShift();
+        long targetInputShiftA = targetInputShifts.get(0);
+        long targetInputShiftB = targetInputShifts.get(1);
+        String inputAName = node.getInputNames()[0];
+        long sourceShiftA = this.getProducerOutputShift(graph, inputAName, targetInputShiftA);
+        String inputBName = node.getInputNames()[1];
+        long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
+        long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
+
+        INDArray outputTensor = this.sub(
+                matrixA,
+                matrixB,
+                sourceShiftA,
+                sourceShiftB,
+                targetInputShiftA,
+                targetInputShiftB,
+                targetOutputShift
+        );
         return new SubOutputV13<>(outputTensor);
     }
 
@@ -40,7 +57,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
      * Public dispatcher for the Sub operation.
      * It handles broadcasting and reshapes tensors for efficient hardware execution.
      */
-    public INDArray sub(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    public INDArray sub(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         // 如果两个输入的形状不完全相同，则进行广播处理
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
@@ -50,14 +67,14 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         }
 
         if (a.rank() == 2) {
-            return sub2D(a, b, fpgaInShift, fpgaOutShift);
+            return sub2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
         } else if (a.rank() > 2) {
             long[] finalShape = a.shape();
             long numCols = finalShape[finalShape.length - 1];
             long numRows = a.length() / numCols;
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
-            INDArray result2D = sub2D(reshapedA, reshapedB, fpgaInShift, fpgaOutShift);
+            INDArray result2D = sub2D(reshapedA, reshapedB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
             return result2D.reshape('c', finalShape);
         } else {
             throw new IllegalArgumentException(
@@ -100,7 +117,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
     /**
      * Performs 2D element-wise subtraction with padding and slicing.
      */
-    private INDArray sub2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray sub2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -117,7 +134,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
         INDArray paddedB = Nd4j.zeros(b.dataType(), paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        INDArray paddedResult = subOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
+        INDArray paddedResult = subOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
@@ -126,22 +143,30 @@ public class HWAcceleratedSubV13 extends HWAcceleratedOperator implements SubV13
      * Private helper to run element-wise subtraction on the hardware simulator.
      * Note: It simulates A - B by computing A + (-B) on the hardware, which only supports addition.
      */
-    private INDArray subOnAccelerator(INDArray a, INDArray b, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
-
-        if (!fpgaInShift.get(0).equals(fpgaInShift.get(1))) {
-            throw new IllegalArgumentException("For element-wise Sub, input shifts (scales) must be identical.");
+    private INDArray subOnAccelerator(INDArray a, INDArray b, int rows, int cols, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+        if (targetInputShiftA != targetInputShiftB) {
+            throw new IllegalArgumentException(
+                    "Inputs to Add operation have different target input shifts ("
+                            + targetInputShiftA + " vs " + targetInputShiftB + "), which is unsupported."
+            );
         }
+
+        int rescaleShiftA = (int) (sourceShiftA - targetInputShiftA);
+        int rescaleShiftB = (int) (sourceShiftB - targetInputShiftB);
 
         long[][] fixedPointA = new long[rows][cols];
         long[][] fixedPointB = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = a.getLong(i, j);
-                fixedPointB[i][j] = -1 * b.getLong(i, j);
+                long valA = a.getLong(i, j);
+                fixedPointA[i][j] = (rescaleShiftA < 0) ? (valA << -rescaleShiftA) : (valA >> rescaleShiftA);
+                long valB = b.getLong(i, j) * -1;
+                fixedPointB[i][j] = (rescaleShiftB < 0) ? (valB << -rescaleShiftB) : (valB >> rescaleShiftB);
+
             }
         }
 
-        int shiftAmount = (int) (fpgaInShift.get(0) - fpgaOutShift.get(0));
+        int shiftAmount = (int) (targetInputShiftA - targetOutputShift);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",

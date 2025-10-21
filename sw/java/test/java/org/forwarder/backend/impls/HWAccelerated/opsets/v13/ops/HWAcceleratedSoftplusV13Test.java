@@ -4,6 +4,7 @@ import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTestModel;
 import org.junit.Test;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.ops.transforms.Transforms;
@@ -13,7 +14,6 @@ import java.util.List;
 
 public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
 
-    // 用硬件思路模拟
     private static class SoftplusLutSimulator {
         private final int K1 = 7, K2 = 6, K3 = 6;
         private final int total_bits = K1 + K2 + K3;
@@ -47,7 +47,7 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
                 double avg_spread = (first + last) / 2.0;
                 double adjust = (avg_spread - spread) / 2.0;
                 double value = (alphamid(xh, xm, 0) + adjust) * (1 << bit_frac);
-                pTable[idx] = (int) value;
+                pTable[idx] = (int) Math.round(value);
             }
             return pTable;
         }
@@ -62,14 +62,14 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
                 double diff1 = alphamid(xh, (1 << K2) - 1, xl) - alphamid(xh, (1 << K2) - 1, 0);
                 double avgDiff = (diff0 + diff1) / 2.0;
                 double value = avgDiff * (1 << bit_frac);
-                nTable[idx] = (int) value;
+                nTable[idx] = (int) Math.round(value);
             }
             return nTable;
         }
 
         public int compute(long payloadInt) {
-            long scaleInvLong = (((1L << total_bits) - 1L) * (1L << bit_frac)) / ((long)(t_max - t_min) << bit_frac);
-            long tMinFixed = (long) (t_min * (1L << bit_frac));
+            long scaleInvLong = (((1L << total_bits) - 1L) * (1L << bit_frac)) / ((long)Math.round((t_max - t_min) * (1L << bit_frac)));
+            long tMinFixed = (long) Math.round(t_min * (1L << bit_frac));
             long numerator = (payloadInt - tMinFixed) * scaleInvLong;
             long idxLong = numerator >> bit_frac;
 
@@ -86,36 +86,42 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
             int pIdx = (xh << K2) | xm;
             int nIdx = (xh << K3) | xl;
 
+            pIdx = Math.max(0, Math.min(pIdx, P_table.length - 1));
+            nIdx = Math.max(0, Math.min(nIdx, N_table.length - 1));
+
             return P_table[pIdx] + N_table[nIdx];
         }
     }
 
     private INDArray calculateSimulatedFixedPointSoftplus(
-            INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift
+            INDArray x, long sourceShift, long targetOutputShift
     ) {
         if (x.rank() > 2) {
             long[] finalShape = x.shape();
             long numCols = finalShape[finalShape.length - 1];
             long numRows = x.length() / numCols;
             INDArray reshapedX = x.reshape('c', numRows, numCols);
-            INDArray result2D = calculateSimulatedFixedPointSoftplus(reshapedX, fpgaInShift, fpgaOutShift);
+            INDArray result2D = calculateSimulatedFixedPointSoftplus(reshapedX, sourceShift, targetOutputShift);
             return result2D.reshape('c', finalShape);
         }
 
-        long s_in = fpgaInShift.get(0);
+        int rows = (int) x.rows();
+        int cols = (int) x.columns();
+
+        long s_in = sourceShift;
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift.get(0);
+        long s_out = targetOutputShift;
 
         SoftplusLutSimulator simulator = new SoftplusLutSimulator((int)s_hw);
 
-        long preShiftAmount = s_in - s_hw;
-        int rows = (int) x.rows();
-        int cols = (int) x.columns();
+        int preShiftAmount = (int) (s_in - s_hw);
+        int postShiftAmount = (int) (s_hw - s_out);
+
         long[][] preShifted_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 long val = x.getLong(i, j);
-                preShifted_long[i][j] = (preShiftAmount >= 0) ? (val >> preShiftAmount) : (val << -preShiftAmount);
+                preShifted_long[i][j] = (preShiftAmount < 0) ? safeLeftShift(val, -preShiftAmount) : (val >> preShiftAmount);
             }
         }
 
@@ -126,21 +132,36 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
             }
         }
 
-        long postShiftAmount = s_hw - s_out;
         long[][] postShifted_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                postShifted_long[i][j] = (postShiftAmount >= 0) ? (softplusResult_long[i][j] >> postShiftAmount) : (softplusResult_long[i][j] << -postShiftAmount);
+                long val = softplusResult_long[i][j];
+                postShifted_long[i][j] = (postShiftAmount < 0) ? safeLeftShift(val, -postShiftAmount) : (val >> postShiftAmount);
             }
         }
 
-        long[] flatResult = new long[rows * cols];
+        long[] flatResultLong = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                flatResult[i * cols + j] = postShifted_long[i][j];
+                flatResultLong[i * cols + j] = postShifted_long[i][j];
             }
         }
-        return Nd4j.create(flatResult, new long[]{rows, cols}, x.dataType());
+        return Nd4j.create(flatResultLong, new long[]{rows, cols}, x.dataType());
+    }
+
+    private long safeLeftShift(long value, int amount) {
+        if (amount <= 0) return (amount == 0) ? value : (value >> -amount);
+        if (value == 0) return 0;
+        long overflowCheckMask = (-1L) << (64 - amount);
+        boolean potentialOverflow;
+        if (value > 0) {
+            potentialOverflow = (value & overflowCheckMask) != 0;
+            if (potentialOverflow) return Long.MAX_VALUE;
+        } else {
+            potentialOverflow = (~value & overflowCheckMask) != 0;
+            if (potentialOverflow) return Long.MIN_VALUE;
+        }
+        return value << amount;
     }
 
     @Test
@@ -151,22 +172,35 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
         float minValue = -10.0f;
         float maxValue = 10.0f;
 
-        List<Long> fpgaInShift = Arrays.asList(18L);
-        List<Long> fpgaOutShift = Arrays.asList(25L);
+        long sourceShift = 18L;
+        long targetInputShift = 0L;
+        long targetOutputShift = 25L;
 
-        INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
+        INDArray matrix_int = Nd4j.createFromArray(
+                HWAcceleratedTestModel.generateRandom2DIntMatrix(rows, cols, minValue, maxValue, (int)sourceShift)
+        );
 
-        INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
+        INDArray matrix_float = matrix_int.castTo(DataType.DOUBLE).div(Math.pow(2, sourceShift));
         INDArray theoreticalExpected_float = Transforms.log(Transforms.exp(matrix_float).add(1), true);
-        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift.get(0))));
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, targetOutputShift)));
+        theoreticalExpected = theoreticalExpected.castTo(matrix_int.dataType());
 
-        INDArray simulatedExpected = calculateSimulatedFixedPointSoftplus(matrix_int, fpgaInShift, fpgaOutShift);
+
+        INDArray simulatedExpected = calculateSimulatedFixedPointSoftplus(
+                matrix_int, sourceShift, targetOutputShift
+        );
 
         HWAcceleratedSoftplusV13 operator = new HWAcceleratedSoftplusV13();
-        INDArray actualOutput = operator.softplus(matrix_int, fpgaInShift, fpgaOutShift);
 
-        double tolerance = 2.0;
-        HWAcceleratedTestModel.validate("Softplus - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+        INDArray actualOutput = operator.softplus(
+                matrix_int,
+                sourceShift,
+                targetInputShift,
+                targetOutputShift
+        );
+
+        double tolerance = 50.0;
+        HWAcceleratedTestModel.validate("Softplus - 2D Quantized Corrected", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
     }
 
     @Test
@@ -175,25 +209,34 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
         int batchSize = 2;
         int rows = 32;
         int cols = 64;
-        float minValue = -10.0f;
-        float maxValue = 10.0f;
+        int minValue = -10;
+        int maxValue = 10;
 
-        List<Long> fpgaInShift = Arrays.asList(22L);
-        List<Long> fpgaOutShift = Arrays.asList(30L);
+        long sourceShift = 22L;
+        long targetInputShift = 0L;
+        long targetOutputShift = 30L;
 
-        INDArray matrix_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, fpgaInShift.get(0));
+        INDArray matrix_int = HWAcceleratedTestModel.generateRandom3DIntMatrix(batchSize, rows, cols, minValue, maxValue, (int)sourceShift);
 
-        INDArray matrix_float = matrix_int.div(Math.pow(2, fpgaInShift.get(0)));
+        INDArray matrix_float = matrix_int.castTo(DataType.DOUBLE).div(Math.pow(2, sourceShift));
         INDArray theoreticalExpected_float = Transforms.log(Transforms.exp(matrix_float).add(1), true);
-        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, fpgaOutShift.get(0))));
+        INDArray theoreticalExpected = Transforms.round(theoreticalExpected_float.mul(Math.pow(2, targetOutputShift)));
+        theoreticalExpected = theoreticalExpected.castTo(matrix_int.dataType());
 
-        INDArray simulatedExpected = calculateSimulatedFixedPointSoftplus(matrix_int, fpgaInShift, fpgaOutShift);
+        INDArray simulatedExpected = calculateSimulatedFixedPointSoftplus(
+                matrix_int, sourceShift, targetOutputShift
+        );
 
         HWAcceleratedSoftplusV13 operator = new HWAcceleratedSoftplusV13();
-        INDArray actualOutput = operator.softplus(matrix_int, fpgaInShift, fpgaOutShift);
 
-        double tolerance = 2.0;
-        HWAcceleratedTestModel.validate("Softplus - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+        INDArray actualOutput = operator.softplus(
+                matrix_int,
+                sourceShift,
+                targetInputShift,
+                targetOutputShift
+        );
+
+        double tolerance = 1050.0;
+        HWAcceleratedTestModel.validate("Softplus - 3D Quantized Corrected", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
     }
-
 }

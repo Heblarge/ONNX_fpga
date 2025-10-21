@@ -3,18 +3,20 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
+import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MaxV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
 import java.util.List;
 
-public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13 {
+public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implements MaxV13 {
 
     private final int HW_DIM_MULTIPLE = 32;
 
@@ -22,15 +24,30 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         MaxInputsV13<INDArray> castedInputs = new MaxInputsV13<>(node, inputs);
         List<INDArray> inputTensors = castedInputs.getInputTensors();
-        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
-        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
-        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
-        INDArray outputTensor = this.max(inputTensors, fpgaInShift, fpgaOutShift);
+        Graph graph = node.getGraph();
+        List<Long> targetInputShifts = castedInputs.getFpgaInShift();
+        long targetInputShiftA = targetInputShifts.get(0);
+        long targetInputShiftB = targetInputShifts.get(1);
+
+        String inputAName = node.getInputNames()[0];
+        long sourceShiftA = this.getProducerOutputShift(graph, inputAName, targetInputShiftA);
+        String inputBName = node.getInputNames()[1];
+        long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
+
+        long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
+
+        INDArray outputTensor = this.max(
+                inputTensors,
+                sourceShiftA,
+                sourceShiftB,
+                targetInputShiftA,
+                targetInputShiftB,
+                targetOutputShift
+        );
         return new MaxOutputV13<>(outputTensor);
     }
 
-    public INDArray max(List<INDArray> inputTensors, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    public INDArray max(List<INDArray> inputTensors, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         if (inputTensors == null || inputTensors.isEmpty()) {
             throw new IllegalArgumentException("Max operator requires at least one input tensor.");
         }
@@ -38,7 +55,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         // Iteratively find the element-wise max by pairwise comparison
         INDArray currentMax = inputTensors.get(0);
         for (int i = 1; i < inputTensors.size(); i++) {
-            currentMax = elementwiseMax(currentMax, inputTensors.get(i), fpgaInShift, fpgaOutShift);
+            currentMax = elementwiseMax(currentMax, inputTensors.get(i), sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
         }
         return currentMax;
     }
@@ -46,7 +63,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     /**
      * Refactored to handle broadcasting and reshaping for efficient hardware execution.
      */
-    private INDArray elementwiseMax(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray elementwiseMax(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
 
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
@@ -55,7 +72,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         }
 
         if (a.rank() == 2) {
-            return max2D(a, b, fpgaInShift, fpgaOutShift);
+            return max2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
         } else if (a.rank() > 2) {
             long[] finalShape = a.shape();
             long numCols = finalShape[finalShape.length - 1];
@@ -64,7 +81,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
 
-            INDArray result2D = max2D(reshapedA, reshapedB, fpgaInShift, fpgaOutShift);
+            INDArray result2D = max2D(reshapedA, reshapedB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
 
             return result2D.reshape('c', finalShape);
         } else {
@@ -104,7 +121,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
     /**
      * Performs 2D element-wise max with padding and slicing.
      */
-    private INDArray max2D(INDArray a, INDArray b, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray max2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -121,29 +138,36 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedOperator implements MaxV13
         INDArray paddedB = Nd4j.zeros(b.dataType(), paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
+        INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+        long comparisonShift = Math.max(targetInputShiftA, targetInputShiftB); // e.g., max(10, 9) = 10
+
+        int rescaleShiftA = (int) (sourceShiftA - comparisonShift); // e.g., 10 - 13 = -3 ( << 3 )
+        int rescaleShiftB = (int) (sourceShiftB - comparisonShift); // e.g., 15 - 13 = 2 ( >> 2 )
 
         long[][] fixedPointA = new long[rows][cols];
         long[][] fixedPointB = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = a.getLong(i, j);
-                fixedPointB[i][j] = b.getLong(i, j);
+                long valA = a.getLong(i, j);
+                fixedPointA[i][j] = (rescaleShiftA < 0) ? (valA << -rescaleShiftA) : (valA >> rescaleShiftA);
+                long valB = b.getLong(i, j);
+                fixedPointB[i][j] = (rescaleShiftB < 0) ? (valB << -rescaleShiftB) : (valB >> rescaleShiftB);
             }
         }
 
+        int shiftAmount = (int) (comparisonShift - targetOutputShift);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementmax",
                 0,
                 false,
                 "none",
-                0,
+                shiftAmount,
                 0,
                 0,
                 0,

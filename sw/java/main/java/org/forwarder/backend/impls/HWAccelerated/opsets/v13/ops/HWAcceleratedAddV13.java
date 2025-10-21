@@ -158,17 +158,19 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
         long[][] fixedPointB = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointA[i][j] = a.getLong(i, j) >> rescaleShiftA;
-                fixedPointB[i][j] = b.getLong(i, j) >> rescaleShiftB;
+                long valA = a.getLong(i, j);
+                fixedPointA[i][j] = (rescaleShiftA < 0) ? (valA << -rescaleShiftA) : (valA >> rescaleShiftA);
+                long valB = b.getLong(i, j);
+                fixedPointB[i][j] = (rescaleShiftB < 0) ? (valB << -rescaleShiftB) : (valB >> rescaleShiftB);
             }
         }
 
-        int ShiftAmount = (int) (targetInputShiftA - targetOutputShift);
+        int shiftAmount = (int) (targetInputShiftA - targetOutputShift);
 
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                ShiftAmount,
+                shiftAmount,
                 false,
                 "none",
                 0,

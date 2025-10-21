@@ -3,11 +3,13 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.onnx4j.Inputs;
+import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReluV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
@@ -19,7 +21,7 @@ import java.util.List;
  * with support for both 2D and 3D (batched) tensors.
  * This version automatically pads inputs to be multiples of 32 for hardware compatibility.
  */
-public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV13 {
+public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator implements ReluV13 {
 
     private final int HW_DIM_MULTIPLE = 32;
 
@@ -27,11 +29,19 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         ReluInputsV13<INDArray> castedInputs = new ReluInputsV13<>(node, inputs);
         INDArray inputTensor = castedInputs.getInput();
-        List<Float> fpgaInScales = castedInputs.getFpgaInScales();
-        List<Long> fpgaInShift = castedInputs.getFpgaInShift();
-        List<Float> fpgaOutScale = castedInputs.getFpgaOutScale();
-        List<Long> fpgaOutShift = castedInputs.getFpgaOutShift();
-        INDArray outputTensor = this.relu(inputTensor, fpgaInShift, fpgaOutShift);
+
+        Graph graph = node.getGraph();
+        long targetInputShift = castedInputs.getFpgaInShift().get(0);
+        long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
+        String inputName = node.getInputNames()[0];
+        long sourceShift = this.getProducerOutputShift(graph, inputName, targetInputShift);
+
+        INDArray outputTensor = this.relu(
+                inputTensor,
+                sourceShift,
+                targetInputShift,
+                targetOutputShift
+        );
         return new ReluOutputV13<>(outputTensor);
     }
 
@@ -42,11 +52,11 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The input tensor.
      * @return The result of the Relu operation.
      */
-    public INDArray relu(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    public INDArray relu(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift) {
         if (x.rank() == 2) {
-            return relu2D(x, fpgaInShift, fpgaOutShift);
+            return relu2D(x, sourceShift, targetInputShift, targetOutputShift);
         } else if (x.rank() == 3) {
-            return relu3D(x, fpgaInShift, fpgaOutShift);
+            return relu3D(x, sourceShift, targetInputShift, targetOutputShift);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for Relu: " + x.rank());
         }
@@ -66,7 +76,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The 2D input tensor.
      * @return The 2D result tensor.
      */
-    private INDArray relu2D(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray relu2D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
@@ -77,7 +87,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
         INDArray paddedX = Nd4j.zeros(x.dataType(), paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
-        INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols, fpgaInShift, fpgaOutShift);
+        INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols, sourceShift, targetInputShift, targetOutputShift);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
@@ -88,7 +98,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * @param x The 3D input tensor.
      * @return The 3D result tensor.
      */
-    private INDArray relu3D(INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray relu3D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift) {
         long[] shape = x.shape();
         long batch = shape[0];
         long rows = shape[1];
@@ -98,7 +108,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
-            INDArray reluSlice = relu2D(slice, fpgaInShift, fpgaOutShift);
+            INDArray reluSlice = relu2D(slice, sourceShift, targetInputShift, targetOutputShift);
             result.putSlice(i, reluSlice);
         }
 
@@ -109,24 +119,27 @@ public class HWAcceleratedReluV13 extends HWAcceleratedOperator implements ReluV
      * Private helper to run the Relu operation on the hardware simulator.
      * This method's logic is preserved exactly as requested.
      */
-    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, List<Long> fpgaInShift, List<Long> fpgaOutShift) {
+    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, long sourceShift, long targetInputShift, long targetOutputShift) {
 
-        long s_in = fpgaInShift.get(0);
+        long s_in = sourceShift;
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift.get(0);
+        long s_out = targetOutputShift;
+
+        int preShiftAmount = (int) (s_in - s_hw);
 
         long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                fixedPointInput[i][j] = x.getLong(i, j);
+                long valX = x.getLong(i, j);
+                fixedPointInput[i][j] = (preShiftAmount < 0) ? (valX << -preShiftAmount) : (valX >> preShiftAmount);
             }
         }
-        int preShiftAmount = (int) (s_in - s_hw);
+
         int postShiftAmount = (int) (s_hw - s_out);
         InstJavaTODO instruction = new InstJavaTODO(
                 0,
                 "elementadd",
-                preShiftAmount,
+                0,
                 false,
                 "relu",
                 postShiftAmount,

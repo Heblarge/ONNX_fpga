@@ -4,6 +4,7 @@ import Accelerator.AcceleratorSimInterface;
 import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedTestCase;
 import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTestModel;
 import org.junit.Test;
+import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.ops.transforms.Transforms;
@@ -14,32 +15,33 @@ import java.util.List;
 public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
 
     private INDArray calculateSimulatedFixedPointRelu(
-            INDArray x, List<Long> fpgaInShift, List<Long> fpgaOutShift
+            INDArray x, long sourceShift, /* long targetInputShift, // Not used */ long targetOutputShift
     ) {
-
         if (x.rank() > 2) {
             long[] finalShape = x.shape();
             long numCols = finalShape[finalShape.length - 1];
             long numRows = x.length() / numCols;
             INDArray reshapedX = x.reshape('c', numRows, numCols);
-            INDArray result2D = calculateSimulatedFixedPointRelu(reshapedX, fpgaInShift, fpgaOutShift);
+
+            INDArray result2D = calculateSimulatedFixedPointRelu(reshapedX, sourceShift, targetOutputShift);
             return result2D.reshape('c', finalShape);
         }
 
-        long s_in = fpgaInShift.get(0);
-        long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
-        long s_out = fpgaOutShift.get(0);
-
-        long preShiftAmount = s_in - s_hw;
         int rows = (int) x.rows();
         int cols = (int) x.columns();
+
+        long s_in = sourceShift;
+        long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+        long s_out = targetOutputShift;
+
+        int preShiftAmount = (int) (s_in - s_hw);
+        int postShiftAmount = (int) (s_hw - s_out);
+
         long[][] preShifted_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 long val = x.getLong(i, j);
-                preShifted_long[i][j] = (preShiftAmount >= 0)
-                        ? (val >> preShiftAmount)
-                        : (val << -preShiftAmount);
+                preShifted_long[i][j] = (preShiftAmount < 0) ? (val << -preShiftAmount) : (val >> preShiftAmount);
             }
         }
 
@@ -50,23 +52,21 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
             }
         }
 
-        long postShiftAmount = s_hw - s_out;
         long[][] postShifted_long = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                postShifted_long[i][j] = (postShiftAmount >= 0)
-                        ? (reluResult_long[i][j] >> postShiftAmount)
-                        : (reluResult_long[i][j] << -postShiftAmount);
+                long val = reluResult_long[i][j];
+                postShifted_long[i][j] = (postShiftAmount < 0) ? (val << -postShiftAmount) : (val >> postShiftAmount);
             }
         }
 
-        float[] flatResult = new float[rows * cols];
+        long[] flatResultLong = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                flatResult[i * cols + j] = postShifted_long[i][j];
+                flatResultLong[i * cols + j] = postShifted_long[i][j];
             }
         }
-        return Nd4j.create(flatResult, new long[]{rows, cols});
+        return Nd4j.create(flatResultLong, new long[]{rows, cols}, x.dataType());
     }
 
     @Test
@@ -77,33 +77,40 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
         float minValue = -10.0f;
         float maxValue = 10.0f;
 
-        List<Long> fpgaInShift = Arrays.asList(0L);
-        long s_hw = AcceleratorSimInterface.acceleratorCfg().intWidth();
-        List<Long> fpgaOutShift = Arrays.asList(0L);
+        long sourceShift = 10L;
+        long targetInputShift = 22L;
+        long targetOutputShift = 8L;
+        long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
 
-        INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, fpgaInShift.get(0)));
+        INDArray matrix_int = Nd4j.create(HWAcceleratedTestModel.generateRandom2DFloatMatrix(rows, cols, minValue, maxValue, sourceShift));
 
-        long preShiftAmount = fpgaInShift.get(0) - s_hw;
-        INDArray preShifted_int = (preShiftAmount >= 0)
-                ? matrix_int.div(1L << preShiftAmount)
-                : matrix_int.mul(1L << -preShiftAmount);
-
+        int preShiftAmount = (int) (sourceShift - s_hw);
+        INDArray preShifted_int = Nd4j.create(DataType.LONG, matrix_int.shape());
+        for(int i=0; i<rows; i++) for(int j=0; j<cols; j++){
+            long val = matrix_int.getLong(i, j);
+            preShifted_int.putScalar(i, j, (preShiftAmount < 0) ? (val << -preShiftAmount) : (val >> preShiftAmount));
+        }
         INDArray reluResult_int = Transforms.relu(preShifted_int);
+        int postShiftAmount = (int) (s_hw - targetOutputShift);
+        INDArray theoreticalExpected = Nd4j.create(DataType.LONG, matrix_int.shape());
+        for(int i=0; i<rows; i++) for(int j=0; j<cols; j++){
+            long val = reluResult_int.getLong(i, j);
+            theoreticalExpected.putScalar(i, j, (postShiftAmount < 0) ? (val << -postShiftAmount) : (val >> postShiftAmount));
+        }
 
-        long postShiftAmount = s_hw - fpgaOutShift.get(0);
-        INDArray theoreticalExpected = (postShiftAmount >= 0)
-                ? reluResult_int.div(1L << postShiftAmount)
-                : reluResult_int.mul(1L << -postShiftAmount);
-
-        INDArray simulatedExpected = calculateSimulatedFixedPointRelu(matrix_int, fpgaInShift, fpgaOutShift);
+        INDArray simulatedExpected = calculateSimulatedFixedPointRelu(
+                matrix_int, sourceShift, targetOutputShift
+        );
 
         HWAcceleratedReluV13 operator = new HWAcceleratedReluV13();
-        INDArray actualOutput = operator.relu(matrix_int, null, fpgaOutShift);
+        INDArray actualOutput = operator.relu(
+                matrix_int,
+                sourceShift,
+                targetInputShift,
+                targetOutputShift
+        );
 
-        // 5. Validate all three results
-        double tolerance = 50;
-        HWAcceleratedTestModel.validate("ReLU - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
+        double tolerance = 0.0;
+        HWAcceleratedTestModel.validate("ReLU - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance); // Compare sim vs actual
     }
-
-
 }
