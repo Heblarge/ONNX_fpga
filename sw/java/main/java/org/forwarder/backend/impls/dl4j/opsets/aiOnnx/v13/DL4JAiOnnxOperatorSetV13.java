@@ -1,5 +1,6 @@
 package org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13;
 
+import org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops.HWAcceleratedWhereV13;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v12.DL4JAiOnnxOperatorSetV12;
 import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.*;
 import org.onnx4j.opsets.domain.aiOnnx.v13.AiOnnxOpsetInitializerV13;
@@ -46,6 +47,7 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public GemmV13 getGemmV13(){
         return new DL4JGemmV13();
     }
+    public WhereV13            getWhereV13(){return new              DL4JWhereV13();}
     public AddV13              getAddV13(){
         return new              DL4JAddV13();
     }

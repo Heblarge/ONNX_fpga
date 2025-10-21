@@ -43,11 +43,14 @@ public class HWAcceleratedOperatorSetV13 extends HWAcceleratedOperatorSetV12 imp
     public MatMulV13           getMatMulV13(){
         return new           HWAcceleratedMatMulV13();
     }
-    public GemmV13 getGemmV13(){
-        return new HWAcceleratedGemmV13();
+    public GemmV13             getGemmV13(){
+        return new             HWAcceleratedGemmV13();
     }
     public AddV13              getAddV13(){
         return new              HWAcceleratedAddV13();
+    }
+    public WhereV13            getWhereV13(){
+        return new            HWAcceleratedWhereV13();
     }
     public SubV13              getSubV13(){
         return new              HWAcceleratedSubV13();
