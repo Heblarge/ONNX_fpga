@@ -105,13 +105,50 @@
         - 解析 ONNX 模型结构
         - 初始化模型的默认执行器
         - 准备算子集合（Opsets）
-
+```java
+Model loadedModel = forwarder.load(absoluteModelPath,cfg).executor(SequentialExecutor.class); //FWTestCase.java
+```
+```java
+public static Model load(String onnxModelPath, Config config) {
+String modelId = UUID.randomUUID().toString();
+Model model = new Model(modelId, onnxModelPath, config);
+modelSet.putIfAbsent(modelId, model);
+return model;//Forwarder.java
+}
+```
 2. **准备输入**
     - 在 `Session` 中使用 `feed()` 方法绑定输入张量。
     - 输入张量验证：
         - 名称必须在模型计算图中定义
         - 数据类型和形状必须匹配
     - 输入张量会被转换为后端原生张量，并存入中间结果缓存
+```java
+session.feed(input, false);  //FWTestCase.java
+```
+```java
+public Session<T_BK_TS> feed(String name, Tensor tensor, boolean autoAttach) {
+    //获取计算图的输入
+    GraphInput graphInput = this.backend.getModel().getGraph().getInputs(name);
+    if (graphInput == null) {
+        throw new IllegalArgumentException(String.format("Input named \"%s\" had not be defined in graph", name));
+    } else {
+        //检查输入的tensor的dataType和shape是否和网络定义的一致
+        if (!tensor.equals(graphInput.getValueInfo())) {
+            throw new IllegalArgumentException(
+                    String.format("Shape or DataType is not equals to the input tensor named \"%s\" ", name));
+        }
+    }
+    //转换为后端原生数据类型T_BK_TS
+    T_BK_TS backendTensor = this.backend.toBackendTensor(this.intermediateTensorManager, tensor);
+    //将输入作为中间结果存入一个map中，用name作为key
+    this.intermediateOutputs.put(name, backendTensor);
+    //默认会把输入的Tensor类型也存起来
+    if (autoAttach) {
+        this.exchangeTensorManager.attach(name, tensor);
+    }
+    return this;
+}//Session.java
+```
 
 3. **执行推理**
     - 调用 `Session.forward()`：
@@ -119,6 +156,29 @@
         - 通过执行器递归执行算子
         - 逐步更新中间结果
     - 计算完成后，输出张量会被转换回前端 `Tensor` 类型，封装到 `Outputs` 中
+```java
+session.forward(); //FWTestCase.java
+```
+```java
+public Session<T_BK_TS> forward() {
+    this.intermediateOutputs.putAll(this.backend.getTensorManager().get());
+
+    //从后端获取执行器
+    Executor<T_BK_TS> executor = this.backend.getModel().getExecutor();
+    //递归执行推理
+    executor.execute(this, this.backend.getOpsets());
+    // 处理输出：将后端张量转换回前端Tensor并封装为输出结果
+    for (GraphOutput graphOutput : this.backend.getModel().getGraph().getOutputs()) {
+        T_BK_TS backendTensor = this.intermediateOutputs.get(graphOutput.getName());//从中间结果获取所有名字和网络需要的输出一致的张量
+        Tensor tensor = this.backend.toNativeTensor(this.exchangeTensorManager, graphOutput.getName(),
+                backendTensor);//转换回Tensor类型
+        Output output = Output.wrap(graphOutput.getName(), tensor);//封装为输出对象并存入结果集
+        outputs.append(graphOutput.getName(), output);
+    }
+    return this;
+}//Session.java
+```
+
 
 4. **获取输出**
     - 使用 `Session.getOutput(name)` 获取最终输出张量
