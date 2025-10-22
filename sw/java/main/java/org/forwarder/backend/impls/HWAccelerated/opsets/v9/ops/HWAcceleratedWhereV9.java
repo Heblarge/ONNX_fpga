@@ -1,43 +1,105 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v9.ops;
 
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.api.ops.DynamicCustomOp;
 import org.nd4j.linalg.api.shape.Shape;
 import org.nd4j.linalg.factory.Nd4j;
 import org.onnx4j.Inputs;
+import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
+import org.onnx4j.opsets.domain.aiOnnx.v13.ops.WhereV13;
 import org.onnx4j.opsets.domain.aiOnnx.v9.ops.WhereV9;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import java.util.Arrays;
+import java.util.List;
 
-public class HWAcceleratedWhereV9 extends HWAcceleratedOperator implements WhereV9 {
+
+public class HWAcceleratedWhereV9 extends HWAcceleratedQuantizedOperator implements WhereV9 {
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
-        WhereInputsV9<INDArray> parsed = new WhereInputsV9<>(node, inputs);
-        INDArray result = where(parsed.getCondition(), parsed.getX(), parsed.getY());
+        WhereInputsV9<INDArray> castedInputs = new WhereInputsV9<>(node, inputs);
+
+        INDArray condition = castedInputs.getCondition();
+        INDArray matrixX = castedInputs.getX();
+        INDArray matrixY = castedInputs.getY();
+
+        Graph graph = node.getGraph();
+        List<Long> targetInputShifts = castedInputs.getFpgaInShift();
+
+        long targetInputShiftX = targetInputShifts.get(1);
+        long targetInputShiftY = targetInputShifts.get(2);
+
+        long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
+
+        String inputXName = node.getInputNames()[1];
+        long sourceShiftX = this.getProducerOutputShift(graph, inputXName, targetInputShiftX);
+        String inputYName = node.getInputNames()[2];
+        long sourceShiftY = this.getProducerOutputShift(graph, inputYName, targetInputShiftY);
+        INDArray result = where(
+                condition,
+                matrixX,
+                matrixY,
+                sourceShiftX,
+                sourceShiftY,
+                targetOutputShift
+        );
+
         return new WhereOutputV9<>(result);
     }
 
-    protected INDArray where(INDArray condition, INDArray x, INDArray y) {
-        // 计算广播后形状（两两进行）
-        long[] shapeCond = condition.shape();
-        long[] shapeX = x.shape();
-        long[] shapeY = y.shape();
+    protected INDArray where(INDArray condition, INDArray x, INDArray y,
+                             long sourceShiftX, long sourceShiftY,
+                             long commonShift) {
+        int rescaleAmountX = (int) (sourceShiftX - commonShift);
+        INDArray rescaledX = (rescaleAmountX == 0)
+                ? x
+                : (rescaleAmountX < 0
+                ? x.dup().mul(1L << -rescaleAmountX)
+                : x.dup().div(1L << rescaleAmountX)
+        );
 
-        long[] shapeCX = Shape.broadcastOutputShape(shapeCond, shapeX);
-        long[] finalShape = Shape.broadcastOutputShape(shapeCX, shapeY);
+        int rescaleAmountY = (int) (sourceShiftY - commonShift);
+        INDArray rescaledY = (rescaleAmountY == 0)
+                ? y
+                : (rescaleAmountY < 0
+                ? y.dup().mul(1L << -rescaleAmountY)
+                : y.dup().div(1L << rescaleAmountY)
+        );
 
-        // 创建输出张量（用 x 的数据类型）
-        INDArray output = Nd4j.createUninitialized(x.dataType(), finalShape);
+        // 1. 计算最终广播 shape
+        long[] shapeCondX = broadcastShapes(condition.shape(), rescaledX.shape());
+        long[] finalShape = broadcastShapes(shapeCondX, rescaledY.shape());
 
-        DynamicCustomOp op = DynamicCustomOp.builder("select")
-                .addInputs(condition, x, y)
-                .addOutputs(output)
-                .build();
+        // 2. 广播所有输入
+        INDArray condB = condition.broadcast(finalShape);
+        INDArray xB = rescaledX.broadcast(finalShape);
+        INDArray yB = rescaledY.broadcast(finalShape);
 
-        Nd4j.getExecutioner().exec(op);
-        return output;
+        // 3. 将布尔 condition 转为浮点 0/1
+        INDArray mask = condB.castTo(xB.dataType());
+
+        // 4. 输出 = mask * x + (1 - mask) * y
+        return mask.mul(xB).add(mask.rsub(1).mul(yB));
     }
+
+    private long[] broadcastShapes(long[] a, long[] b) {
+        int maxRank = Math.max(a.length, b.length);
+        long[] result = new long[maxRank];
+        for (int i = 1; i <= maxRank; i++) {
+            long dimA = (i <= a.length) ? a[a.length - i] : 1;
+            long dimB = (i <= b.length) ? b[b.length - i] : 1;
+            if (dimA != dimB && dimA != 1 && dimB != 1) {
+                throw new IllegalArgumentException(
+                        "Shapes " + Arrays.toString(a) + " and " + Arrays.toString(b) + " are not broadcastable."
+                );
+            }
+            result[maxRank - i] = Math.max(dimA, dimB);
+        }
+        return result;
+    }
+
 }

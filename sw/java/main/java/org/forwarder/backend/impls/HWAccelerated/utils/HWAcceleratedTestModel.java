@@ -5,6 +5,7 @@ import org.nd4j.linalg.factory.Nd4j;
 import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
+import org.nd4j.linalg.api.buffer.DataType;
 
 public final class HWAcceleratedTestModel {
 
@@ -159,9 +160,11 @@ public final class HWAcceleratedTestModel {
     public static INDArray generateRandom3DIntMatrix(int batch, int rows, int cols, int min, int max, long scale) {
         INDArray matrix = Nd4j.create(batch, rows, cols);
         for (int i = 0; i < batch; i++) {
-            matrix.putSlice(i, Nd4j.create(generateRandom2DFloatMatrix(rows, cols, min, max, scale)));
+            int[][] sliceData = generateRandom2DIntMatrix(rows, cols, min, max, scale);
+            INDArray slice = Nd4j.createFromArray(sliceData);
+            matrix.putSlice(i, slice);
         }
-        return matrix;
+        return matrix.castTo(DataType.LONG);
     }
 }
 
