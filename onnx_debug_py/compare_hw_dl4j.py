@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import numpy as np
 import os
 import sys
@@ -10,7 +8,7 @@ import argparse
 # HW 后端（整数.bin文件）的输出目录
 JAVA_DIR_1 = 'java_hw_each_layer_outputs_all/data1'
 # DL4J 后端（浮点数.bin文件）的输出目录
-JAVA_DIR_2 = 'java_dl4j_each_layer_outputs/data1'
+JAVA_DIR_2 = 'java_dl4j_each_layer_outputs_ll/data1'
 # --------------------------------------------------
 
 # 定义执行顺序的文件
@@ -18,10 +16,7 @@ ORDER_FILE = 'execution_order.txt'
 DEFAULT_TOLERANCE = 0.5
 
 def load_hw_tensor(file_path):
-    """
-    专门用于加载 HW 后端的 .bin 文件。
-    它会跳过4字节的数据类型字段，并假定数据是 int32 类型。
-    """
+
     try:
         with open(file_path, 'rb') as f:
             rank_bytes = f.read(4)
@@ -36,10 +31,8 @@ def load_hw_tensor(file_path):
                 shape.append(dim)
             shape = tuple(shape)
 
-            # <<< 关键逻辑 1：跳过4字节的数据类型标识 >>>
             f.read(4)
 
-            # <<< 关键逻辑 2：按大端4字节整数读取 >>>
             flat_data = np.fromfile(f, dtype='>i4')
 
             if np.prod(shape) != flat_data.size:
@@ -52,10 +45,7 @@ def load_hw_tensor(file_path):
         return None, None
 
 def load_dl4j_tensor(file_path):
-    """
-    专门用于加载 DL4J 后端的 .bin 文件。
-    它假定文件格式为 [rank][shape][data]，且数据是 float32 类型。
-    """
+
     try:
         with open(file_path, 'rb') as f:
             rank_bytes = f.read(4)
@@ -70,8 +60,8 @@ def load_dl4j_tensor(file_path):
                 shape.append(dim)
             shape = tuple(shape)
 
-            # <<< 关键逻辑：不跳过任何字节，直接按大端4字节浮点数读取 >>>
-            flat_data = np.fromfile(f, dtype='>f4')
+            f.read(4)
+            flat_data = np.fromfile(f, dtype='>i4')
 
             if np.prod(shape) != flat_data.size:
                 print(f"警告 (DL4J)：文件 {os.path.basename(file_path)} 中的形状和数据大小不匹配! Shape={shape}, Data Size={flat_data.size}")

@@ -9,7 +9,7 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=150, suppress=True)
 if len(sys.argv) < 2:
     print("\n错误: 请提供一个 .bin 文件作为参数。")
 
-    print("用法示例: python view_bin_dl4j.py java_dl4j_each_layer_outputs_all/data1/PPQ_Variable_1201.bin\n")
+    print("用法示例: python view_bin_dl4j.py java_dl4j_each_layer_outputs_ll/data1/PPQ_Variable_1201.bin\n")
 
     sys.exit(1)
 
@@ -42,7 +42,7 @@ try:
         print(f"数据类型 (Data Type): {tensor.dtype}")
 
         print("tensor: \n")
-        print(tensor[0])
+        print(tensor)
         print("\n----------------------------------------------------\n")
 
 

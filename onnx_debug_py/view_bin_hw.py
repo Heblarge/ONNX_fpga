@@ -42,7 +42,7 @@ try:
         print(f"数据类型 (Data Type): {tensor.dtype}")
 
         print("tensor: \n")
-        print(tensor[0])
+        print(tensor)
         print("\n----------------------------------------------------\n")
 
 
