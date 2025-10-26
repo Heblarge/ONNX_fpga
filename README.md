@@ -109,8 +109,8 @@
 | 算子类别 | 支持的算子 |
 |---------|-----------|
 | 基础数学运算 | Add, Sub, Mul, Div, Exp, Log, Neg |
-| 线性代数 | MatMul, GeMM, Conv |
-| 激活函数 | Relu, Sigmoid, Softplus, LeakyRelu |
+| 线性代数 | MatMul, GeMM |
+| 激活函数 | Relu, Softplus |
 | 张量操作 | Reshape, Concat, Slice, Transpose, Expand, Tile |
 | 规约操作 | ReduceMax, Max, Sum |
 | 比较操作 | Greater, Where |
