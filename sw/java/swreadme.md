@@ -285,4 +285,348 @@ Forwarder.load()
                     ├─> feed() → 输入绑定
                     ├─> forward() → 前向推理
                     └─> getOutput()/getIntermediateOutputTensor()
+```
+---
+# 执行器层文档
+参考代码路径：/home/user/Workspace/livehps_1/sw/java/main/java/org/forwarder/executor
+## 一、层级定位与总体职责
 
+执行器层（Executor Layer）位于系统的第三层，处于抽象层（Session / Model 管理）和算子实现层（Operator Backend）之间。
+
+- **上层接口：** 由 `Session` 调用，用于控制模型执行。
+- **核心职责：**
+  - 负责解析 ONNX 模型的图结构；
+  - 确定节点（Node）的执行顺序；
+  - 调用相应的算子实现执行每个节点；
+  - 维护中间结果的传递；
+  - 将最终结果返回给 Session。
+
+执行器层的关键点是**如何遍历并调度 ONNX 图中的节点**。  
+为此，框架中提供了三种不同的执行策略：
+
+| 类名 | 执行策略 | 特点 |
+|------|------------|------|
+| `RecursionExecutor` | 递归执行 | 自顶向下递归遍历依赖图 |
+| `RayExecutor` | 拓扑排序 + 反向回溯 | 从输出节点反向遍历前驱节点 |
+| `SequentialExecutor` | 拓扑排序 + 正向执行 | 预先排序所有节点后依次执行（推荐） |
+
+---
+
+## 二、核心类结构
+
+执行器层的基础类是：
+
+```java
+package org.forwarder.executor;
+public abstract class Executor<T_BK_TS> {
+    protected Model model;
+
+    public Executor(Model model) {
+        this.model = model;
+    }
+    public abstract void execute(Session<T_BK_TS> session, OperatorSets opsets);
+}
+```
+所有具体执行器（如 SequentialExecutor、RayExecutor 等）都继承该类，并实现 execute 方法。
+## 三、ExecutorFactory 
+
+ExecutorFactory 负责根据模型创建指定类型的执行器实例。
+```java
+package org.forwarder.executor;
+import java.lang.reflect.Constructor;
+import org.onnx4j.Model;
+public class ExecutorFactory {
+
+    public static Executor<?> createInstance(Model model, Class<? extends Executor> classOfExecutor)
+            throws Exception {
+        Constructor<? extends Executor> c = classOfExecutor.getConstructor(Model.class);
+        return c.newInstance(model);
+    }
+}
+```
+## 四、RayExecutor
+RayExecutor 使用拓扑结构保证节点按依赖顺序执行。
+它从输出节点反向追踪所有依赖（前驱节点），形成一个有序的执行序列。
+```java
+@Override
+public void execute(Session<T_BK_TS> session, OperatorSets opsets) {
+    for (Node node : this.orderedSequenceNodes) {
+        this.handle(session, opsets, node);
+    }
+}
+```
+执行流程：
+
+1.调用 toOrderedSequenceNodes() 获取拓扑排序后的节点序列；
+
+2.依次执行每个节点；
+
+3.将每个节点的输出存入 session 的中间结果中；
+
+4.后续节点从 session 获取输入张量。
+```java
+private Collection<Node> toOrderedSequenceNodes(Graph graph) {
+    Collection<Node> nodes = new LinkedList<Node>();
+    for (GraphOutput graphOutput : graph.getOutputs()) {
+        this.predecessors(nodes, graph, graphOutput.getNode());
+        this.addOrderedSequenceNode(nodes, graphOutput.getNode());
+    }
+    return nodes;
+}
+```
+predecessors() 方法递归追踪前驱节点并存储访问顺序，从而生成拓扑序列。
+
+## 五、SequentialExecutor 
+
+SequentialExecutor 是当前框架中最稳定、可控的执行方式。
+
+它首先对模型图进行拓扑排序（防止循环依赖），然后按正向顺序依次执行节点。
+```java
+@Override
+public void execute(Session<T_BK_TS> session, OperatorSets opsets) {
+    for (Node node : this.orderedSequenceNodes) {
+        this.handle(session, opsets, node);
+    }
+}
+```
+在执行过程中：
+
+每个节点执行前，会从 session 中取出输入；
+
+每个节点执行后，输出张量会重新写入 session；
+
+执行顺序严格遵守依赖拓扑。
+
+## 拓扑排序算法实现
+```java
+private void topologicalSortUtil(Node node, Graph graph, LinkedList<Node> orderedNodes,
+                                 Set<Node> visited, Set<Node> recursionStack) {
+    visited.add(node);
+    recursionStack.add(node);
+    Collection<Node> predecessors = graph.predecessors(node);
+    if (predecessors != null) {
+        for (Node predecessor : predecessors) {
+            if (recursionStack.contains(predecessor)) {
+                throw new IllegalStateException("Graph has a cycle, topological sort not possible.");
+            }
+            if (!visited.contains(predecessor)) {
+                topologicalSortUtil(predecessor, graph, orderedNodes, visited, recursionStack);
+            }
+        }
+    }
+    recursionStack.remove(node);
+    orderedNodes.add(node);
+}
+```
+## 六、执行器层总体执行流程
+```plaintext
+            +----------------+
+            |   Session      |
+            +--------+-------+
+                     |
+                     | 调用 ExecutorFactory 创建执行器
+                     v
+            +----------------+
+            |   Executor     |
+            |  (抽象类)      |
+            +--------+-------+
+                     |
+          +----------+----------+
+          |                     |
+  +---------------+   +----------------+
+  | RayExecutor   |   | SequentialExec |
+  +---------------+   +----------------+
+          |                     |
+          +----------+----------+
+                     |
+           执行节点 handle(node)
+                     |
+           +-------------------+
+           | OperatorSets 调用 |
+           +-------------------+
+                     |
+             +---------------+
+             | Tensor Output |
+             +---------------+
+```
+---
+# 后端层（Backend Layer）文档
+参考代码路径：/home/user/Workspace/livehps_1/sw/java/main/java/org/forwarder/backend
+## 一、模块概述
+
+**后端层（Backend Layer）** 是 Forwarder 框架的底层执行支撑部分，负责模型推理的具体实现与硬件资源调度。
+
+主要的工作是：
+
+- **执行模型计算**：把节点的计算操作交给底层硬件（CPU/GPU/加速器）完成；
+- **管理内存**：保证张量在运行过程中有足够的内存，并在完成后释放；
+- **支持多后端**：可以根据硬件类型加载不同后端，例如 ND4J 或自定义加速器；
+- **张量转换**：在 ONNX 张量和后端张量之间互相转换；
+- **可调试和可扩展**：支持调试模式和新的后端接入。
+- 
+主要组成：
+```text
+org.forwarder.backend
+├─ BackendRegistry      # 注册和管理已安装的 Backend
+├─ BackendLoader        # 扫描服务，初始化可用 Backend
+├─ BackendFactory       # 根据名称动态创建 Backend 实例
+├─ impls.HWAccelerated  # 实现示例：HWAcceleratedBackend + HWAcceleratedSession + DataTypeHelper
+```
+
+---
+
+## 二、核心组件
+
+### 2.1 BackendRegistry
+
+- 单例枚举，用于存储和管理已注册的 Backend 类。
+- 功能：
+    - 注册 Backend 实例；
+    - 根据名称获取 Backend 类；
+    - 获取所有已注册 Backend。
+
+```java
+public enum BackendRegistry {
+    Instance;
+
+    private Map<String, Class<? extends Backend>> backends = new HashMap<>();
+
+    public Class<? extends Backend> get(String backendName) {
+        return this.backends.get(backendName);
+    }
+
+    public void register(Backend<?> backend) {
+        this.backends.put(backend.getName(), backend.getClass());
+        logger.info("Backend named \"{}\" has installed", backend.getName());
+    }
+
+    public Map<String, Class<? extends Backend>> get() {
+        return this.backends;
+    }
+}
+```
+---
+### 2.2 BackendLoader
+
+负责扫描和初始化所有可用 Backend（基于 ServiceLoader）。
+
+功能：
+
+自动扫描实现了 Backend 接口的服务；
+
+将发现的 Backend 注册到 BackendRegistry；
+
+保证初始化只执行一次。
+
+---
+### 2.3 BackendFactory
+
+根据 Backend 名称创建具体 Backend 实例。
+
+功能：
+
+从 BackendRegistry 获取对应 Backend 类；
+
+
+允许动态加载不同硬件后端。
+
+---
+### 2.4 HWAcceleratedBackend
+
+继承自 Backend<INDArray>，提供 ND4J 后端实现。
+
+功能：
+
+把模型里的计算节点交给 ND4J 处理；
+
+提供 Session 来管理内存；
+
+负责 ONNX 张量和 ND4J 张量互转。
+
+---
+### 2.5 HWAcceleratedSession
+
+管理 ND4J Workspace 并绑定到 Backend。
+
+功能：
+
+分配和管理内存 Workspace；
+
+绑定当前线程 Session；
+
+关闭时释放资源。
+
+---
+### 2.6 HWAcceleratedDataTypeHelper（数据类型转换）
+
+作用：ONNX 张量数据类型 ↔ ND4J 后端张量数据类型的映射。
+
+它的作用是 在 ONNX 张量数据类型和后端（ND4J/HWAccelerated）张量数据类型之间进行映射。
+
+这种数据类型映射是 后端特有的实现细节，与具体算子（Operator/Executable）无关。算子层只关心输入输出张量的类型，但不负责类型转换。
+
+在执行器层（Executor）或算子层调用时，需要先通过后端将 ONNX Tensor 转换为后端张量，或者将后端张量转换回 ONNX Tensor，
+HWAcceleratedDataTypeHelper 就是在这个转换过程中使用的工具类。
+
+## 三、后端层总体执行流程
+```text
+A[用户调用 execute()] --> B[Executor 层按顺序遍历节点]
+B --> C{每个节点 Node}
+C --> D[获取输入张量 Input]
+D --> E{Session 中是否已有中间结果?}
+E -- 是 --> F[直接使用中间结果]
+E -- 否 --> G[递归或顺序调用前驱节点计算]
+F --> H[调用 Backend 处理节点计算]
+G --> H
+H --> I[Backend 根据类型转 ONNX Tensor ↔ 后端张量]
+I --> J[执行实际计算，生成输出张量 Output]
+J --> K[将输出存入 Session 中的中间结果]
+K --> L[下一个节点计算]
+L --> M[所有节点计算完成，收集最终输出]
+M --> N[返回给用户或进一步处理]
+```
+
+# 算子层文档
+## 获取 ONNX 算子的实际行为
+可参考 ONNX Python 库文档 https://onnx.ai/onnx/intro/python.html
+
+## 流程
+```text
+ONNX Node ----> 算子层 (Operator)
+Input: 后端张量
+      |
+执行 forward() -> 计算输出
+      |
+Output: 后端张量
+```
+
+## 已实现的算子
+项目支持广泛的ONNX算子，包括但不限于：
+
+| 算子类别 | 支持的算子 |
+|---------|-----------|
+| 基础数学运算 | Add, Sub, Mul, Div, Exp, Log, Neg |
+| 线性代数 | MatMul, GeMM |
+| 激活函数 | Relu, Softplus |
+| 张量操作 | Reshape, Concat, Slice, Transpose, Expand, Tile |
+| 规约操作 | ReduceMax, Max, Sum |
+| 比较操作 | Greater, Where |
+| 其他 | Cast, Constant, Identity, Shape, Squeeze, Unsqueeze |
+
+## 算子版本支持
+项目支持多个ONNX算子集版本（V1-V13），具体支持情况请参考代码中的算子实现。
+
+## 添加onnx标准中已有的新算子的指南
+
+### 步骤概述
+1. **添加算子接口**: 在相应的算子集目录中创建接口定义
+2. **实现算子逻辑**: 在后端实现中编写具体逻辑
+3. **注册算子**: 在算子集初始化器中注册新算子
+4. **验证实现**: 运行测试确保算子正确工作
+5. **编写测试**: 创建完整的测试用例
+
+### 详细流程
+参考项目中的现有算子实现，如Add算子：
+- 接口位置: `sw/java/main/java/org/onnx4j/opsets/domain/aiOnnx/v6/ops/AddV6.java`
+- 实现位置: `sw/java/main/java/org/forwarder/backend/impls/dl4j/opsets/aiOnnx/v6/ops/DL4JAddV6.java`
+- 注册位置: 相应的算子集初始化器文件
