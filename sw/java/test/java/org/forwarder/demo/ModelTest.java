@@ -103,8 +103,8 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "DL4J",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/onnx_debug_py/java_dl4j_each_layer_outputs_all");
-        for (int n = 1; n < 2; n++) {
+                "/home/user/Workspace/livehps_1/java_dl4j_final_layer_outputs");
+        for (int n = 1; n < 2119; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
                     "/mnist/Quantized/data" + n + "/input_seq_pos.pb"

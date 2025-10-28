@@ -206,7 +206,11 @@ public abstract class FWTestCase extends TestCase {
         setupDirectory(outputDir);
         for(String name : finalOutputNames) {
             INDArray tensorData = (INDArray) session.getIntermediateOutput(name);
-            saveTensorAsPb(name, tensorData, outputDir);
+            String saveName = name;
+            if (name.equals("pre_trans_fp")) {
+                saveName = "pre_trans";
+            }
+            saveTensorAsPb(saveName, tensorData, outputDir);
         }
     }
 
@@ -275,7 +279,8 @@ public abstract class FWTestCase extends TestCase {
     private void saveTensorAsPb(String name, INDArray tensor, File outputDir) throws IOException {
         if (tensor == null) return;
         String sanitizedName = name.replace('/', '_').replace(':', '_');
-        File file = new File(outputDir, sanitizedName + ".pb");
+        String fileNameWithPrefix = "output_" + sanitizedName + ".pb";
+        File file = new File(outputDir, fileNameWithPrefix);
 
         TensorProto.Builder builder = TensorProto.newBuilder();
         for (long dim : tensor.shape()) {
