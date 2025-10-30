@@ -65,7 +65,7 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "HWAccelerated",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/onnx_debug_py/java_hw_each_layer_outputs_all");
+                "/home/user/Workspace/livehps_1/java_hw_final_layer_outputs");
         for (int n = 1; n < 2; n++) {
             List<String> inputs = List.of(
                     "/mnist/int32_refpb/int32/data" + n + "/input_seq_pc.pb",
