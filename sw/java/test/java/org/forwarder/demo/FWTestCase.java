@@ -123,57 +123,63 @@ public abstract class FWTestCase extends TestCase {
             assert forwarder != null;
             assert loadedModel!=null;
 
-            for (Entry<List<String>, List<String>> tensorPairPath : tensorPairPaths.entrySet()) {
-                List<Tensor> inputTensors = new ArrayList<>();
-                List<Tensor> expectedOutputTensors = new ArrayList<>();
-                String dataSubDirName = new File(tensorPairPath.getKey().get(0)).getParentFile().getName();
+            // 使用并行流处理多个数据对，实现多核并行
+            tensorPairPaths.entrySet().parallelStream().forEach(tensorPairPath -> {
+                try {
+                    List<Tensor> inputTensors = new ArrayList<>();
+                    List<Tensor> expectedOutputTensors = new ArrayList<>();
+                    String dataSubDirName = new File(tensorPairPath.getKey().get(0)).getParentFile().getName();
 
-                // 加载所有输入 tensor
-                for (int i = 0; i < inputNames.size(); i++) {
-                    inputTensors.add(this.loadTensor(loadedModel, inputNames.get(i), tensorPairPath.getKey().get(i)));
-                }
+                    // 加载所有输入 tensor
+                    for (int i = 0; i < inputNames.size(); i++) {
+                        inputTensors.add(this.loadTensor(loadedModel, inputNames.get(i), tensorPairPath.getKey().get(i)));
+                    }
 
-                // 加载所有预期输出 tensor
-                for (int i = 0; i < outputNames.size(); i++) {
-                    expectedOutputTensors.add(this.loadTensor(loadedModel, outputNames.get(i), tensorPairPath.getValue().get(i)));
-                }
+                    // 加载所有预期输出 tensor
+                    for (int i = 0; i < outputNames.size(); i++) {
+                        expectedOutputTensors.add(this.loadTensor(loadedModel, outputNames.get(i), tensorPairPath.getValue().get(i)));
+                    }
 
-                // 遍历后端
-                for (String backendName : backendNames) {
-                    Backend<?> backend = loadedModel.backend(backendName);
-                    try (Session<?> session = backend.newSession()) {
+                    // 遍历后端
+                    for (String backendName : backendNames) {
+                        Backend<?> backend = loadedModel.backend(backendName);
+                        try (Session<?> session = backend.newSession()) {
 
-                        // 输入全部 feed
-                        for (Tensor input : inputTensors) {
-                            session.feed(input, false);
-                        }
-                        // 执行推理
-                        session.forward();
+                            // 输入全部 feed
+                            for (Tensor input : inputTensors) {
+                                session.feed(input, false);
+                            }
+                            // 执行推理
+                            session.forward();
 
-                        if (saveMode != SaveMode.NONE) {
-                            String basePath = backendOutputPaths.get(backendName);
-                            if (basePath != null && !basePath.isEmpty()) {
-                                File outputDir = new File(basePath, dataSubDirName);
-                                if(saveMode == SaveMode.ALL_INTERMEDIATE) {
-                                    saveAllTensorsAsBin(session, outputDir);
-                                } else if (saveMode == SaveMode.FINAL_ONLY) {
-                                    saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
+                            if (saveMode != SaveMode.NONE) {
+                                String basePath = backendOutputPaths.get(backendName);
+                                if (basePath != null && !basePath.isEmpty()) {
+                                    File outputDir = new File(basePath, dataSubDirName);
+                                    if(saveMode == SaveMode.ALL_INTERMEDIATE) {
+                                        saveAllTensorsAsBin(session, outputDir);
+                                    } else if (saveMode == SaveMode.FINAL_ONLY) {
+                                        saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
+                                    }
                                 }
                             }
-                        }
 
-                        // 获取每个输出并比较
-                        for (int i = 0; i < outputNames.size(); i++) {
-                            Tensor actual = session.getOutput(outputNames.get(i));
-                            Tensor expected = expectedOutputTensors.get(i);
-                            logger.info("======================= Comparing output tensor: {} =======================", outputNames.get(i));
-                            logger.info("  EXPECTED: {}", dumpTensor(expected));
-                            logger.info("    ACTUAL: {}", dumpTensor(actual));
-                            //this.assertSimilarity(actual, expected, tolerance);
+                            // 获取每个输出并比较
+                            for (int i = 0; i < outputNames.size(); i++) {
+                                Tensor actual = session.getOutput(outputNames.get(i));
+                                Tensor expected = expectedOutputTensors.get(i);
+                                logger.info("======================= Comparing output tensor: {} =======================", outputNames.get(i));
+                                logger.info("  EXPECTED: {}", dumpTensor(expected));
+                                logger.info("    ACTUAL: {}", dumpTensor(actual));
+                                //this.assertSimilarity(actual, expected, tolerance);
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    logger.error("Error processing tensor pair: {}", tensorPairPath, e);
+                    throw new RuntimeException(e);
                 }
-            }
+            });
 
         } catch (Exception e) {
             logger.error("Failed to close forwarder instance", e);
