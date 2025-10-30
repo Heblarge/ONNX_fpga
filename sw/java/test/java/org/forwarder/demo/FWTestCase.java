@@ -157,7 +157,7 @@ public abstract class FWTestCase extends TestCase {
                                 if(saveMode == SaveMode.ALL_INTERMEDIATE) {
                                     saveAllTensorsAsBin(session, outputDir);
                                 } else if (saveMode == SaveMode.FINAL_ONLY) {
-                                    saveFinalTensorsAsPb(session, outputNames, outputDir);
+                                    saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
                                 }
                             }
                         }
@@ -202,13 +202,25 @@ public abstract class FWTestCase extends TestCase {
         }
     }
 
-    private void saveFinalTensorsAsPb(Session<?> session, List<String> finalOutputNames, File outputDir) throws IOException {
+    private void saveFinalTensorsAsPb(Session<?> session, List<String> finalOutputNames, File outputDir, OutputMode outputMode) throws IOException {
         setupDirectory(outputDir);
         for(String name : finalOutputNames) {
             INDArray tensorData = (INDArray) session.getIntermediateOutput(name);
             String saveName = name;
             if (name.equals("pre_trans_fp")) {
                 saveName = "pre_trans";
+            }
+            if (outputMode == OutputMode.Dequantize) {
+                if (tensorData.dataType() != DataType.FLOAT) {
+                    tensorData = tensorData.castTo(DataType.FLOAT);
+                }
+                if (saveName.equals("pre_trans")) {
+                    tensorData = tensorData.div(Math.pow(2, 24)); // 除以 2^24
+                } else if (saveName.equals("rot")) {
+                    tensorData = tensorData.div(Math.pow(2, 22)); // 除以 2^22
+                } else if (saveName.equals("trj")) {
+                    tensorData = tensorData.div(Math.pow(2, 25)); // 除以 2^25
+                }
             }
             saveTensorAsPb(saveName, tensorData, outputDir);
         }
