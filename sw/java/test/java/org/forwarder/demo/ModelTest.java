@@ -106,7 +106,7 @@ public class ModelTest extends FWTestCase {
                 "DL4J",
                 // 输出文件夹的位置
                 currentDir+ "/java_dl4j_final_layer_outputs");
-        for (int n = 1; n < 2; n++) {
+        for (int n = 1; n < 2119; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
                     "/mnist/Quantized/data" + n + "/input_seq_pos.pb"
