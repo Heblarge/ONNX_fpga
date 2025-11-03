@@ -3,6 +3,7 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -40,6 +41,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
         long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
         long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
 
+        String nodeName = node.getName();
         INDArray outputTensor = this.add(
                 matrixA,
                 matrixB,
@@ -47,7 +49,8 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
                 sourceShiftB,
                 targetInputShiftA,
                 targetInputShiftB,
-                targetOutputShift);
+                targetOutputShift,
+                nodeName);
         return new AddOutputV13<>(outputTensor);
     }
 
@@ -63,7 +66,9 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
      * Public dispatcher for the Add operation.
      * It handles broadcasting and reshapes tensors for efficient hardware execution.
      */
-    public INDArray add(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    public INDArray add(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB,
+                        long targetInputShiftA, long targetInputShiftB, long targetOutputShift,
+                        String nodeName) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
             a = a.broadcast(broadcastShape);
@@ -71,14 +76,14 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         if (a.rank() == 2) {
-            return add2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            return add2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else if (a.rank() > 2) {
             long[] finalShape = a.shape();
             long numCols = finalShape[finalShape.length - 1];
             long numRows = a.length() / numCols;
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
-            INDArray result2D = add2D(reshapedA, reshapedB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            INDArray result2D = add2D(reshapedA, reshapedB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
             return result2D.reshape('c', finalShape);
         } else {
             throw new IllegalArgumentException(
@@ -114,7 +119,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
     /**
      * Performs 2D element-wise addition with padding and slicing.
      */
-    private INDArray add2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray add2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -135,7 +140,8 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
                 paddedA, paddedB, paddedRows, paddedCols,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift);
+                targetOutputShift,
+                nodeName);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
@@ -143,7 +149,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
     /**
      * Private helper to run 2D element-wise addition on the hardware simulator.
      */
-    private INDArray addOnAccelerator(INDArray a, INDArray b, int rows, int cols, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray addOnAccelerator(INDArray a, INDArray b, int rows, int cols, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         if (targetInputShiftA != targetInputShiftB) {
             throw new IllegalArgumentException(
                     "Inputs to Add operation have different target input shifts ("
@@ -183,6 +189,8 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
         );
 
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+
+        HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointA, fixedPointB, hardwareResult);
 
         long[] output = new long[rows * cols];
         for (int i = 0; i < rows; i++) {

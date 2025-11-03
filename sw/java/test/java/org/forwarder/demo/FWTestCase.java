@@ -39,6 +39,7 @@ import org.forwarder.Forwarder;
 import org.forwarder.Session;
 import org.forwarder.executor.impls.RayExecutor;
 import org.forwarder.executor.impls.SequentialExecutor;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Tensor;
 import org.onnx4j.model.Graph;
@@ -145,6 +146,10 @@ public abstract class FWTestCase extends TestCase {
                         Backend<?> backend = loadedModel.backend(backendName);
                         try (Session<?> session = backend.newSession()) {
 
+                            if (backendName.equals("HWAccelerated")) {
+                                HWAcceleratedCollector.getInstance().reset();
+                            }
+
                             // 输入全部 feed
                             for (Tensor input : inputTensors) {
                                 session.feed(input, false);
@@ -161,6 +166,20 @@ public abstract class FWTestCase extends TestCase {
                                     } else if (saveMode == SaveMode.FINAL_ONLY) {
                                         saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
                                     }
+
+                                    if (backendName.equals("HWAccelerated")) {
+                                        // 假设收集器有一个 saveReport 方法
+                                        // 您需要将 outputDir 传给它
+                                        try {
+                                            File statsFile = new File(outputDir, "hardware_stats.csv");
+                                            String report = HWAcceleratedCollector.getInstance().getReport();
+                                            FileUtils.writeStringToFile(statsFile, report, "UTF-8");
+                                            logger.info("Hardware stats saved to " + statsFile.getAbsolutePath());
+                                        } catch (Exception e) {
+                                            logger.warn("Failed to save hardware stats", e);
+                                        }
+                                    }
+
                                 }
                             }
 
