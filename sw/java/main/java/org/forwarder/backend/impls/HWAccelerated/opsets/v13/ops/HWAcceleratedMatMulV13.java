@@ -2,8 +2,9 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
-import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+// import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator; // (未使用的 import)
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -13,7 +14,7 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MatMulV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
-import scala.tools.nsc.doc.html.HtmlTags;
+// import scala.tools.nsc.doc.html.HtmlTags; // (未使用的 import)
 
 import java.util.List;
 
@@ -38,6 +39,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
         long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
 
+        String nodeName = node.getName();
+
         INDArray outputTensor = this.matmul(
                 matrixA,
                 matrixB,
@@ -45,7 +48,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                 sourceShiftB,
                 targetInputShiftA,
                 targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                nodeName
         );
         return new MatMulOutputV13<>(outputTensor);
     }
@@ -55,13 +59,13 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
-    public INDArray matmul(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    public INDArray matmul(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         if (a.rank() == 2 && b.rank() == 2) {
-            return matmul2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            return matmul2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else if (a.rank() == 3 && b.rank() == 2) {
-            return matmul3D2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            return matmul3D2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else if (a.rank() == 3 && b.rank() == 3) {
-            return matmul3D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            return matmul3D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for MatMul: A=" + a.rank() + ", B=" + b.rank());
         }
@@ -69,7 +73,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
 
 
 
-    private INDArray matmul2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray matmul2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         long[] shapeA = a.shape();
         long[] shapeB = b.shape();
 
@@ -84,7 +88,6 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
             );
         }
 
-        // 1. 计算填充后的尺寸 (向上取整到32的倍数)
         int paddedRowsA = ceilToMultiple(originalRowsA, HW_DIM_MULTIPLE);
         int paddedColsA = ceilToMultiple(originalColsA, HW_DIM_MULTIPLE);
         int paddedColsB = ceilToMultiple(originalColsB, HW_DIM_MULTIPLE);
@@ -96,25 +99,25 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         INDArray paddedB = Nd4j.zeros(b.dataType(),paddedColsA, paddedColsB);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRowsB), NDArrayIndex.interval(0, originalColsB)}, b);
 
-        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+        INDArray paddedResult = matMulOnAccelerator(paddedA, paddedB, paddedRowsA, paddedColsA, paddedColsB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRowsA), NDArrayIndex.interval(0, originalColsB));
     }
 
-    private INDArray matmul3D2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray matmul3D2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         long batchSize = a.size(0);
         long M = a.size(1);
         long K = a.size(2);
         long N = b.size(1);
 
         INDArray a2D = a.reshape('c', batchSize * M, K);
-        INDArray result2D = matmul2D(a2D, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+        INDArray result2D = matmul2D(a2D, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
 
         long[] outputShape = {batchSize, M, N};
         return result2D.reshape('c', outputShape);
     }
 
-    private INDArray matmul3D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray matmul3D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         long batchA = a.size(0);
         long batchB = b.size(0);
         long batch = Math.max(batchA, batchB);
@@ -126,14 +129,14 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         for (int i = 0; i < (int) batch; i++) {
             INDArray sliceA = (batchA == 1) ? a.slice(0) : a.slice(i);
             INDArray sliceB = (batchB == 1) ? b.slice(0) : b.slice(i);
-            INDArray product = matmul2D(sliceA, sliceB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            INDArray product = matmul2D(sliceA, sliceB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
             result.putSlice(i, product);
         }
         return result;
     }
 
 
-    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift){
+    private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName){
 
         int rescaleShiftA = (int) (sourceShiftA - targetInputShiftA);
         int rescaleShiftB = (int) (sourceShiftB - targetInputShiftB);
@@ -170,7 +173,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                 colsB);
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 
-        // 将累加结果转换回浮点数
+        HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointA, fixedPointB, hardwareResult);
+
         long[] output = new long[rowsA * colsB];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {

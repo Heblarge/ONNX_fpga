@@ -2,8 +2,9 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
-import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+// import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator; // (Unused)
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -14,13 +15,8 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ReluV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
-import java.util.List;
+// import java.util.List; // (Unused)
 
-/**
- * Implements the Relu operation using a hardware accelerator,
- * with support for both 2D and 3D (batched) tensors.
- * This version automatically pads inputs to be multiples of 32 for hardware compatibility.
- */
 public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator implements ReluV13 {
 
     private final int HW_DIM_MULTIPLE = 32;
@@ -36,47 +32,34 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
         String inputName = node.getInputNames()[0];
         long sourceShift = this.getProducerOutputShift(graph, inputName, targetInputShift);
 
+        String nodeName = node.getName();
+
         INDArray outputTensor = this.relu(
                 inputTensor,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                nodeName
         );
         return new ReluOutputV13<>(outputTensor);
     }
 
-    /**
-     * Public dispatcher for the Relu operation. It checks the tensor rank
-     * and calls the appropriate implementation.
-     *
-     * @param x The input tensor.
-     * @return The result of the Relu operation.
-     */
-    public INDArray relu(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift) {
+    public INDArray relu(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift, String nodeName) {
         if (x.rank() == 2) {
-            return relu2D(x, sourceShift, targetInputShift, targetOutputShift);
+            return relu2D(x, sourceShift, targetInputShift, targetOutputShift, nodeName);
         } else if (x.rank() == 3) {
-            return relu3D(x, sourceShift, targetInputShift, targetOutputShift);
+            return relu3D(x, sourceShift, targetInputShift, targetOutputShift, nodeName);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for Relu: " + x.rank());
         }
     }
 
-    /**
-     * Calculates the ceiling of a value to the nearest multiple.
-     */
     private int ceilToMultiple(int value, int multiple) {
         if (multiple == 0) return value;
         return ((value + multiple - 1) / multiple) * multiple;
     }
 
-    /**
-     * Performs 2D Relu operation with padding and slicing.
-     *
-     * @param x The 2D input tensor.
-     * @return The 2D result tensor.
-     */
-    private INDArray relu2D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift) {
+    private INDArray relu2D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift, String nodeName) {
         long[] shape = x.shape();
         int originalRows = (int) shape[0];
         int originalCols = (int) shape[1];
@@ -87,39 +70,29 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
         INDArray paddedX = Nd4j.zeros(x.dataType(), paddedRows, paddedCols);
         paddedX.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, x);
 
-        INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols, sourceShift, targetInputShift, targetOutputShift);
+        INDArray paddedResult = reluOnAccelerator(paddedX, paddedRows, paddedCols, sourceShift, targetInputShift, targetOutputShift, nodeName);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-    /**
-     * Performs 3D (batched) Relu operation.
-     *
-     * @param x The 3D input tensor.
-     * @return The 3D result tensor.
-     */
-    private INDArray relu3D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift) {
+    private INDArray relu3D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift, String nodeName) {
         long[] shape = x.shape();
         long batch = shape[0];
-        long rows = shape[1];
-        long cols = shape[2];
+        // long rows = shape[1]; // (Unused)
+        // long cols = shape[2]; // (Unused)
 
         INDArray result = Nd4j.createUninitialized(x.dataType(), shape, 'c');
 
         for (int i = 0; i < (int) batch; i++) {
             INDArray slice = x.slice(i);
-            INDArray reluSlice = relu2D(slice, sourceShift, targetInputShift, targetOutputShift);
+            INDArray reluSlice = relu2D(slice, sourceShift, targetInputShift, targetOutputShift, nodeName);
             result.putSlice(i, reluSlice);
         }
 
         return result;
     }
 
-    /**
-     * Private helper to run the Relu operation on the hardware simulator.
-     * This method's logic is preserved exactly as requested.
-     */
-    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, long sourceShift, long targetInputShift, long targetOutputShift) {
+    private INDArray reluOnAccelerator(INDArray x, int rows, int cols, long sourceShift, long targetInputShift, long targetOutputShift, String nodeName) {
 
         long s_in = sourceShift;
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
@@ -153,6 +126,8 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
 
         long[][] matrixB_zero = new long[rows][cols];
         long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
+
+        HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointInput, matrixB_zero, hardwareResult);
 
         long[] output = new long[rows * cols];
         for (int i = 0; i < rows; i++) {
