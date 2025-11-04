@@ -145,12 +145,8 @@ case class WrapForFPGA (FPGACfg: FPGACfg) extends Component{
 
   slicer.io.inst <> instAxi4ToStream.io.out//io.inst
   slicer.io.slicedInst <> collector.io.slicedInst
-  slicer.io.readAddrA <> dataPumpA.io.TaskStream
-  slicer.io.readDataA <> dataPumpA.io.DataStream
-  slicer.io.readAddrB <> dataPumpB.io.TaskStream
-  slicer.io.readDataB <> dataPumpB.io.DataStream
-  io.memPortA <> dataPumpA.io.MemoryReadPort
-  io.memPortB <> dataPumpB.io.MemoryReadPort
+  io.memPortA <> slicer.io.memoryReadPortA
+  io.memPortB <> slicer.io.memoryReadPortB
 
   val clkCore = ClockDomain.external("SystolicArray2D_CC_core")
   slicer.io.matAfterSlicers.zip(collector.io.matAfterActivations).foreach { case (matAfterSlicer, matAfterActivation) =>
@@ -166,10 +162,8 @@ case class WrapForFPGA (FPGACfg: FPGACfg) extends Component{
     systolicArray2DWrapper.io.out_Mats_with_Core_Instruction <> activation.io.in_Mats
     matAfterActivation <> activation.io.out_Mats
   }
-  collector.io.writeAddr <> datapumpZ.io.TaskStream
-  collector.io.writeData <> datapumpZ.io.DataStream
 
-  io.memPortZ <> datapumpZ.io.MemoryWritePort
+  io.memPortZ <> collector.io.memoryWritePort
 }
 object WrapForFPGA_Verilog extends App {
   val FileDir = "rtl/WrapForFPGA/verilog"

@@ -43,12 +43,6 @@ case class AcceleratorCfg(
     elementWidthB = elementWidth,
     numCores = numCores
   )
-  val dataPumpMm2sCfg = DataPump_mm2s_Config(
-    mem_data_width = dataWidth,
-    mem_addr_width = AddressWidth,
-    RepeatNum_Max = 1,
-    Enable_Padding_logic = false
-  )
   val systolicArray2DWrapCfg = SystolicArray2D_Wrap_Config(
     in_Length_Max = systolicArraySideNum,
     in_Length_Min = systolicArraySideNum,
@@ -91,23 +85,13 @@ case class AcceleratorCfg(
     elementWidthZ = elementWidth,
     numCores = numCores
   )
-  val dataPumpS2mmCfg = DataPump_s2mm_Config(
-    mem_data_width = dataWidth,
-    mem_addr_width = AddressWidth,
-    RepeatNum_Max = 1,
-    Enable_UnPadding_logic = false,
-    Enable_Error_Port_logic = false
-  )
 }
 
 case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
   val slicer = Slicer(acceleratorCfg.slicerCfg)
-  val dataPumpA = DataPump_mm2s(acceleratorCfg.dataPumpMm2sCfg)
-  val dataPumpB = DataPump_mm2s(acceleratorCfg.dataPumpMm2sCfg)
   val sdpramA = Sdpram(addrWidth = acceleratorCfg.AddressWidth, dataWidth = acceleratorCfg.dataWidth)
   val sdpramB = Sdpram(addrWidth = acceleratorCfg.AddressWidth, dataWidth = acceleratorCfg.dataWidth)
   val collector = Collector(acceleratorCfg.collectorCfg)
-  val datapumpZ = DataPump_s2mm(acceleratorCfg.dataPumpS2mmCfg)
   val sdpramZ = Sdpram(acceleratorCfg.AddressWidth, acceleratorCfg.dataWidth)
 
   val io = new Bundle {
@@ -116,13 +100,9 @@ case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
 
   slicer.io.inst <> io.inst
   slicer.io.slicedInst <> collector.io.slicedInst
-  slicer.io.readAddrA <> dataPumpA.io.TaskStream
-  slicer.io.readDataA <> dataPumpA.io.DataStream
-  slicer.io.readAddrB <> dataPumpB.io.TaskStream
-  slicer.io.readDataB <> dataPumpB.io.DataStream
-  sdpramA.io.read <> dataPumpA.io.MemoryReadPort
+  slicer.io.memoryReadPortA <> sdpramA.io.read
+  slicer.io.memoryReadPortB <> sdpramB.io.read
   sdpramA.noWrite()
-  sdpramB.io.read <> dataPumpB.io.MemoryReadPort
   sdpramB.noWrite()
 
   val clkCore = ClockDomain.external("SystolicArray2D_CC_core")
@@ -140,11 +120,9 @@ case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
     matAfterActivation <> activation.io.out_Mats
   }
 
-  collector.io.writeAddr <> datapumpZ.io.TaskStream
-  collector.io.writeData <> datapumpZ.io.DataStream
-  sdpramZ.io.write <> datapumpZ.io.MemoryWritePort
+  collector.io.memoryWritePort <> sdpramZ.io.write
   sdpramZ.noRead()
-  //防止这些模块被剪枝
+  // 防止这些模块被剪枝
   sdpramA.io.dontSimplifyIt()
   sdpramB.io.dontSimplifyIt()
   sdpramZ.io.dontSimplifyIt()
@@ -182,10 +160,10 @@ object Accelerator_Verilog extends App {
   //   slicedInstFifoDepth = 32,
   //   numCores = 2
   // )
-      SpinalConfig(
-        targetDirectory = FileDir,
-        oneFilePerComponent = true,
-        removePruned = true,
-        bitVectorWidthMax = 100000
-      ).generateVerilog(new Accelerator(acceleratorCfg))//.printPruned()
-  }
+  SpinalConfig(
+    targetDirectory = FileDir,
+    oneFilePerComponent = true,
+    removePruned = true,
+    bitVectorWidthMax = 100000
+  ).generateVerilog(new Accelerator(acceleratorCfg)) // .printPruned()
+}

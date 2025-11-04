@@ -2,6 +2,7 @@ package Slicer
 
 import Util._
 import Interface._
+import DataPump._
 
 import spinal.core._
 import spinal.lib.{Stream, master, slave, StreamArbiterFactory}
@@ -42,20 +43,12 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
       SlicecntWidth = collectorCfg.SlicecntWidth
     )
 
-  def WriteAddrType =
-    Task_s2mm_TypeDef(
-      mem_addr_width = collectorCfg.AddressWidth,
-      mem_data_width = 0,
-      RepeatNum_width = 1,
-      Enable_UnPadding_logic = false
-    )
-
-  def WriteDataType = Data_s2mm_TypeDef(collectorCfg.dataWidthZ)
+  def MemoryWritePortType =
+    MemoryWritePort_TypeDef(AddressWidth = collectorCfg.AddressWidth, DataWidth = collectorCfg.dataWidthZ)
 
   val io = new Bundle {
     val slicedInst = slave Stream SlicedInstType
-    val writeAddr = master Stream WriteAddrType
-    val writeData = master Stream WriteDataType
+    val memoryWritePort = master(MemoryWritePortType)
     val matAfterActivations = Vec.fill(collectorCfg.numCores)(slave Stream MatAfterActivationType)
   }
 
@@ -105,30 +98,15 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     matZsub(matZSubReceiveRowCnt) := matAfterActivation.Activation_x
   }
 
-  val matZSubWriteRowCnt = Cnt(collectorCfg.systolicArraySideNum - 1, slicedInst.fire, io.writeData.fire)
+  val matZSubWriteRowCnt = Cnt(collectorCfg.systolicArraySideNum - 1, slicedInst.fire, io.memoryWritePort.Valid)
   matZsubWriteFinish := matZSubWriteRowCnt.willOverflow
-
-  io.writeAddr.StartAddr :=
+  io.memoryWritePort.Valid := Mux(matZSubWriteRowCnt === 0, matZsubReceiveFinish, True)
+  io.memoryWritePort.Address :=
     slicedInstReg.outputAddress + ((Mux(slicedInstReg.doTranspose, matBColSliceCnt, matARowSliceCnt) *
       collectorCfg.systolicArraySideNum + matZSubWriteRowCnt) * slicedInstReg.outputShape(1) /
       collectorCfg.systolicArraySideNum).resized + Mux(slicedInstReg.doTranspose, matARowSliceCnt, matBColSliceCnt)
-  io.writeAddr.RepeatNum := 1
-  io.writeAddr.Offset := 0
-  io.writeAddr.valid.setAsReg().init(False)
-  when(io.writeAddr.fire) {
-    io.writeAddr.valid := False
-  } elsewhen (matZsubReceiveFinish || io.writeData.fire && !matZSubWriteRowCnt.willOverflowIfInc) {
-    io.writeAddr.valid := True
-  }
 
-  io.writeData.data := matZsub.asBits.subdivideIn(collectorCfg.dataWidthZ bits)(matZSubWriteRowCnt)
-  io.writeData.Final := True
-  io.writeData.valid.setAsReg.init(False)
-  when(io.writeData.fire) {
-    io.writeData.valid := False
-  } elsewhen (io.writeAddr.fire) {
-    io.writeData.valid := True
-  }
+  io.memoryWritePort.Data := matZsub.asBits.subdivideIn(collectorCfg.dataWidthZ bits)(matZSubWriteRowCnt)
 
   val matZSliceCnt = Cnt(
     slicedInstReg.outputShape(0) / collectorCfg.systolicArraySideNum *
