@@ -175,7 +175,6 @@ object CollectorTb extends App {
       while (true) {
         dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
         dut.clockDomain.waitSampling()
-        dut.clockDomain.waitSampling()
         val instSim = instSims(n)
         val matZRef = instSim.transposeSim(matZs(n))
         val matZResult = memGetMat(

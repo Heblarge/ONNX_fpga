@@ -86,8 +86,7 @@ object AcceleratorSimInterface {
 
       fork {
         while (true) {
-          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean == true)
-          dut.clockDomain.waitSampling()
+          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
           dut.clockDomain.waitSampling()
           matZ = memGetMat(
             dut.sdpramZ.mem,

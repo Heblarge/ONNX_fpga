@@ -50,6 +50,7 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     val slicedInst = slave Stream SlicedInstType
     val memoryWritePort = master(MemoryWritePortType)
     val matAfterActivations = Vec.fill(collectorCfg.numCores)(slave Stream MatAfterActivationType)
+    val instFinish = out Bool ()
   }
 
   val slicedInst = Stream(SlicedInstType)
@@ -115,4 +116,5 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     matZsubWriteFinish
   )
   instFinish := matZSliceCnt.willOverflow
+  io.instFinish := RegNext(instFinish, False)
 }
