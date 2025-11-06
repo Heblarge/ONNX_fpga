@@ -17,11 +17,14 @@ import org.onnx4j.opsets.operator.OperatorOutputs;
 // import scala.tools.nsc.doc.html.HtmlTags; // (未使用的 import)
 
 import java.util.List;
+import java.util.Arrays;
+import static org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorTileUtils.*;
 
 
 public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator implements MatMulV13 {
 
-    private final int HW_DIM_MULTIPLE = 32;
+    private static final int HW_DIM_MULTIPLE = 16;
+    private static final int MAX_HW_ELEMENTS = 512 * 512;
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -158,20 +161,70 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         }
 
         int shiftAmount = (int) (targetInputShiftA + targetInputShiftB - targetOutputShift);
-        InstJavaTODO instruction = new InstJavaTODO(
-                0,
-                "matmul",
-                shiftAmount,
-                false,
-                "none",
-                0,
-                0,
-                0,
-                0,
-                rowsA,
-                colsA,
-                colsB);
-        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+
+        final int K = colsA;
+        int maxTileM = (MAX_HW_ELEMENTS / K);
+        int maxTileN = (MAX_HW_ELEMENTS / K);
+
+        if (maxTileM < HW_DIM_MULTIPLE) {
+            throw new IllegalArgumentException(
+                    String.format("Node %s: Cannot tile A. Matrix K dimension (%d) is too large. " +
+                                    "Hardware can only support %d rows (M) with this width, but operator requires multiples of %d.",
+                            nodeName, K, maxTileM, HW_DIM_MULTIPLE)
+            );
+        }
+        if (maxTileN < HW_DIM_MULTIPLE) {
+            throw new IllegalArgumentException(
+                    String.format("Node %s: Cannot tile B. Matrix K dimension (%d) is too large. " +
+                                    "Hardware can only support %d cols (N) with this width, but operator requires multiples of %d.",
+                            nodeName, K, maxTileN, HW_DIM_MULTIPLE)
+            );
+        }
+
+        int hwTileCap_M = (maxTileM / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
+        int hwTileCap_N = (maxTileN / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
+
+        long[][] hardwareResult = new long[rowsA][colsB];
+
+        for (int m_offset = 0; m_offset < rowsA; ) {
+            int rowsRemainingM = rowsA - m_offset;
+            int TILE_M = Math.min(rowsRemainingM, hwTileCap_M);
+            if (TILE_M <= 0) break;
+
+            long[][] tileA = new long[TILE_M][K];
+            copyTileFromSource(tileA, fixedPointA, m_offset, 0, TILE_M, K);
+
+            for (int n_offset = 0; n_offset < colsB; ) {
+                int rowsRemainingN = colsB - n_offset;
+                int TILE_N = Math.min(rowsRemainingN, hwTileCap_N);
+                if (TILE_N <= 0) break;
+
+                long[][] tileB = new long[K][TILE_N];
+                for (int k_idx = 0; k_idx < K; k_idx++) {
+                    System.arraycopy(fixedPointB[k_idx], n_offset, tileB[k_idx], 0, TILE_N);
+                }
+
+                InstJavaTODO instruction = new InstJavaTODO(
+                        0,
+                        "matmul",
+                        shiftAmount,
+                        false,
+                        "none",
+                        0,
+                        0,
+                        0,
+                        0,
+                        TILE_M,
+                        K,
+                        TILE_N);
+
+                long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+                copyTileToResult(hardwareResult, tileResult, m_offset, n_offset, TILE_M, TILE_N);
+
+                n_offset += TILE_N;
+            }
+            m_offset += TILE_M;
+        }
 
         HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointA, fixedPointB, hardwareResult);
 

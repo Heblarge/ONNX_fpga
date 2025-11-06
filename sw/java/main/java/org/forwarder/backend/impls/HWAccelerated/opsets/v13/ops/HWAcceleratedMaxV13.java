@@ -15,11 +15,14 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MaxV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import static org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorTileUtils.*;
+
 import java.util.List;
 
 public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implements MaxV13 {
 
-    private final int HW_DIM_MULTIPLE = 32;
+    private static final int HW_DIM_MULTIPLE = 16;
+    private static final int MAX_HW_ELEMENTS = 512 * 512;
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -164,23 +167,53 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         int shiftAmount = (int) (comparisonShift - targetOutputShift);
-        InstJavaTODO instruction = new InstJavaTODO(
-                0,
-                "elementmax",
-                0,
-                false,
-                "none",
-                shiftAmount,
-                0,
-                0,
-                0,
-                rows,
-                cols,
-                cols
-        );
 
-        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        long[][] hardwareResult = new long[rows][cols];
 
+        int maxRowsPerTile = MAX_HW_ELEMENTS / cols;
+        if (maxRowsPerTile < HW_DIM_MULTIPLE) {
+            throw new IllegalArgumentException(
+                    String.format("Node %s: Cannot tile. Matrix column dimension (%d) is too large. " +
+                                    "Hardware can only support %d rows with this width, but operator requires multiples of %d.",
+                            nodeName, cols, maxRowsPerTile, HW_DIM_MULTIPLE)
+            );
+        }
+
+        int hwTileCap = (maxRowsPerTile / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
+
+        for (int rowOffset = 0; rowOffset < rows; ) {
+            int rowsRemaining = rows - rowOffset;
+            int TILE_ROWS = Math.min(rowsRemaining, hwTileCap);
+
+            if (TILE_ROWS <= 0) break;
+
+            long[][] tileA = new long[TILE_ROWS][cols];
+            long[][] tileB = new long[TILE_ROWS][cols];
+
+            InstJavaTODO instruction = new InstJavaTODO(
+                    0,
+                    "elementmax",
+                    0,
+                    false,
+                    "none",
+                    shiftAmount,
+                    0,
+                    0,
+                    0,
+                    TILE_ROWS,
+                    cols,
+                    cols
+            );
+
+            copyTileFromSource(tileA, fixedPointA, rowOffset, 0, TILE_ROWS, cols);
+            copyTileFromSource(tileB, fixedPointB, rowOffset, 0, TILE_ROWS, cols);
+
+            long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+
+            copyTileToResult(hardwareResult, tileResult, rowOffset, 0, TILE_ROWS, cols);
+
+            rowOffset += TILE_ROWS;
+        }
         HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointA, fixedPointB, hardwareResult);
 
         long[] output = new long[rows * cols];

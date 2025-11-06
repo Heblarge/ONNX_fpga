@@ -15,11 +15,14 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ExpV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import static org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorTileUtils.*;
+
 // import java.util.List; // (Unused)
 
 public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implements ExpV13 {
 
-    private final int HW_DIM_MULTIPLE = 32;
+    private static final int HW_DIM_MULTIPLE = 16;
+    private static final int MAX_HW_ELEMENTS = 512 * 512;
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -110,24 +113,52 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         int postShiftAmount = (int) (s_hw - s_out);
-        InstJavaTODO instruction = new InstJavaTODO(
-                0,
-                "elementadd",
-                0,
-                false,
-                "exp",
-                postShiftAmount,
-                0,
-                0,
-                0,
-                rows,
-                cols,
-                cols
-        );
-
         long[][] matrixB_zero = new long[rows][cols];
-        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointInput, matrixB_zero, instruction);
+        long[][] hardwareResult = new long[rows][cols];
 
+        int maxRowsPerTile = MAX_HW_ELEMENTS / cols;
+        if (maxRowsPerTile < HW_DIM_MULTIPLE) {
+            throw new IllegalArgumentException(
+                    String.format("Node %s: Cannot tile. Matrix column dimension (%d) is too large. " +
+                                    "Hardware can only support %d rows with this width, but operator requires multiples of %d.",
+                            nodeName, cols, maxRowsPerTile, HW_DIM_MULTIPLE)
+            );
+        }
+
+        int hwTileCap = (maxRowsPerTile / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
+
+        for (int rowOffset = 0; rowOffset < rows; ) {
+            int rowsRemaining = rows - rowOffset;
+            int TILE_ROWS = Math.min(rowsRemaining, hwTileCap);
+
+            if (TILE_ROWS <= 0) break;
+
+            long[][] tileA = new long[TILE_ROWS][cols];
+            long[][] tileB = new long[TILE_ROWS][cols];
+
+            InstJavaTODO instruction = new InstJavaTODO(
+                    0,
+                    "elementadd",
+                    0,
+                    false,
+                    "exp",
+                    postShiftAmount,
+                    0,
+                    0,
+                    0,
+                    TILE_ROWS,
+                    cols,
+                    cols
+            );
+
+            copyTileFromSource(tileA, fixedPointInput, rowOffset, 0, TILE_ROWS, cols);
+
+            long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+
+            copyTileToResult(hardwareResult, tileResult, rowOffset, 0, TILE_ROWS, cols);
+
+            rowOffset += TILE_ROWS;
+        }
         HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointInput, matrixB_zero, hardwareResult);
 
         long[] output = new long[rows * cols];
