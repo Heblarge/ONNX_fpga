@@ -44,11 +44,16 @@ Forwarder 层核心组成：
 | `Executor` | 遍历 / 拓扑排序计算图，调度每个节点执行算子 |
 
 ---
-架构
+## 架构
+
+![1](./graph/forwarder.png)
+
+其中backend会在后面的后端实现层介绍
 
 ---
-执行流程图
+## 执行流程图
 
+![1](./graph/ForwarderFlow.png)
 ---
 ## 核心类说明
 ```text
@@ -317,7 +322,7 @@ private void topologicalSortUtil(Node node, Graph graph, LinkedList<Node> ordere
 ---
 ## 核心流程
 
-抽象层的完整流程如下：
+Forwarder层的完整流程如下：
 
 1. **加载模型**
     - 使用 `Forwarder.load(onnxModelPath, config)` 加载 ONNX 模型。
@@ -440,6 +445,8 @@ ONNX4J 的抽象层主要负责把 ONNX 模型转换成可以操作的内部结�
 | `opsets` | 算子注册表与抽象接口（OperatorSetId、Operator）                       |
 | `exceptions` | 异常处理（ModelException等）                                     |
 
+![1](./graph/Abstraction.png)
+
 ---
 ## 二. 框架流程
 
@@ -557,13 +564,17 @@ tensorManager.attach("conv_weight", tensor);
 Tensor t = tensorManager.get("conv_weight");
 ```
 
+### 8.Prototype
+- 定义Tensor的形状和数据类型，记录结构信息但不储存真实数据
+- 连接模型与具体Tensor数据
 
-### 8. Opsets
+
+### 9. Opsets
 Opsets（操作集合）表示模型中使用的所有节点操作类型及其版本。在 ONNX 模型中，每个节点都属于某个操作（比如卷积、加法等），而 Opsets 记录了这些操作对应的版本信息。  
 在 ONNX4J 中，`Model` 类使用 `OperatorSetId[] opsetIds` 保存 Opsets 信息。
 - 功能：保证模型中每个节点的操作在 ONNX 支持的版本范围内，避免节点无法执行或版本不兼容的情况。
 
-### 9. Exceptions
+### 10. Exceptions
 Exceptions（异常）用于处理模型加载、解析和验证过程中出现的错误。
 
 功能：
@@ -599,6 +610,8 @@ org.forwarder.backend
 ├─ BackendFactory       # 根据名称动态创建 Backend 实例
 ├─ impls.HWAccelerated  # 实现示例：HWAcceleratedBackend + HWAcceleratedSession + DataTypeHelper
 ```
+现在的impls有DL4j和HWAccelerated两种，其中DL4j是所有算子由软件完成实现，HWAccelerated是部分算子由硬件完成实现。
+
 
 ---
 
@@ -709,36 +722,13 @@ public enum BackendRegistry {
 HWAcceleratedDataTypeHelper 就是在这个转换过程中使用的工具类。
 
 ## 三、后端层总体执行流程
-```text
-A[用户调用 execute()] --> B[Executor 层按顺序遍历节点]
-B --> C{每个节点 Node}
-C --> D[获取输入张量 Input]
-D --> E{Session 中是否已有中间结果?}
-E -- 是 --> F[直接使用中间结果]
-E -- 否 --> G[递归或顺序调用前驱节点计算]
-F --> H[调用 Backend 处理节点计算]
-G --> H
-H --> I[Backend 根据类型转 ONNX Tensor ↔ 后端张量]
-I --> J[执行实际计算，生成输出张量 Output]
-J --> K[将输出存入 Session 中的中间结果]
-K --> L[下一个节点计算]
-L --> M[所有节点计算完成，收集最终输出]
-M --> N[返回给用户或进一步处理]
-```
+
+![1](./graph/backendflow.png)
 
 ## 四、算子
 ### 获取 ONNX 算子的实际行为
 可参考 ONNX Python 库文档 https://onnx.ai/onnx/intro/python.html
 
-### 流程
-```text
-ONNX Node ----> 算子层 (Operator)
-Input: 后端张量
-      |
-执行 forward() -> 计算输出
-      |
-Output: 后端张量
-```
 
 ### 已实现的算子
 项目支持广泛的ONNX算子，包括但不限于：
@@ -766,7 +756,7 @@ Output: 后端张量
 5. **编写测试**: 创建完整的测试用例
 
 ### 详细流程
-参考项目中的现有算子实现，如Add算子：
+参考项目中的现有算子实现，如Add算子(DL4J)：
 - 接口位置: `sw/java/main/java/org/onnx4j/opsets/domain/aiOnnx/v6/ops/AddV6.java`
 - 实现位置: `sw/java/main/java/org/forwarder/backend/impls/dl4j/opsets/aiOnnx/v6/ops/DL4JAddV6.java`
 - 注册位置: 相应的算子集初始化器文件
