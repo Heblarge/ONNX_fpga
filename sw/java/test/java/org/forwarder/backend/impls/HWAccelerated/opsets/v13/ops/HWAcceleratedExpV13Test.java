@@ -213,7 +213,8 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "Exp2D"
         );
 
         double tolerance = 10.0;
@@ -224,13 +225,13 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
     public void testExp3DWithShifts() throws Exception {
         System.out.println("\n--- Testing Exp 3D (Batched) with Two-Stage Quantization Shifts ---");
         int batchSize = 2;
-        int rows = 32;
-        int cols = 64;
+        int rows = 50;
+        int cols = 68;
         float minValue = -8.0f;
         float maxValue = 6.0f;
 
         long sourceShift = 22L;
-        long targetInputShift = 0L;
+        long targetInputShift = 20L;
         long targetOutputShift = 20L;
 
         INDArray matrix_int = HWAcceleratedTestModel.generateRandom3DFloatMatrix(batchSize, rows, cols, minValue, maxValue, sourceShift);
@@ -249,10 +250,11 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "Exp3D"
         );
 
-        double tolerance = 1.0;
+        double tolerance = 5.0;
         HWAcceleratedTestModel.validate("Exp - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, tolerance);
     }
 

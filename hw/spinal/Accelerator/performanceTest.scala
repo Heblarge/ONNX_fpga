@@ -176,8 +176,7 @@ object AcceleratorPerfOnce extends App {
       var n = 0
       fork {
         while (true) {
-          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean == true)
-          dut.clockDomain.waitSampling()
+          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
           dut.clockDomain.waitSampling()
           val instSim   = instSims(n)
           val matA      = matAs(n)

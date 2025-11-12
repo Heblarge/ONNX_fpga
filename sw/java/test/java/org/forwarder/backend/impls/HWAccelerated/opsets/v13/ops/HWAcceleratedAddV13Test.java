@@ -105,13 +105,13 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
     @Test
     public void testAdd2D() throws Exception {
         System.out.println("\n--- Testing 2D Add with Quantization Params ---");
-        int rows = 32;
-        int cols = 32;
+        int rows = 8192;
+        int cols = 1024;
         float minValue = -10;
         float maxValue = 10;
 
-        long sourceShiftA = 15L;
-        long sourceShiftB = 19L;
+        long sourceShiftA = 18L;
+        long sourceShiftB = 18L;
         long targetInputShiftA = 18L;
         long targetInputShiftB = 18L;
         long targetOutputShift = 20L;
@@ -140,7 +140,8 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
                 matrixA, matrixB,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testAdd2D"
         );
 
         HWAcceleratedTestModel.validate("Add - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
@@ -182,7 +183,8 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
                 matrixA, matrixB,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testAdd3D"
         );
 
         HWAcceleratedTestModel.validate("Add - 3D Quantized", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
@@ -222,7 +224,9 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift);
+                targetOutputShift,
+                "testAddBroadcast_1_1"
+        );
 
         HWAcceleratedTestModel.validate("Add - Broadcast (1,1)", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
     }
@@ -261,7 +265,8 @@ public class HWAcceleratedAddV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testAddBroadcast_1"
         );
 
         double tolerance = 0.0;

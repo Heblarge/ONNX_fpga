@@ -33,7 +33,7 @@ object AcceleratorTb extends App {
     systolicArrayInstFifoDepth = 32,//越高越好,但帮助不大
     activationOutFifoDepth = 32,//能过reqirements就行
     slicedInstFifoDepth = 2,//能过reqirements就行
-    numCores = 4//越高越快，但超过2之后帮助不大
+    numCores = 1//越高越快，但超过2之后帮助不大
   )
   val path = s"simWorkspace/AcceleratorTb"
   import java.io.File
@@ -147,8 +147,7 @@ object AcceleratorTb extends App {
     var n = 0
     fork {
       while (true) {
-        dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean == true)
-        dut.clockDomain.waitSampling()
+        dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
         dut.clockDomain.waitSampling()
         val instSim = instSims(n)
         val matA = matAs(n)

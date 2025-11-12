@@ -62,10 +62,11 @@ public class ModelTest extends FWTestCase {
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
         Map<String, String> backendPaths = new HashMap<>();
+        String currentDir = System.getProperty("user.dir");
         backendPaths.put(
                 "HWAccelerated",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/onnx_debug_py/java_hw_each_layer_outputs_all");
+                currentDir + "/java_hw_final_layer_outputs");
         for (int n = 1; n < 2; n++) {
             List<String> inputs = List.of(
                     "/mnist/int32_refpb/int32/data" + n + "/input_seq_pc.pb",
@@ -100,11 +101,12 @@ public class ModelTest extends FWTestCase {
             InvocationTargetException, OperationNotSupportedException, IOException {
         Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
         Map<String, String> backendPaths = new HashMap<>();
+        String currentDir = System.getProperty("user.dir");
         backendPaths.put(
                 "DL4J",
                 // 输出文件夹的位置
-                "/home/user/Workspace/livehps_1/onnx_debug_py/java_dl4j_each_layer_outputs_all");
-        for (int n = 1; n < 2; n++) {
+                currentDir+ "/java_dl4j_final_layer_outputs");
+        for (int n = 1; n < 2119; n++) {
             List<String> inputs = List.of(
                     "/mnist/Quantized/data" + n + "/input_seq_pc.pb",
                     "/mnist/Quantized/data" + n + "/input_seq_pos.pb"

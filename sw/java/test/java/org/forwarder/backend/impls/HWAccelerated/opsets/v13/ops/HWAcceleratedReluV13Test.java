@@ -72,8 +72,8 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
     @Test
     public void testReluWithShifts() throws Exception {
         System.out.println("\n--- Testing Relu with Two-Stage Quantization Shifts ---");
-        int rows = 32;
-        int cols = 32;
+        int rows = 40;
+        int cols = 20;
         float minValue = -10.0f;
         float maxValue = 10.0f;
 
@@ -107,7 +107,8 @@ public class HWAcceleratedReluV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "ReluTest"
         );
 
         double tolerance = 0.0;

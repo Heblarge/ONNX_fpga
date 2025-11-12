@@ -56,7 +56,7 @@ public class SequentialExecutor<T_BK_TS> extends Executor<T_BK_TS> {
             inputs.append(input);
         }
 
-        System.out.printf("Executing Node: %-30s (OpType: %s)\n", node.getName(), node.getOpType());
+        //System.out.printf("Executing Node: %-30s (OpType: %s)\n", node.getName(), node.getOpType());
         Outputs outputs = super.handle(session, opsets, node, inputs);
 
         for (Output output : outputs.get()) {

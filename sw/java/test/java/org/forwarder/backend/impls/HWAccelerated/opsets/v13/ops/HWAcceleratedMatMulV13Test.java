@@ -114,9 +114,9 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
     public void testMatMul2DWithQuantization() throws Exception {
         System.out.println("\n--- Testing 2D MatMul with Quantization Params ---");
 
-        int rowsA = 32;
-        int colsA = 32;
-        int colsB = 32;
+        int rowsA = 256;
+        int colsA = 1024;
+        int colsB = 560;
         float minValue = -5f;
         float maxValue = 5f;
 
@@ -148,7 +148,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
                 matrixA, matrixB,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testMatMul2DWithQuantization"
         );
 
         HWAcceleratedTestModel.validate("MatMul - 2D Quantized", theoreticalExpected, simulatedExpected, actualOutput, 0.0);
@@ -187,7 +188,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
                 matrixA, matrixB,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testMatMul3Dx2D"
         );
 
         HWAcceleratedTestModel.validate("MatMul - 3Dx2D Quantized", simulatedExpected, simulatedExpected, actualOutput, 0.0);
@@ -226,7 +228,8 @@ public class HWAcceleratedMatMulV13Test extends HWAcceleratedTestCase {
                 matrixA, matrixB,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testMatMul3Dx3D"
         );
 
         HWAcceleratedTestModel.validate("MatMul - 3Dx3D Quantized", simulatedExpected, simulatedExpected, actualOutput, 0.0);

@@ -4,6 +4,7 @@ import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -14,11 +15,14 @@ import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MaxV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 
+import static org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorTileUtils.*;
+
 import java.util.List;
 
 public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implements MaxV13 {
 
-    private final int HW_DIM_MULTIPLE = 32;
+    private static final int HW_DIM_MULTIPLE = 16;
+    private static final int MAX_HW_ELEMENTS = 512 * 512;
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -36,18 +40,20 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
 
         long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
 
+        String nodeName = node.getName();
         INDArray outputTensor = this.max(
                 inputTensors,
                 sourceShiftA,
                 sourceShiftB,
                 targetInputShiftA,
                 targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                nodeName
         );
         return new MaxOutputV13<>(outputTensor);
     }
 
-    public INDArray max(List<INDArray> inputTensors, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    public INDArray max(List<INDArray> inputTensors, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         if (inputTensors == null || inputTensors.isEmpty()) {
             throw new IllegalArgumentException("Max operator requires at least one input tensor.");
         }
@@ -55,7 +61,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
         // Iteratively find the element-wise max by pairwise comparison
         INDArray currentMax = inputTensors.get(0);
         for (int i = 1; i < inputTensors.size(); i++) {
-            currentMax = elementwiseMax(currentMax, inputTensors.get(i), sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            currentMax = elementwiseMax(currentMax, inputTensors.get(i), sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         }
         return currentMax;
     }
@@ -63,7 +69,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
     /**
      * Refactored to handle broadcasting and reshaping for efficient hardware execution.
      */
-    private INDArray elementwiseMax(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray elementwiseMax(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
 
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             long[] broadcastShape = getBroadcastShape(a.shape(), b.shape());
@@ -72,7 +78,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         if (a.rank() == 2) {
-            return max2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            return max2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else if (a.rank() > 2) {
             long[] finalShape = a.shape();
             long numCols = finalShape[finalShape.length - 1];
@@ -81,7 +87,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
             INDArray reshapedA = a.reshape('c', numRows, numCols);
             INDArray reshapedB = b.reshape('c', numRows, numCols);
 
-            INDArray result2D = max2D(reshapedA, reshapedB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+            INDArray result2D = max2D(reshapedA, reshapedB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
 
             return result2D.reshape('c', finalShape);
         } else {
@@ -121,7 +127,7 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
     /**
      * Performs 2D element-wise max with padding and slicing.
      */
-    private INDArray max2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray max2D(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         if (!java.util.Arrays.equals(a.shape(), b.shape())) {
             throw new IllegalArgumentException("Input shapes must be identical for hardware acceleration.");
         }
@@ -138,12 +144,12 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
         INDArray paddedB = Nd4j.zeros(b.dataType(), paddedRows, paddedCols);
         paddedB.put(new INDArrayIndex[]{NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols)}, b);
 
-        INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+        INDArray paddedResult = maxOnAccelerator(paddedA, paddedB, paddedRows, paddedCols, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
 
         return paddedResult.get(NDArrayIndex.interval(0, originalRows), NDArrayIndex.interval(0, originalCols));
     }
 
-    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    private INDArray maxOnAccelerator(INDArray a, INDArray b, int rows, int cols, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         long comparisonShift = Math.max(targetInputShiftA, targetInputShiftB); // e.g., max(10, 9) = 10
 
         int rescaleShiftA = (int) (sourceShiftA - comparisonShift); // e.g., 10 - 13 = -3 ( << 3 )
@@ -161,22 +167,54 @@ public class HWAcceleratedMaxV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         int shiftAmount = (int) (comparisonShift - targetOutputShift);
-        InstJavaTODO instruction = new InstJavaTODO(
-                0,
-                "elementmax",
-                0,
-                false,
-                "none",
-                shiftAmount,
-                0,
-                0,
-                0,
-                rows,
-                cols,
-                cols
-        );
 
-        long[][] hardwareResult = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+        long[][] hardwareResult = new long[rows][cols];
+
+        int maxRowsPerTile = MAX_HW_ELEMENTS / cols;
+        if (maxRowsPerTile < HW_DIM_MULTIPLE) {
+            throw new IllegalArgumentException(
+                    String.format("Node %s: Cannot tile. Matrix column dimension (%d) is too large. " +
+                                    "Hardware can only support %d rows with this width, but operator requires multiples of %d.",
+                            nodeName, cols, maxRowsPerTile, HW_DIM_MULTIPLE)
+            );
+        }
+
+        int hwTileCap = (maxRowsPerTile / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
+
+        for (int rowOffset = 0; rowOffset < rows; ) {
+            int rowsRemaining = rows - rowOffset;
+            int TILE_ROWS = Math.min(rowsRemaining, hwTileCap);
+
+            if (TILE_ROWS <= 0) break;
+
+            long[][] tileA = new long[TILE_ROWS][cols];
+            long[][] tileB = new long[TILE_ROWS][cols];
+
+            InstJavaTODO instruction = new InstJavaTODO(
+                    0,
+                    "elementmax",
+                    0,
+                    false,
+                    "none",
+                    shiftAmount,
+                    0,
+                    0,
+                    0,
+                    TILE_ROWS,
+                    cols,
+                    cols
+            );
+
+            copyTileFromSource(tileA, fixedPointA, rowOffset, 0, TILE_ROWS, cols);
+            copyTileFromSource(tileB, fixedPointB, rowOffset, 0, TILE_ROWS, cols);
+
+            long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+
+            copyTileToResult(hardwareResult, tileResult, rowOffset, 0, TILE_ROWS, cols);
+
+            rowOffset += TILE_ROWS;
+        }
+        HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointA, fixedPointB, hardwareResult);
 
         long[] output = new long[rows * cols];
         for (int i = 0; i < rows; i++) {

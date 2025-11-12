@@ -168,7 +168,7 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
     public void testSoftplusWithShifts() throws Exception {
         System.out.println("\n--- Testing Softplus with Two-Stage Quantization Shifts ---");
         int rows = 32;
-        int cols = 32;
+        int cols = 8192;
         float minValue = -10.0f;
         float maxValue = 10.0f;
 
@@ -196,7 +196,8 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "SoftlusTest2D"
         );
 
         double tolerance = 50.0;
@@ -233,7 +234,8 @@ public class HWAcceleratedSoftplusV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "SoftlusTest3D"
         );
 
         double tolerance = 1050.0;

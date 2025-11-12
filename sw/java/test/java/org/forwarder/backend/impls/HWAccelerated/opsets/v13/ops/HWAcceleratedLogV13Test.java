@@ -9,6 +9,8 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.ops.transforms.Transforms;
 
+
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -182,7 +184,7 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
     @Test
     public void testLogWithShifts() throws Exception {
         System.out.println("\n--- Testing Log with Two-Stage Quantization Shifts ---");
-        int rows = 32;
+        int rows = 58;
         int cols = 32;
         float minValue = 0.001f;
         float maxValue = 10.0f;
@@ -211,7 +213,8 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "LogTest2D"
         );
 
         double tolerance = 10.0;
@@ -249,7 +252,8 @@ public class HWAcceleratedLogV13Test extends HWAcceleratedTestCase {
                 matrix_int,
                 sourceShift,
                 targetInputShift,
-                targetOutputShift
+                targetOutputShift,
+                "LogTest3D"
         );
 
         double tolerance = 150.0;

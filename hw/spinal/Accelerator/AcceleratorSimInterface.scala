@@ -19,7 +19,7 @@ object AcceleratorSimInterface {
     UIDWidth = 16,
     AddressWidth = 20,
     ShapeWidth = 16,
-    systolicArraySideNum = 32,
+    systolicArraySideNum = 16,
     elementWidth = 32,
     intWidth = 10,
     systolicArrayInFifoDepth = 8,
@@ -86,8 +86,7 @@ object AcceleratorSimInterface {
 
       fork {
         while (true) {
-          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean == true)
-          dut.clockDomain.waitSampling()
+          dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
           dut.clockDomain.waitSampling()
           matZ = memGetMat(
             dut.sdpramZ.mem,

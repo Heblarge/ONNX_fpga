@@ -90,7 +90,7 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
     public void testSub2D() throws Exception {
         System.out.println("\n--- Testing 2D Sub with Quantization Params ---");
         int rows = 32;
-        int cols = 32;
+        int cols = 4096;
         float minValue = -10f;
         float maxValue = 10f;
 
@@ -119,7 +119,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "Sub2D"
         );
 
         double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
@@ -160,7 +161,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "Sub3D"
         );
 
         double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));
@@ -198,7 +200,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "Sub1DScalar"
         );
 
         double tolerance = 0.0;
@@ -239,7 +242,8 @@ public class HWAcceleratedSubV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "Sub3DInt32"
         );
 
         double tolerance = 1.0 / Math.pow(2, fpgaOutShift.get(0));

@@ -117,7 +117,8 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
                 matrixA, matrixB, null, 1.0f, 1.0f, 0L, 0L,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testGemmSimple"
         );
 
         HWAcceleratedTestModel.validate("Gemm - Simple (as MatMul)", theoreticalExpected, simulatedExpected, actualOutput, 0.0); // MODIFIED: Compare sim vs actual
@@ -127,8 +128,8 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
     public void testGemm3D() throws Exception {
         System.out.println("\n--- Testing Gemm 3D x 3D (as Batched MatMul) ---"); // MODIFIED
         int batchSize = 4;
-        int rowsA = 32;   // M
-        int colsA = 64;   // K
+        int rowsA = 1024;   // M
+        int colsA = 512;   // K
         int colsB = 16;   // N
         float minValue = -5f;
         float maxValue = 5f;
@@ -154,7 +155,8 @@ public class HWAcceleratedGemmV13Test extends HWAcceleratedTestCase {
                 matrixA_int, matrixB_int, null, 1.0f, 1.0f, 0L, 0L, // C=null, alpha=1, beta=1, trans=0
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "testGemm3D"
         );
 
         HWAcceleratedTestModel.validate("Gemm - 3D (as MatMul)", simulatedExpected, simulatedExpected, actualOutput, 0.0); // MODIFIED

@@ -1,13 +1,13 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
-import Accelerator.AcceleratorSimInterface;
-import Accelerator.InstJavaTODO;
-import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator;
+// import Accelerator.AcceleratorSimInterface; // (Unused)
+// import Accelerator.InstJavaTODO; // (Unused)
+// import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator; // (Unused)
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.indexing.INDArrayIndex;
-import org.nd4j.linalg.indexing.NDArrayIndex;
+// import org.nd4j.linalg.factory.Nd4j; // (Unused)
+// import org.nd4j.linalg.indexing.INDArrayIndex; // (Unused)
+// import org.nd4j.linalg.indexing.NDArrayIndex; // (Unused)
 import org.onnx4j.Inputs;
 import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
@@ -15,14 +15,9 @@ import org.onnx4j.opsets.domain.aiOnnx.v13.ops.GemmV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
 import java.util.List;
 
-/**
- * Implements the Gemm operation using a hardware accelerator.
- * This version uses standard Java arrays for padding and slicing and relies on
- * hardware instruction shifts for fixed-point scaling.
- */
 public class HWAcceleratedGemmV13 extends HWAcceleratedQuantizedOperator implements GemmV13 {
 
-    private final int HW_DIM_MULTIPLE = 32;
+    // private final int HW_DIM_MULTIPLE = 32; // (Unused)
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -45,22 +40,27 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedQuantizedOperator impleme
         long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
         long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
 
+        String nodeName = node.getName();
+
         INDArray result = gemm(
                 a, b, c, alpha, beta, transA, transB,
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                nodeName
         );
 
         return new GeMMOutputV13<>(result);
     }
 
-    protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift) {
+    protected INDArray gemm(INDArray A, INDArray B, INDArray C, float alpha, float beta, long transA, long transB, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
         if (transA != 0L) { A = A.transpose(); }
         if (transB != 0L) { B = B.transpose(); }
 
         HWAcceleratedMatMulV13 matmulOp = new HWAcceleratedMatMulV13();
-        INDArray matmulResult = matmulOp.matmul(A, B, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift);
+
+        INDArray matmulResult = matmulOp.matmul(A, B, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
+
         INDArray Y = matmulResult.mul((int)alpha);
 
         if (C != null) {
@@ -76,3 +76,4 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedQuantizedOperator impleme
     }
 
 }
+

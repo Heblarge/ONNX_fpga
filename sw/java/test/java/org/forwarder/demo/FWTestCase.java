@@ -39,6 +39,7 @@ import org.forwarder.Forwarder;
 import org.forwarder.Session;
 import org.forwarder.executor.impls.RayExecutor;
 import org.forwarder.executor.impls.SequentialExecutor;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Tensor;
 import org.onnx4j.model.Graph;
@@ -123,57 +124,81 @@ public abstract class FWTestCase extends TestCase {
             assert forwarder != null;
             assert loadedModel!=null;
 
-            for (Entry<List<String>, List<String>> tensorPairPath : tensorPairPaths.entrySet()) {
-                List<Tensor> inputTensors = new ArrayList<>();
-                List<Tensor> expectedOutputTensors = new ArrayList<>();
-                String dataSubDirName = new File(tensorPairPath.getKey().get(0)).getParentFile().getName();
+            // 使用并行流处理多个数据对，实现多核并行
+            tensorPairPaths.entrySet().parallelStream().forEach(tensorPairPath -> {
+                try {
+                    List<Tensor> inputTensors = new ArrayList<>();
+                    List<Tensor> expectedOutputTensors = new ArrayList<>();
+                    String dataSubDirName = new File(tensorPairPath.getKey().get(0)).getParentFile().getName();
 
-                // 加载所有输入 tensor
-                for (int i = 0; i < inputNames.size(); i++) {
-                    inputTensors.add(this.loadTensor(loadedModel, inputNames.get(i), tensorPairPath.getKey().get(i)));
-                }
+                    // 加载所有输入 tensor
+                    for (int i = 0; i < inputNames.size(); i++) {
+                        inputTensors.add(this.loadTensor(loadedModel, inputNames.get(i), tensorPairPath.getKey().get(i)));
+                    }
 
-                // 加载所有预期输出 tensor
-                for (int i = 0; i < outputNames.size(); i++) {
-                    expectedOutputTensors.add(this.loadTensor(loadedModel, outputNames.get(i), tensorPairPath.getValue().get(i)));
-                }
+                    // 加载所有预期输出 tensor
+                    for (int i = 0; i < outputNames.size(); i++) {
+                        expectedOutputTensors.add(this.loadTensor(loadedModel, outputNames.get(i), tensorPairPath.getValue().get(i)));
+                    }
 
-                // 遍历后端
-                for (String backendName : backendNames) {
-                    Backend<?> backend = loadedModel.backend(backendName);
-                    try (Session<?> session = backend.newSession()) {
+                    // 遍历后端
+                    for (String backendName : backendNames) {
+                        Backend<?> backend = loadedModel.backend(backendName);
+                        try (Session<?> session = backend.newSession()) {
 
-                        // 输入全部 feed
-                        for (Tensor input : inputTensors) {
-                            session.feed(input, false);
-                        }
-                        // 执行推理
-                        session.forward();
+                            if (backendName.equals("HWAccelerated")) {
+                                HWAcceleratedCollector.getInstance().reset();
+                            }
 
-                        if (saveMode != SaveMode.NONE) {
-                            String basePath = backendOutputPaths.get(backendName);
-                            if (basePath != null && !basePath.isEmpty()) {
-                                File outputDir = new File(basePath, dataSubDirName);
-                                if(saveMode == SaveMode.ALL_INTERMEDIATE) {
-                                    saveAllTensorsAsBin(session, outputDir);
-                                } else if (saveMode == SaveMode.FINAL_ONLY) {
-                                    saveFinalTensorsAsPb(session, outputNames, outputDir);
+                            // 输入全部 feed
+                            for (Tensor input : inputTensors) {
+                                session.feed(input, false);
+                            }
+                            // 执行推理
+                            session.forward();
+
+                            if (saveMode != SaveMode.NONE) {
+                                String basePath = backendOutputPaths.get(backendName);
+                                if (basePath != null && !basePath.isEmpty()) {
+                                    File outputDir = new File(basePath, dataSubDirName);
+                                    if(saveMode == SaveMode.ALL_INTERMEDIATE) {
+                                        saveAllTensorsAsBin(session, outputDir);
+                                    } else if (saveMode == SaveMode.FINAL_ONLY) {
+                                        saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
+                                    }
+
+                                    if (backendName.equals("HWAccelerated")) {
+                                        // 假设收集器有一个 saveReport 方法
+                                        // 您需要将 outputDir 传给它
+                                        try {
+                                            File statsFile = new File(outputDir, "hardware_stats.csv");
+                                            String report = HWAcceleratedCollector.getInstance().getReport();
+                                            FileUtils.writeStringToFile(statsFile, report, "UTF-8");
+                                            logger.info("Hardware stats saved to " + statsFile.getAbsolutePath());
+                                        } catch (Exception e) {
+                                            logger.warn("Failed to save hardware stats", e);
+                                        }
+                                    }
+
                                 }
                             }
-                        }
 
-                        // 获取每个输出并比较
-                        for (int i = 0; i < outputNames.size(); i++) {
-                            Tensor actual = session.getOutput(outputNames.get(i));
-                            Tensor expected = expectedOutputTensors.get(i);
-                            logger.info("======================= Comparing output tensor: {} =======================", outputNames.get(i));
-                            logger.info("  EXPECTED: {}", dumpTensor(expected));
-                            logger.info("    ACTUAL: {}", dumpTensor(actual));
-                            //this.assertSimilarity(actual, expected, tolerance);
+                            // 获取每个输出并比较
+                            for (int i = 0; i < outputNames.size(); i++) {
+                                Tensor actual = session.getOutput(outputNames.get(i));
+                                Tensor expected = expectedOutputTensors.get(i);
+                                logger.info("======================= Comparing output tensor: {} =======================", outputNames.get(i));
+                                logger.info("  EXPECTED: {}", dumpTensor(expected));
+                                logger.info("    ACTUAL: {}", dumpTensor(actual));
+                                //this.assertSimilarity(actual, expected, tolerance);
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    logger.error("Error processing tensor pair: {}", tensorPairPath, e);
+                    throw new RuntimeException(e);
                 }
-            }
+            });
 
         } catch (Exception e) {
             logger.error("Failed to close forwarder instance", e);
@@ -202,11 +227,27 @@ public abstract class FWTestCase extends TestCase {
         }
     }
 
-    private void saveFinalTensorsAsPb(Session<?> session, List<String> finalOutputNames, File outputDir) throws IOException {
+    private void saveFinalTensorsAsPb(Session<?> session, List<String> finalOutputNames, File outputDir, OutputMode outputMode) throws IOException {
         setupDirectory(outputDir);
         for(String name : finalOutputNames) {
             INDArray tensorData = (INDArray) session.getIntermediateOutput(name);
-            saveTensorAsPb(name, tensorData, outputDir);
+            String saveName = name;
+            if (name.equals("pre_trans_fp")) {
+                saveName = "pre_trans";
+            }
+            if (outputMode == OutputMode.Dequantize) {
+                if (tensorData.dataType() != DataType.FLOAT) {
+                    tensorData = tensorData.castTo(DataType.FLOAT);
+                }
+                if (saveName.equals("pre_trans")) {
+                    tensorData = tensorData.div(Math.pow(2, 24)); // 除以 2^24
+                } else if (saveName.equals("rot")) {
+                    tensorData = tensorData.div(Math.pow(2, 22)); // 除以 2^22
+                } else if (saveName.equals("trj")) {
+                    tensorData = tensorData.div(Math.pow(2, 25)); // 除以 2^25
+                }
+            }
+            saveTensorAsPb(saveName, tensorData, outputDir);
         }
     }
 
@@ -275,7 +316,8 @@ public abstract class FWTestCase extends TestCase {
     private void saveTensorAsPb(String name, INDArray tensor, File outputDir) throws IOException {
         if (tensor == null) return;
         String sanitizedName = name.replace('/', '_').replace(':', '_');
-        File file = new File(outputDir, sanitizedName + ".pb");
+        String fileNameWithPrefix = "output_" + sanitizedName + ".pb";
+        File file = new File(outputDir, fileNameWithPrefix);
 
         TensorProto.Builder builder = TensorProto.newBuilder();
         for (long dim : tensor.shape()) {

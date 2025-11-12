@@ -14,15 +14,6 @@ import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 
 case class CollectorTest(collectorCfg: CollectorCfg) extends Component {
-  val dataPumpZ = DataPump_s2mm(
-    DataPump_s2mm_Config(
-      mem_data_width = collectorCfg.dataWidthZ,
-      mem_addr_width = collectorCfg.AddressWidth,
-      RepeatNum_Max = 1,
-      Enable_UnPadding_logic = false,
-      Enable_Error_Port_logic = false
-    )
-  )
   val sdpramZ = Sdpram(addrWidth = collectorCfg.AddressWidth, dataWidth = collectorCfg.dataWidthZ)
   val collector = Collector(collectorCfg)
   val io = new Bundle {
@@ -33,9 +24,7 @@ case class CollectorTest(collectorCfg: CollectorCfg) extends Component {
 
   collector.io.slicedInst <> io.slicedInst
   collector.io.matAfterActivations <> io.matAfterActivations
-  collector.io.writeAddr <> dataPumpZ.io.TaskStream
-  collector.io.writeData <> dataPumpZ.io.DataStream
-  sdpramZ.io.write <> dataPumpZ.io.MemoryWritePort
+  collector.io.memoryWritePort <> sdpramZ.io.write
   sdpramZ.noRead()
 }
 
@@ -185,7 +174,6 @@ object CollectorTb extends App {
     fork {
       while (true) {
         dut.clockDomain.waitSamplingWhere(dut.collector.instFinish.toBoolean)
-        dut.clockDomain.waitSampling()
         dut.clockDomain.waitSampling()
         val instSim = instSims(n)
         val matZRef = instSim.transposeSim(matZs(n))

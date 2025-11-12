@@ -15,22 +15,6 @@ import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 
 case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
-  val dataPumpA = DataPump_mm2s(
-    DataPump_mm2s_Config(
-      mem_data_width = slicerCfg.dataWidthA,
-      mem_addr_width = slicerCfg.AddressWidth,
-      RepeatNum_Max = 1,
-      Enable_Padding_logic = false
-    )
-  )
-  val dataPumpB = DataPump_mm2s(
-    DataPump_mm2s_Config(
-      mem_data_width = slicerCfg.dataWidthB,
-      mem_addr_width = slicerCfg.AddressWidth,
-      RepeatNum_Max = 1,
-      Enable_Padding_logic = false
-    )
-  )
   val sdpramA = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthA)
   val sdpramB = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthB)
   val slicer = Slicer(slicerCfg)
@@ -43,13 +27,9 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
   slicer.io.inst <> io.inst
   slicer.io.slicedInst <> io.slicedInst
   slicer.io.matAfterSlicers <> io.Mats_to_Cores_Streams
-  slicer.io.readAddrA <> dataPumpA.io.TaskStream
-  slicer.io.readDataA <> dataPumpA.io.DataStream
-  slicer.io.readAddrB <> dataPumpB.io.TaskStream
-  slicer.io.readDataB <> dataPumpB.io.DataStream
-  sdpramA.io.read <> dataPumpA.io.MemoryReadPort
+  slicer.io.memoryReadPortA <> sdpramA.io.read
+  slicer.io.memoryReadPortB <> sdpramB.io.read
   sdpramA.noWrite()
-  sdpramB.io.read <> dataPumpB.io.MemoryReadPort
   sdpramB.noWrite()
 }
 

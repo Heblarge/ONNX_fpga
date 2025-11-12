@@ -127,7 +127,8 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
                 inputsList, // 传递 List
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "Max2D"
         );
 
         HWAcceleratedTestModel.validate("Max - 2D Quantized", simulatedExpected, simulatedExpected, actualOutput, 0.0);
@@ -165,7 +166,8 @@ public class HWAcceleratedMaxV13Test extends HWAcceleratedTestCase {
                 inputsList, // 传递 List
                 sourceShiftA, sourceShiftB,
                 targetInputShiftA, targetInputShiftB,
-                targetOutputShift
+                targetOutputShift,
+                "Max3D"
         );
 
         HWAcceleratedTestModel.validate("Max - 3D Quantized", simulatedExpected, simulatedExpected, actualOutput, 0.0);
