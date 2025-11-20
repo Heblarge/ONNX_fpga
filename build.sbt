@@ -16,7 +16,9 @@ lazy val Onnx_SpinalHDL = (project in file("."))
     //scalacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin,"com.github.spinalhdl" %% "spinalhdl-sim" % spinalVersion),
     libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
-    libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0"
+    libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18",
+    libraryDependencies += "com.github.alexarchambault" %% "case-app" % "2.0.6"
 
 
   )

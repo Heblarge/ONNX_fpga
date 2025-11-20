@@ -1,6 +1,5 @@
 package FloatingPoint
 
-import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib.sim.{FlowDriver, FlowMonitor}
