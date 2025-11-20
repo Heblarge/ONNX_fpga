@@ -292,10 +292,48 @@ object FloatingPointExample_Sim extends App {
  
       // Check that the dut values match with the reference model ones
       println(s"pass: ${idx}/100")
-
-
       }
-    }
+
+    /*val zeroCases = Seq(
+    (0.0f, 1.2345f),
+    (-0.0f, 3.21f),
+    (1.2345f, 0.0f),
+    (3.21f, -0.0f),
+    (0.0f, -0.0f)
+    )
+
+    for ((a, b) <- zeroCases) {
+ // 将浮点数拆为 sign/exponent/mantissa 并驱动 DUT
+  val (as, ae, am) = floatToIEEE754(a)
+  val (bs, be, bm) = floatToIEEE754(b)
+
+  dut.io.a.sign    #= as.toBoolean
+  dut.io.a.exponent#= ae.toInt
+  dut.io.a.mantissa#= am.toInt
+
+  dut.io.b.sign    #= bs.toBoolean
+  dut.io.b.exponent#= be.toInt
+  dut.io.b.mantissa#= bm.toInt
+
+// 等待一个上升沿让模块计算输出
+  dut.clockDomain.waitRisingEdge()
+
+//  检查乘法结果是否为 IEEE754 的 0：exponent == 0 && mantissa == 0
+  assert(dut.io.Multiplier_result.exponent.toInt == 0,
+    s"Expected exponent==0 for product $a * $b, got ${dut.io.Multiplier_result.exponent.toInt}")
+  assert(dut.io.Multiplier_result.mantissa.toInt == 0,
+    s"Expected mantissa==0 for product $a * $b, got ${dut.io.Multiplier_result.mantissa.toInt}")
+
+//  对于零，符号位应为 sign(a) xor sign(b)
+  val expectedSignBool = ((as ^ bs) != 0)
+  assert(dut.io.Multiplier_result.sign.toBoolean == expectedSignBool,
+    s"Expected sign ${expectedSignBool} for product $a * $b, got ${dut.io.Multiplier_result.sign.toBoolean}")
+
+  println(s" zero-case passed: $a * $b -> +0/-0 sign=${expectedSignBool}")
+      }*/
+    
+
+    } 
        
     
 }
