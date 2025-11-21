@@ -56,9 +56,9 @@ java_outputs/*
 sw/java/test/resources/mnist/*
 #performance_results.csv
 
-# novas.conf
-# novas.rc
-# verdiLog/
+novas.conf
+novas.rc
+verdiLog/
 
 java_hw_each_layer_outputs/*
 java_dl4j_each_layer_outputs/*
