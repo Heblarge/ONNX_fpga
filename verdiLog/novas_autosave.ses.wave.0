@@ -1,12 +1,12 @@
 Magic 271485
-Revision Verdi_N-2017.12-SP2
+Revision Verdi_O-2018.09-SP2
 
 ; Window Layout <x> <y> <width> <height> <signalwidth> <valuewidth>
-viewPort 0 28 2136 852 475 39
+viewPort 0 27 1920 766 362 147
 
 ; File list:
 ; openDirFile [-d delimiter] [-s time_offset] [-rf auto_bus_rule_file] path_name file_name
-openDirFile -d / "" "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb"
+openDirFile -d / "" "/root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd" "/root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd.fsdb"
 
 ; file time scale:
 ; fileTimeScale ### s|ms|us|ns|ps
@@ -16,16 +16,16 @@ signalSpacing 5
 
 ; windowTimeUnit is used for zoom, cursor & marker
 ; waveform viewport range
-zoom 0.000000 1131.200000
-cursor 300.000000
+zoom 0.000000 5.963745
+cursor 0.000000
 marker 0.000000
 
 ; user define markers
 ; userMarker time_pos marker_name color linestyle
 ; visible top row signal index
-top 0
+top 13
 ; marker line index
-markerPos 22
+markerPos 52
 
 ; event list
 ; addEvent event_name event_expression
@@ -46,41 +46,72 @@ curSTATUS ByChange
 
 
 addGroup "G1"
-activeDirFile "" "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb"
-addSignal -h 15 -UNSIGNED -HEX /HadamardProduct/io_in_Mats_payload_A_0[7:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope io_in_Mats_payload_A_1[7:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope io_in_Mats_payload_A_2[7:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope io_in_Mats_payload_A_3[7:0]
+activeDirFile "" "/root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd.fsdb"
+addSignal -h 15 /FpxxRSqrt/_zz_n0_exp[8:0]
+addSignal -h 15 -holdScope _zz_n0_exp_1[8:0]
+addSignal -h 15 -holdScope _zz_n0_rsqrt_addr[10:0]
+addSignal -h 15 -holdScope _zz_n0_rsqrt_addr_1[24:0]
+addSignal -h 15 -holdScope _zz_n1_exp_adj[8:0]
+addSignal -h 15 -holdScope _zz_n1_exp_adj_1[8:0]
+addSignal -h 15 -holdScope _zz_n1_exp_adj_2[8:0]
+addSignal -h 15 -holdScope _zz_n1_exp_adj_3[8:0]
+addSignal -h 15 -holdScope _zz_n1_exp_adj_4[8:0]
+addSignal -h 15 -holdScope _zz_n1_exp_final[8:0]
+addSignal -h 15 -holdScope clk
+addSignal -h 15 -holdScope io_op_payload_exp[7:0]
+addSignal -h 15 -holdScope io_op_payload_mant[22:0]
+addSignal -h 15 -holdScope io_op_payload_sign
+addSignal -h 15 -holdScope io_op_valid
+addSignal -h 15 -holdScope io_result_payload_exp[7:0]
+addSignal -h 15 -holdScope io_result_payload_mant[22:0]
+addSignal -h 15 -holdScope io_result_payload_sign
+addSignal -h 15 -holdScope io_result_valid
+addSignal -h 15 -holdScope n0_exp[8:0]
+addSignal -h 15 -holdScope n0_gt_1
+addSignal -h 15 -holdScope n0_isValid
+addSignal -h 15 -holdScope n0_op_inf
+addSignal -h 15 -holdScope n0_op_nan
+addSignal -h 15 -holdScope n0_op_payload_exp[7:0]
+addSignal -h 15 -holdScope n0_op_payload_mant[22:0]
+addSignal -h 15 -holdScope n0_op_payload_sign
+addSignal -h 15 -holdScope n0_op_valid
+addSignal -h 15 -holdScope n0_op_zero
+addSignal -h 15 -holdScope n0_rsqrt_addr[10:0]
+addSignal -h 15 -holdScope n0_valid
+addSignal -h 15 -holdScope n0_vld
+addSignal -h 15 -holdScope n1_exp_adj[8:0]
+addSignal -h 15 -holdScope n1_exp_final[7:0]
+addSignal -h 15 -holdScope n1_isValid
+addSignal -h 15 -holdScope n1_mant_final[22:0]
+addSignal -h 15 -holdScope n1_n0_exp[8:0]
+addSignal -h 15 -holdScope n1_n0_op_inf
+addSignal -h 15 -holdScope n1_n0_op_nan
+addSignal -h 15 -holdScope n1_n0_op_payload_exp[7:0]
+addSignal -h 15 -holdScope n1_n0_op_payload_mant[22:0]
+addSignal -h 15 -holdScope n1_n0_op_payload_sign
+addSignal -h 15 -holdScope n1_n0_op_valid
+addSignal -h 15 -holdScope n1_n0_op_zero
+addSignal -h 15 -holdScope n1_rsqrt_mant[22:0]
+addSignal -h 15 -holdScope n1_rsqrt_shift[1:0]
+addSignal -h 15 -holdScope n1_rsqrt_val[24:0]
+addSignal -h 15 -holdScope n1_sign_final
+addSignal -h 15 -holdScope n1_valid
+addSignal -h 15 -holdScope reset
+addSignal -h 15 -holdScope rsqrt_table_spinal_port0[24:0]
+addSignal -h 15 -holdScope when_FpxxRSqrt_l109
 addGroup "G2"
-addSignal -h 15 -UNSIGNED -HEX /HadamardProduct/io_in_Mats_payload_B_0[7:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope io_in_Mats_payload_B_1[7:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope io_in_Mats_payload_B_2[7:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope io_in_Mats_payload_B_3[7:0]
-addSignal -h 15 -holdScope io_in_Mats_payload_Final
-addGroup "G3"
-addSignal -h 15 /HadamardProduct/clk
-addSignal -h 15 -UNSIGNED -HEX -holdScope counter[2:0]
-addSignal -h 15 -UNSIGNED -HEX -holdScope counter[2:0]
-addSignal -h 15 -holdScope io_out_Mats_valid
-addGroup "G4"
-addSignal -h 15 /HadamardProduct/io_in_Mats_ready
-addSignal -h 15 -holdScope io_in_Mats_valid
-addGroup "G5"
-addSignal -h 15 /HadamardProduct/io_out_Mats_ready
-addSignal -h 15 -holdScope io_out_Mats_valid
-addGroup "G6"
 
 ; getSignalForm Scope Hierarchy Status
 ; active file of getSignalForm
-activeDirFile "" "/home/zhou/Workspace/LiveHPS++/SpinalHDL/GeMM/simWorkspace/HadamardProduct/null_HadamardProduct.fsdb"
+activeDirFile "" "/root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd.fsdb"
 
 GETSIGNALFORM_SCOPE_HIERARCHY_BEGIN
 getSignalForm close
 
-"/HadamardProduct"
+"/FpxxRSqrt"
 
 SCOPE_LIST_BEGIN
-"/HadamardProduct"
+"/FpxxRSqrt"
 SCOPE_LIST_END
 
 GETSIGNALFORM_SCOPE_HIERARCHY_END

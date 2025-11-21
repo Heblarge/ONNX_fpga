@@ -22,7 +22,6 @@ lazy val Onnx_SpinalHDL = (project in file("."))
 
 
   )
-
 lazy val Onnx_SpinalHDL_test = (project in file("."))
 .settings(
   name := "onnx4j_test",
@@ -82,6 +81,12 @@ libraryDependencies ++= Seq(
 )
 // https://mvnrepository.com/artifact/org.reflections/reflections
 libraryDependencies += "org.reflections" % "reflections" % "0.9.11"
+
+// case app
+libraryDependencies += "com.github.alexarchambault" %% "case-app" % "2.0.6"
+
+// scalatest
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18"
 
 crossPaths := false
 fork := true

@@ -219,8 +219,10 @@ Selection-LineWidth = 1
 [FSM_Dlg-Print]
 Orientation = Landscape
 [FileBrowser]
+nWaveOpenFsdbDirHistory = "\"/root/livehps_1/simWorkspace/AFix2Fpxx/null_AFix2Fpxx.vcd\""
 LoadSimulationResults = "\"/home/user/Workspace/SpinalTemplateSbt/simWorkspace/MyTopLevel/null_MyTopLevel.fsdb\"" "\"/home/user/Workspace/SpinalTemplateSbt/simWorkspace/SoftplusFunction/null_SoftplusFunction.fsdb\"" "\"/home/user/Workspace/livehps_1/simWorkspace/Activation/null_A\
-ctivation.fsdb\"" "\"/home/user/Workspace/livehps_1/simWorkspace/Accelerator/null_Accelerator.fsdb\""
+ctivation.fsdb\"" "\"/home/user/Workspace/livehps_1/simWorkspace/Accelerator/null_Accelerator.fsdb\"" "\"/root/livehps_1/simWorkspace/LN_function/null_LN_function.fsdb\"" "\"/root/livehps_1/simWorkspace/Fpxx2AFix/null_Fpxx2AFix.vcd\"" "\"/root/livehps_1/si\
+mWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd\""
 [Form]
 version = Verdi_O-2018.09-SP2
 [General]
@@ -373,11 +375,14 @@ saveWaveformStat = TRUE
 savePropStat = FALSE
 savePropDtl = TRUE
 [QtDialog]
-Verdi_OpenFile = 2376,1501,590,340
-qWaveSignalDialog = 2022,1247,1396,759
-loadFile = 2164,1331,1136,698
 QwWarnMsgDlg = 2416,1508,600,250
-QwUserAskDlg = 60,83,324,130
+openFileDlg = 2455,263,602,483
+QwInfoMsgDlg = 2495,375,750,250
+importDesignForm = 2399,218,715,574
+Verdi_OpenFile = 86,109,590,340
+qWaveSignalDialog = 2182,148,1396,759
+loadFile = 2312,178,1136,698
+QwUserAskDlg = 60,83,324,134
 [Relationship]
 hideRecursiceNode = FALSE
 [Session Cache]
@@ -385,7 +390,7 @@ hideRecursiceNode = FALSE
 4 = string (session file name)
 5 = string (session file name)
 2 = /home/user/verdiLog/novas_autosave.ses
-1 = /root/onnx_SpinalHDL_interface/verdiLog/novas_autosave.ses
+1 = /root/livehps_1/verdiLog/novas_autosave.ses
 [Simulation]
 scsPath = scsim
 scsOption = 
@@ -454,7 +459,7 @@ bSVTBMode = TRUE
 SimMode = TRUE
 interactiveDebugging = TRUE
 KeepBreakPoints = FALSE
-vcs_svPath = /home/user/Workspace/livehps_1/simWorkspace/Accelerator/Accelerator
+vcs_svPath = /root/livehps_1/simWorkspace/LN_function/LN_function
 [SimulationPlus2]
 eventDumpUnfinish = FALSE
 [Source]
@@ -567,7 +572,7 @@ pdmlMacro = ID_BLACK
 font = COURIER12
 annotFont = Helvetica_M_R_10
 [Text.1]
-viewport = 395 154 2027 922 45
+viewport = 1920 23 1920 1009 45
 [TextPrinter]
 Orientation = Landscape
 Indicator = FALSE
@@ -705,8 +710,8 @@ scope_to_save_with_macro
 open_file_dir
 open_rc_file_dir
 SetDefaultRadix = TRUE
-getSignalForm = 38 59 1396 759 340 661 806 159
-viewPort = 0 27 2027 390 362 147
+getSignalForm = 2182 148 1396 759 341 661 809 159
+viewPort = 0 27 1920 766 362 147
 signalSpacing = 5
 digitalSignalHeight = 15
 analogSignalHeight = 98
@@ -949,7 +954,7 @@ maskIsolation = TRUE
 maskRetention = TRUE
 maskDrivingPowerOff = TRUE
 maskToggle = TRUE
-autoBackupSignals = off 5 "\"/root/onnx_SpinalHDL_interface/verdiLog\"" "\"novas_autosave_sig\""
+autoBackupSignals = off 5 "\"/root/livehps_1/verdiLog\"" "\"novas_autosave_sig\""
 signal_rc_attribute = 65535
 signal_rc_alias_attribute = 0
 ConvertAttr1 = -inc FALSE
@@ -977,10 +982,11 @@ curveWindow_Drag&Drop_Mode = TRUE
 hspiceIncOpenMode = TRUE
 pcSelectMode = TRUE
 hierarchyDelimiter = /
-RecentFile1 = "\"/home/user/Workspace/livehps_1/simWorkspace/Accelerator/null_Accelerator.fsdb\""
-RecentFile2 = "\"/home/user/Workspace/livehps_1/simWorkspace/Activation/null_Activation.fsdb\""
-RecentFile3 = "\"/home/user/Workspace/SpinalTemplateSbt/simWorkspace/SoftplusFunction/null_SoftplusFunction.fsdb\""
-RecentFile4 = "\"/home/user/Workspace/SpinalTemplateSbt/simWorkspace/MyTopLevel/null_MyTopLevel.fsdb\""
+RecentFile1 = "\"/root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd.fsdb\""
+RecentFile2 = "\"/root/livehps_1/simWorkspace/Fpxx2AFix/null_Fpxx2AFix.vcd.fsdb\""
+RecentFile3 = "\"/root/livehps_1/simWorkspace/AFix2Fpxx/null_AFix2Fpxx.vcd.fsdb\""
+RecentFile4 = "\"/root/livehps_1/simWorkspace/LN_function/null_LN_function.fsdb\""
+RecentFile5 = "\"/home/user/Workspace/livehps_1/simWorkspace/Accelerator/null_Accelerator.fsdb\""
 open_file_time_range = FALSE
 value_window_aligment = Right
 signal_window_alignment = Auto
@@ -1275,7 +1281,7 @@ AddImportArgument = FALSE
 LineBreakWithScope = TRUE
 StopAfterCompileOption = -s
 [wave.0]
-viewPort = 0 27 2027 390 362 147
+viewPort = 0 27 1920 766 362 147
 [wave.1]
 viewPort = 127 219 960 332 100 65
 [wave.2]

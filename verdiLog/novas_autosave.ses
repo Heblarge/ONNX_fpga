@@ -18,14 +18,13 @@ AnnotationShow = 0
 Console = FALSE
 powerDumped = 0
 [hb]
-viewport = 395 154 2027 922 0 0 364 2025
-activeNode = "Accelerator"
-activeScope = "Accelerator"
-activeFile = "/root/onnx_SpinalHDL_interface/simWorkspace/AcceleratorTb/tmp/job_1/Accelerator.v"
+postSimFile = /root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd.fsdb
+syncTime = 0
+viewport = 1920 23 1920 1009 0 0 382 1918
 interactiveMode = False
 viewType = Source
 simulatorMode = False
-sourceBeginLine = 6
+sourceBeginLine = 0
 baMode = False
 srcLineNum = True
 AutoWrap = True
@@ -42,21 +41,16 @@ DnDtraceCrossHierOnly = True
 traceIncTopPort = False
 leadingZero = False
 signalPane = False
-Scope1 = "Accelerator"
-multipleSelection = 1 6 2 0 0
 sdfCheckUndef = FALSE
 simFlow = FALSE
-[hb.design]
-importCmd = "-sv" "-f" "/root/onnx_SpinalHDL_interface/simWorkspace/AcceleratorTb/Accelerator/filelist.f" 
-invokeDir = /root/onnx_SpinalHDL_interface
-[hb.sourceTab.1]
-scope = Accelerator
-File = /root/onnx_SpinalHDL_interface/simWorkspace/AcceleratorTb/tmp/job_1/Accelerator.v
-Line = 7
+[nMemoryManager]
+WaveformFile = /root/livehps_1/simWorkspace/FpxxRSqrt/null_FpxxRSqrt.vcd.fsdb
+UserActionNum = 0
+nMemWindowNum = 0
 [wave.0]
-viewPort = 0 27 2027 390 362 147
+viewPort = 0 27 1920 766 362 147
 primaryWindow = TRUE
-Empty = /root/onnx_SpinalHDL_interface/verdiLog/novas_autosave.ses.wave.0
+SessionFile = /root/livehps_1/verdiLog/novas_autosave.ses.wave.0
 displayGrid = FALSE
 hierarchicalName = FALSE
 snap = TRUE
