@@ -1,10 +1,10 @@
 package FloatingPoint
 
-import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._
 import spinal.core.sim._
+import java.io.File
 
-object IntSqrtTester {
+object IntSqrtTester extends App {
 
     class IntSqrtDut(config: FpxxConfig) extends Component {
         val io = new Bundle {
@@ -22,58 +22,58 @@ object IntSqrtTester {
         io.result_vld := RegNext(u_int_sqrt.io.result_vld) init(False)
         io.result     := RegNext(u_int_sqrt.io.result.asBits)
     }
-}
 
-class IntSqrtTester extends AnyFunSuite {
+    // Main test logic
+    val config = FpxxConfig(8, 23)
+    val FileDir = "rtl/IntSqrtTester"
+    new File(FileDir).mkdirs()
 
-    test("IntSqrt") {
+    var compiled = SimConfig
+        .withWave
+        .withConfig(SpinalConfig(
+            targetDirectory = FileDir,
+            oneFilePerComponent = true,
+            bitVectorWidthMax = 20000
+        ))
+        .compile(new IntSqrtDut(config))
 
-        val config = FpxxConfig(8, 23)
+    compiled.doSim { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
+        dut.clockDomain.forkSimSpeedPrinter(0.2)
+        dut.io.op_vld #= false
+        dut.clockDomain.waitSampling()
 
-        var compiled = SimConfig
-            .withWave
-            .compile(new IntSqrtTester.IntSqrtDut(config))
+        val stimuli = Array[Int](0, 1, 3, 4, 8, 9, 15, 16, 143, 144, 145, 180, 190, 192, 200, 220, 240, 255)
 
-        compiled.doSim { dut =>
+        var i = 0
+        var pass = 0
+        var fail = 0
 
-            dut.clockDomain.forkStimulus(period = 10)
-            dut.clockDomain.forkSimSpeedPrinter(0.2)
+        while(i < stimuli.size){
+            var input = stimuli(i)
+
+            val op            = input
+            val result_exp    = scala.math.sqrt(op).toFloat
+
+            // Apply operands
+            dut.io.op_vld #= true
+            dut.io.op     #= op & 0xff
+            dut.clockDomain.waitSampling(1)
             dut.io.op_vld #= false
+
+            // Wait until result appears
+            while(!dut.io.result_vld.toBoolean){
+                dut.clockDomain.waitSampling()
+            }
+
+            // Actual result
+            val result_act = (dut.io.result.toLong.toInt.toFloat)/(1<<20).toFloat
+
             dut.clockDomain.waitSampling()
 
-            val stimuli = Array[Int](0, 1, 3, 4, 8, 9, 15, 16, 143, 144, 145, 180, 190, 192, 200, 220, 240, 255)
+            printf("input %d: result_act: %f, result_exp: %f\n", op, result_act, result_exp);
 
-            var i = 0
-            var pass = 0
-            var fail = 0
-
-            while(i < stimuli.size){
-                var input = stimuli(i)
-
-                val op            = input
-                val result_exp    = scala.math.sqrt(op).toFloat
-
-                // Apply operands
-                dut.io.op_vld #= true
-                dut.io.op     #= op & 0xff
-                dut.clockDomain.waitSampling(1)
-                dut.io.op_vld #= false
-
-                // Wait until result appears
-                while(!dut.io.result_vld.toBoolean){
-                    dut.clockDomain.waitSampling()
-                }
-
-                // Actual result
-                val result_act = (dut.io.result.toLong.toInt.toFloat)/(1<<20).toFloat
-
-                dut.clockDomain.waitSampling()
-
-                printf("input %d: result_act: %f, result_exp: %f\n", op, result_act, result_exp);
-
-                i+=1
-            }
+            i+=1
         }
     }
-
 }

@@ -1,6 +1,5 @@
 package FloatingPoint
 
-import org.scalatest.funsuite.AnyFunSuite
 import spinal.core._
 import spinal.core.formal._
 import spinal.core.sim._
