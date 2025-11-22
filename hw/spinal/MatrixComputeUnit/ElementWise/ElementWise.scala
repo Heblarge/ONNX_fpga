@@ -1,7 +1,7 @@
-package GeMM.ElementWise
+package MatrixComputeUnit.ElementWise
 import spinal.core._
 import spinal.lib._
-import GeMM.SystolicArray2D._
+import MatrixComputeUnit.SystolicArray2D._
 import spinal.lib.tools
 import spinal.core
 

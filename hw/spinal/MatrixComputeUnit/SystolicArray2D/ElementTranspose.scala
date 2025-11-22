@@ -1,5 +1,6 @@
-package GeMM.SystolicArray2D
-import GeMM.SystolicArray2D._
+package MatrixComputeUnit.SystolicArray2D
+
+import MatrixComputeUnit.SystolicArray2D._
 import spinal.core._
 import spinal.lib._
 import spinal.lib.tools

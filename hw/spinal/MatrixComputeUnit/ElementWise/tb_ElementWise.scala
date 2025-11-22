@@ -1,4 +1,4 @@
-package GeMM.ElementWise
+package MatrixComputeUnit.ElementWise
 import spinal.core._
 import spinal.core.sim.SimConfig
 import spinal.core.sim._

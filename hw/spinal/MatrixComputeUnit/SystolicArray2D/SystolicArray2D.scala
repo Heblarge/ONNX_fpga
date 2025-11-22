@@ -1,10 +1,10 @@
-package GeMM.SystolicArray2D
+package MatrixComputeUnit.SystolicArray2D
 import spinal.core._
 import spinal.lib._
 import spinal.lib.tools
 import spinal.core
 import scala.math
-import GeMM.SystolicArray2D._
+import MatrixComputeUnit.SystolicArray2D._
 import Interface.MatrixOperation_TypeDef
 import scala.collection.mutable.ArrayBuffer
 import Util._

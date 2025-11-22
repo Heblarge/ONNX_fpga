@@ -1,4 +1,4 @@
-package GeMM.SystolicArray2D
+package MatrixComputeUnit.SystolicArray2D
 import spinal.core
 import spinal.core._
 import spinal.core.ClockDomain

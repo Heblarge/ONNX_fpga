@@ -8,7 +8,8 @@ import LogarithmFunction._
 import ReLUFunction._
 import SoftplusFunction._
 import Interface._
-import GeMM.SystolicArray2D.SIntShifter
+import MatrixComputeUnit.SystolicArray2D.SIntShifter
+import MatrixComputeUnit.SystolicArray2D.SIntShifter
 
 // 定义激活函数配置类
 case class Activation_Config(

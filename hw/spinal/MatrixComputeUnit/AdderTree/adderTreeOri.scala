@@ -1,4 +1,4 @@
-package GeMM.AdderTree
+package MatrixComputeUnit.AdderTree
 import spinal.core._
 import spinal.lib._
 import spinal.lib.tools

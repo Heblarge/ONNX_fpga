@@ -1,10 +1,10 @@
-package GeMM.SystolicArray2D
+package MatrixComputeUnit.SystolicArray2D
 import spinal.core
 import spinal.core._
 import spinal.core.ClockDomain
 import spinal.lib._
 import spinal.lib.tools
-import GeMM.SystolicArray2D._
+import MatrixComputeUnit.SystolicArray2D._
 import scala.math
 
 /** **************************************************************

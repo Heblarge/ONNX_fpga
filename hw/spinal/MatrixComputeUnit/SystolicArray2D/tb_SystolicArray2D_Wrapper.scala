@@ -1,6 +1,6 @@
-package GeMM.SystolicArray2D
+package MatrixComputeUnit.SystolicArray2D
 
-import GeMM.SystolicArray2D.SystolicArray2D_CC_Sim.FileDir
+import MatrixComputeUnit.SystolicArray2D.SystolicArray2D_CC_Sim.FileDir
 import spinal.core._
 import spinal.lib._
 import spinal.core.ClockDomain
@@ -10,7 +10,6 @@ import spinal.lib.sim._
 import scala.util.Random
 import scala.collection.mutable
 import java.io.File
-//import Slicer._
 import Interface._
 import Util._
 

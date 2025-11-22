@@ -21,7 +21,7 @@
 │   │   ├── 📂 DataPump/              # 数据流管理
 │   │   ├── 📂 ExponentialFunction/   # 指数函数硬件实现
 │   │   ├── 📂 FloatingPoint/         # 浮点运算模块
-│   │   ├── 📂 GeMM/                  # 通用矩阵乘法
+│   │   ├── 📂 MatrixComputeUnit/                  # 通用矩阵乘法
 │   │   ├── 📂 Interface/             # 接口模块
 │   │   ├── 📂 LogarithmFunction/     # 对数函数硬件实现
 │   │   ├── 📂 LogCumsumExp/          # LogCumsumExp函数

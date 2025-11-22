@@ -2,7 +2,7 @@ package WrapForFPGA
 
 import Tiling._
 import DataPump._
-import GeMM.SystolicArray2D._
+import MatrixComputeUnit.SystolicArray2D._
 import Activation._
 import ExponentialFunction._
 import LogarithmFunction._
@@ -15,6 +15,7 @@ import scala.math._
 
 import spinal.lib.bus.amba4.axi._
 import Tiling.{Slicer, SlicerCfg, Collector, CollectorCfg}
+import MatrixComputeUnit.SystolicArray2D.{SystolicArray2D_Wrap_Config, SystolicArray2D_Wrapper}
 
 case class FPGACfg(
                            UIDWidth: Int,

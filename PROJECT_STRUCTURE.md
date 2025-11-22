@@ -124,7 +124,7 @@
 │   │   │   │      // *(添加描述)*
 │   │   │   └── 🆂 fp_adder_multiplier_one_period.scala  
 │   │   │          // *(添加描述)*
-│   │   ├── 📂 GeMM/
+│   │   ├── 📂 MatrixComputeUnit/
 │   │   │   ├── 📂 AdderTree/
 │   │   │   │   └── 🆂 adderTreeOri.scala  
 │   │   │   │          // *(添加描述)*

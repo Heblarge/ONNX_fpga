@@ -1,9 +1,10 @@
+import MatrixComputeUnit.SystolicArray2D.sim_SIntShifter
 import spinal.core._
 import spinal.core.sim._
 import spinal.lib._
 import spinal.lib.tools
 import spinal.lib.sim.{StreamMonitor, StreamDriver, StreamReadyRandomizer, ScoreboardInOrder}
-import GeMM.SystolicArray2D.sim_SIntShifter.inputQueue
+import MatrixComputeUnit.SystolicArray2D.sim_SIntShifter.inputQueue
 
 
 

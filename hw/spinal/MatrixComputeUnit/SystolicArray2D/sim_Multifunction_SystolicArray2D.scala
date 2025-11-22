@@ -1,4 +1,4 @@
-package GeMM.SystolicArray2D
+package MatrixComputeUnit.SystolicArray2D
 import scala.util.Random
 import scala.collection.mutable
 

@@ -64,7 +64,7 @@
 
 #### 2. 计算核心模块
 
-##### 2.1 脉动阵列系统 (hw/spinal/GeMM/)
+##### 2.1 脉动阵列系统 (hw/spinal/MatrixComputeUnit/)
 - **二维脉动阵列 (SystolicArray2D/)**
   - `SystolicArray2D.scala`: 主脉动阵列实现
     - 支持矩阵乘法、元素级运算

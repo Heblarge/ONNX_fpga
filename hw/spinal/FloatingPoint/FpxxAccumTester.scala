@@ -16,6 +16,8 @@ object FpxxAccumTester extends App {
         elaborateFlags = List("-fgp", "-kdb", "-lca","+rad", "+notimingchecks"),
         runFlags = List("-l ./run.log")
         )
+        val FileDir = "rtl/FpxxAccumTester"
+        new File(FileDir).mkdirs()
 
         val Spinalcfg=SpinalConfig(
             targetDirectory = FileDir,
@@ -23,10 +25,6 @@ object FpxxAccumTester extends App {
     //defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
             bitVectorWidthMax = 20000, //disable internal bigvector limitation"Way too big signal Bits"
         )
-
-
-        val FileDir = "rtl/FpxxAccumTester"
-        new File(FileDir).mkdirs()
 
         val compiled = SimConfig
             .withVCS(flag)

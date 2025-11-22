@@ -2,7 +2,7 @@ package Accelerator
 
 import Tiling._
 import DataPump._
-import GeMM.SystolicArray2D._
+import MatrixComputeUnit.SystolicArray2D._
 import Activation._
 import ExponentialFunction._
 import LogarithmFunction._
@@ -14,6 +14,7 @@ import spinal.lib.{Stream, slave}
 
 import scala.math._
 import Tiling.{SlicerCfg, Collector, Slicer, CollectorCfg, Sdpram}
+import MatrixComputeUnit.SystolicArray2D.{SystolicArray2D_Wrap_Config, SystolicArray2D_Wrapper}
 
 case class AcceleratorCfg(
     UIDWidth: Int,

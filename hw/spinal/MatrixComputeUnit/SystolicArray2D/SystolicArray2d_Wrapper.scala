@@ -1,6 +1,6 @@
-package GeMM.SystolicArray2D
+package MatrixComputeUnit.SystolicArray2D
 
-import Slicer._
+import Tiling._
 import spinal.core._
 import spinal.core.ClockDomain
 import spinal.core.sim._
