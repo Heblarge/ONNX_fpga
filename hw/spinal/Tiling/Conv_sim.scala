@@ -1,7 +1,7 @@
-package Conv
+package Tiling
 import scala.util.Random
 
-object ConvSoftwaveSimulator {
+object TilingSoftwaveSimulator {
   val random = new Random
   val seed = 114514
   random.setSeed(seed)

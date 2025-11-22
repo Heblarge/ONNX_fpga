@@ -1,6 +1,6 @@
 package Accelerator
 
-import Slicer._
+import Tiling._
 import DataPump._
 import GeMM.SystolicArray2D._
 import Activation._
@@ -13,6 +13,7 @@ import spinal.core._
 import spinal.lib.{Stream, slave}
 
 import scala.math._
+import Tiling.{SlicerCfg, Collector, Slicer, CollectorCfg, Sdpram}
 
 case class AcceleratorCfg(
     UIDWidth: Int,

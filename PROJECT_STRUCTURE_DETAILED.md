@@ -115,11 +115,11 @@
 
 #### 3. 数据流管理模块
 
-##### 3.1 卷积处理 (hw/spinal/Conv/)
-- `Slicer.scala`: 数据切片器，处理卷积窗口
+##### 3.1 矩阵切块和重组模块 (hw/spinal/Tiling/)
+- `Slicer.scala`: 数据切片器
 - `Collector.scala`: 结果收集器
 - `Sdpram.scala`: 简单双端口 RAM
-- `Conv_sim.scala`: 卷积仿真模块
+- `Tiling_sim.scala`: 切片和收集仿真模块
 
 ##### 3.2 数据泵系统 (hw/spinal/DataPump/)
 - `DataPump_mm2s.scala`: 内存到流数据泵

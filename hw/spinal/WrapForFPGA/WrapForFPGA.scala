@@ -1,6 +1,6 @@
 package WrapForFPGA
 
-import Slicer._
+import Tiling._
 import DataPump._
 import GeMM.SystolicArray2D._
 import Activation._
@@ -14,6 +14,7 @@ import spinal.lib._
 import scala.math._
 
 import spinal.lib.bus.amba4.axi._
+import Tiling.{Slicer, SlicerCfg, Collector, CollectorCfg}
 
 case class FPGACfg(
                            UIDWidth: Int,

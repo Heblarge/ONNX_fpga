@@ -1,4 +1,4 @@
-package Slicer
+package Tiling
 
 import DataPump._
 

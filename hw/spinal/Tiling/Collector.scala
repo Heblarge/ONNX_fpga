@@ -1,4 +1,4 @@
-package Slicer
+package Tiling
 
 import Util._
 import Interface._

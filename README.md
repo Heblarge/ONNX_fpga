@@ -16,7 +16,7 @@
 │   ├── 📂 spinal/                    # SpinalHDL源代码
 │   │   ├── 📂 Accelerator/           # 硬件加速器顶层设计
 │   │   ├── 📂 Activation/            # 激活函数模块
-│   │   ├── 📂 Conv/                  # 卷积运算模块
+│   │   ├── 📂 Tiling/                # 矩阵切块和重组模块
 │   │   ├── 📂 Cordic/                # CORDIC算法实现
 │   │   ├── 📂 DataPump/              # 数据流管理
 │   │   ├── 📂 ExponentialFunction/   # 指数函数硬件实现
