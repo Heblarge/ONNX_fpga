@@ -7,6 +7,20 @@ import DataPump._
 import spinal.core._
 import spinal.lib.{Stream, master, slave, StreamArbiterFactory}
 
+/**
+ * Collector Configuration Parameters
+ * 收集器配置参数
+ * 
+ * @param UIDWidth Unique Instruction ID width - 指令唯一标识符宽度
+ * @param AddressWidth Memory address width - 内存地址宽度
+ * @param ShapeWidth Matrix shape dimension width - 矩阵形状维度宽度
+ * @param SlicecntWidth Slice counter width - 切片计数器宽度
+ * @param slicedInstFifoDepth Sliced instruction FIFO depth - 切片指令FIFO深度
+ * @param systolicArraySideNum Systolic array side dimension - 脉动阵列边长
+ * @param activationUnitNum Number of activation units - 激活单元数量
+ * @param elementWidthZ Output matrix element width - 输出矩阵元素宽度
+ * @param numCores Number of processing cores - 处理核心数量
+ */
 case class CollectorCfg(
     UIDWidth: Int,
     AddressWidth: Int,
@@ -27,6 +41,12 @@ case class CollectorCfg(
   val CoreSelectWidth = log2Up(numCores)
 }
 
+/**
+ * Matrix Collector Component - 矩阵收集器组件
+ * 
+ * Main function: Collect and reassemble computation results from multiple cores into complete matrices
+ * 主要功能：从多个核心收集并重新组装计算结果为完整矩阵
+ */
 case class Collector(collectorCfg: CollectorCfg) extends Component {
   def SlicedInstType =
     Sliced_ComputeInstruction_TypeDef(

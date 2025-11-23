@@ -7,6 +7,20 @@ import DataPump._
 import spinal.core._
 import spinal.lib._
 
+/**
+ * Slicer Configuration Parameters
+ * 切片器配置参数
+ * 
+ * @param UIDWidth Unique Instruction ID width - 指令唯一标识符宽度
+ * @param ShiftWidth Shift operation width - 移位操作宽度  
+ * @param AddressWidth Memory address width - 内存地址宽度
+ * @param ShapeWidth Matrix shape dimension width - 矩阵形状维度宽度
+ * @param SlicecntWidth Slice counter width - 切片计数器宽度
+ * @param systolicArraySideNum Systolic array side dimension - 脉动阵列边长
+ * @param elementWidthA Matrix A element width - 矩阵A元素宽度
+ * @param elementWidthB Matrix B element width - 矩阵B元素宽度
+ * @param numCores Number of processing cores - 处理核心数量
+ */
 case class SlicerCfg(
     UIDWidth: Int,
     ShiftWidth: Int,
@@ -23,6 +37,12 @@ case class SlicerCfg(
   val CoreSelectWidth = log2Up(numCores)
 }
 
+/**
+ * Matrix Slicer Component - 矩阵切片器组件
+ * 
+ * Main function: Split large matrix operations into smaller sub-matrices suitable for hardware processing
+ * 主要功能：将大型矩阵运算分解为适合硬件处理的小型子矩阵
+ */
 case class Slicer(slicerCfg: SlicerCfg) extends Component {
   def InstType =
     ComputeInstruction_TypeDef(
