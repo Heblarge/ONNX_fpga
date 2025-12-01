@@ -143,8 +143,8 @@ object Fpxx2AFixCompatibleTester extends App {
     0.0, 1.0, -1.0, 0.5,
     0.001953125, // Subnormal
     10.0, 20.5, 100.0,
-    448.0,       // Max
-    -448.0,
+    240.0,       // Max
+    -240.0,
     500.0,       // Overflow -> Should saturate to 448
     -1000.0,     // Overflow -> Should saturate to -448
     Double.NaN
