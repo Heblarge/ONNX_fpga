@@ -8,9 +8,7 @@ import FpxxTesterSupport._
 import spinal.sim.VCSFlags
 import spinal.lib.sim.ScoreboardInOrder
 import java.io.File
-import spinal.core._
-import spinal.core.sim._
-import spinal.lib._
+
 import spinal.lib.sim._
 import scala.math
 import scala.util.Random
