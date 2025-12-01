@@ -13,7 +13,7 @@ object FpxxAdd {
         @HelpMessage(FloatingPoint.Cli.fpxxConfigHelpMsg)
         c: FpxxConfig,
         @HelpMessage(FloatingPoint.Cli.stageMaskHelpMsg(5))
-        pipeStages: StageMask = 0,
+        pipeStages: StageMask = 1,
         @HelpMessage("Compute sticky bit for intermediate calculations. Default=true")
         stickyBit: Boolean = true,
         @HelpMessage(FloatingPoint.Cli.roundTypeHelpMsg)

@@ -13,7 +13,7 @@ object FpxxMul {
         @HelpMessage(FloatingPoint.Cli.fpxxConfigHelpMsg)
         cOut: Option[FpxxConfig] = None,
         @HelpMessage(FloatingPoint.Cli.stageMaskHelpMsg(3))
-        pipeStages: StageMask = 0,
+        pipeStages: StageMask = 1,
         @HelpMessage(FloatingPoint.Cli.roundTypeHelpMsg)
         rounding: RoundType = RoundType.ROUNDTOEVEN
     )

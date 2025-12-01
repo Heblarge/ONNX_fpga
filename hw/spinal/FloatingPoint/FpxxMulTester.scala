@@ -8,8 +8,22 @@ import spinal.sim.VCSFlags
 import spinal.lib.sim.ScoreboardInOrder
 import java.io.File
 
+
+object FpxxAMul_Gen {
+  def main(args: Array[String]): Unit = {
+
+    val config = FpxxConfig.float16()
+
+    SpinalConfig(
+      targetDirectory = "rtl/FpxxMul",
+      oneFilePerComponent = true,
+      defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
+    ).generateVerilog(new FpxxMul(FpxxMul.Options(config)))
+  }
+}
+
 case class FpxxMulDut(config: FpxxConfig) extends Component {
-  val dut = FpxxMul(FpxxMul.Options(cIn = config, pipeStages = 2))
+  val dut = FpxxMul(FpxxMul.Options(cIn = config, pipeStages = 1))
 
   val op = slave(Flow(Vec(cloneOf(dut.io.input.payload.a), 2)))
   dut.io.input << op.map { payload =>

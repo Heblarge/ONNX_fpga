@@ -29,7 +29,7 @@ object FpxxConfig {
       exp_bias = CustomBias(16),
       signed_zero = false
     )
-    def float8_e4m3fnuz = FpxxConfig(
+    def float8_e4m3fnuz() = FpxxConfig(
       4,
       3,
       SpecialNan(BigInt("10000000", 2)),
