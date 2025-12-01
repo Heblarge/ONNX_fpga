@@ -18,7 +18,7 @@ import org.onnx4j.tensor.DataType;
 
 public interface ConvV11 extends ConvV1, AiOnnxOperatorV11 {
 
-    String OP_TYPE = "Conv";
+    String OP_TYPE = "Slicer";
     TypeConstraint TYPE_CONSTRAINT_T = new Field.TypeConstraint(DataType.FLOAT16, DataType.FLOAT, DataType.DOUBLE);
 
     @Override default String getOpType() { return OP_TYPE; }

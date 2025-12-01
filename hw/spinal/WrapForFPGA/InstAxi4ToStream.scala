@@ -1,6 +1,8 @@
 package WrapForFPGA
 
+import Tiling.{Slicer, SlicerCfg}
 import spinal.core._
+import _root_.Interface.ComputeInstruction_TypeDef
 import spinal.lib._
 import spinal.lib.bus.amba4.axi._
 
@@ -13,12 +15,12 @@ case class InstAxi4ToStream_Config[T <: Data](
                                                  addressWidth = 32,
                                                  dataWidth = 256,
                                                  idWidth = 0,
-                                                 useId = false,
+                                                 useId = true,
                                                  useBurst = true,
                                                  useLock = false,
                                                  useRegion = false,
                                                  useQos = false,
-                                                 useStrb = false
+                                                 useStrb = true
                                                ),
                                                fifoDepth   : Int = 2
                                              )
@@ -104,5 +106,57 @@ class Axi4CompatBridge(cfg: Axi4Config) extends Component {
   // 读通道透传
   io.m.ar << io.s.ar
   io.s.r  << io.m.r
+}
+
+
+
+/** 配置参数 */
+case class Axi4ToStreamConfigurable_Config(
+                                            axiCfg: Axi4Config,
+                                            fifoDepth: Int = 4,
+                                            ctrlRegAddr: Int = 0x00, // 控制寄存器地址 (用于发射指令)
+                                            dataBaseAddr: Int = 0x04 // 数据寄存器起始地址
+                                          )
+
+class Axi4ToStreamConfigurable[T <: Data](
+                                           cfg: Axi4ToStreamConfigurable_Config,
+                                           dataType: HardType[T],
+                                           mappingFunc: (Axi4SlaveFactory, T, Int) => Unit
+                                         ) extends Component {
+
+  val io = new Bundle {
+    val axi = slave(Axi4(cfg.axiCfg))
+    val out = master(Stream(dataType()))
+  }
+
+  // 1. 影子寄存器
+  val shadowReg = RegInit(dataType().getZero)
+
+  // 2. AXI Slave Factory
+  val busCtrl = new Axi4SlaveFactory(io.axi)
+
+  // 3. 执行映射
+  mappingFunc(busCtrl, shadowReg, cfg.dataBaseAddr)
+
+  // 4. 控制逻辑 (Commit / Fire) -- 修复点
+  val fireTrigger = False
+
+  // 使用 onWrite 来产生脉冲，而不是 write(False)
+  busCtrl.onWrite(cfg.ctrlRegAddr) {
+    // 只要有写操作，就触发发射 (Bit 0)
+    // 软件操作: Xil_Out32(BASE + 0x00, 1)
+    fireTrigger := True
+  }
+
+  // 5. 输出 FIFO
+  val fifo = StreamFifo(dataType(), cfg.fifoDepth)
+
+  fifo.io.push.valid   := fireTrigger
+  fifo.io.push.payload := shadowReg
+
+  // 状态回读
+  busCtrl.read(!fifo.io.push.ready, address = cfg.ctrlRegAddr, bitOffset = 1)
+
+  io.out <> fifo.io.pop
 }
 

@@ -55,8 +55,7 @@ case class FpxxConfig(
         case IEEEBias()       => (1 << (exp_size - 1)) - 1
     }
 
-    def ieee_like = nan_encoding.isInstanceOf[IEEENan] && inf_encoding.isInstanceOf[IEEEInfinity] && exp_bias
-        .isInstanceOf[IEEEBias] && signed_zero
+    def ieee_like = nan_encoding.isInstanceOf[IEEENan] && inf_encoding.isInstanceOf[IEEEInfinity] && exp_bias.isInstanceOf[IEEEBias] && signed_zero
 }
 
 object Fpxx {

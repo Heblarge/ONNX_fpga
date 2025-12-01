@@ -28,9 +28,9 @@ class InstAxiLiteToStream[T <: Data](
 
   // ---------------- 地址布局（自动对齐，无重叠） ----------------
   @inline def alignUp(x: Int, a: Int) = ((x + a - 1) / a) * a
-  val DATA_BASE  = 0x000
+  val DATA_BASE  = 0x0000
   val DATA_END   = DATA_BASE + WORD_NUM * WORD_BYTES
-  val MIN_CTRL   = 0x100                             // 至少从 0x100 开始，便于人读
+  val MIN_CTRL   = 0x0100                             // 至少从 0x100 开始，便于人读
   val CTRL_ADDR  = Math.max(MIN_CTRL, alignUp(DATA_END, WORD_BYTES))
   val STAT_ADDR  = CTRL_ADDR + WORD_BYTES            // 紧跟其后，且按总线宽度对齐
 

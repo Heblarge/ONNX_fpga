@@ -50,7 +50,7 @@ import org.onnx4j.tensor.DataType;
  */
 public interface ConvV1 extends AiOnnxOperatorV1 {
 
-	public static final String OP_TYPE = "Conv";
+	public static final String OP_TYPE = "Slicer";
 
 	/**
 	 * Constrain input and output types to float tensors.
