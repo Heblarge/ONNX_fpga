@@ -19,11 +19,14 @@ object FpxxAdd_Gen {
 
     val config = FpxxConfig.float8_e5m2fnuz()
 
+    val stageMask = List(true, true, true, true, true)
+    val cfg = FpxxAdd.Options(c = config, pipeStages = stageMask)
+
     SpinalConfig(
-      targetDirectory = "rtl/FpxxAdd",
+      targetDirectory = "rtl/FpxxAddCompatible",
       oneFilePerComponent = true,
       defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
-    ).generateVerilog(new FpxxAddCompatible(FpxxAdd.Options(config)))
+    ).generateVerilog(new FpxxAddCompatible(cfg))
   }
 }
 
@@ -152,7 +155,9 @@ case class FpxxAddCompatibleDut(config: FpxxConfig) extends Component {
 
   // 1. 实例化兼容版加法器
   // 注意：假设您已经把原来的 FpxxAdd 重命名为了 FpxxAddCompatible，如果没有改名，请改回 FpxxAdd
-  val inner = new FpxxAddCompatible(FpxxAdd.Options(config))
+  val stageMask = List(true, true, true, true, true)
+
+  val inner = new FpxxAddCompatible(FpxxAdd.Options(c = config , pipeStages = stageMask))
   inner.io.op.valid := op.valid
   inner.io.op.a     := op.payload(0)
   inner.io.op.b     := op.payload(1)
