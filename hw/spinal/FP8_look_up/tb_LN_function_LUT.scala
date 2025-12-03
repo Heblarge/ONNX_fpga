@@ -31,7 +31,7 @@ object sim_LN_function_LUT_test extends App {
   // 2. 编译 DUT
   // ===========================================================================
   val report = SpinalConfig(
-    targetDir ectory = "rtl/FP8_look_up/sim_LN_function_test_report",
+    targetDirectory = "rtl/FP8_look_up/sim_LN_function_test_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(LN_function_LUT(cfg))
