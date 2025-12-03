@@ -58,6 +58,7 @@ case class FpxxConfig(
     def ieee_like = nan_encoding.isInstanceOf[IEEENan] && inf_encoding.isInstanceOf[IEEEInfinity] && exp_bias.isInstanceOf[IEEEBias] && signed_zero
 }
 
+//对于Fpxx的定义
 object Fpxx {
     def apply(exp_size: Int, mant_size: Int): Fpxx = Fpxx(FpxxConfig(exp_size, mant_size))
     def apply(host: FpxxHost): Fpxx = {

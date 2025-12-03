@@ -28,6 +28,7 @@ class FpxxAdd(o: FpxxAdd.Options) extends Component {
     val round_bits    = if (o.rounding == RoundType.ROUNDTOZERO) 0 else 3
     val preround_size = o.c.mant_size + round_bits
 
+//Fpxx io的实现
     val io = new Bundle {
         val op = slave Flow (new Bundle {
             val a = Fpxx(o.c)
