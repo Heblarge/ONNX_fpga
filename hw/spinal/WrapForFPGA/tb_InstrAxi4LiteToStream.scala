@@ -102,11 +102,11 @@ object tb_Inst128_Wrapper extends App {
     println("\n[Test] 开始测试 Inst128_Wrapper...")
 
     // 地址映射 (参考 Inst192_Wrapper 中的 myMapping)
-    val REG_CTRL = 0x00
-    val SLICE0  = 0x10
-    val SLICE1  = 0x14
-    val SLICE2  = 0x18
-    val SLICE3  = 0x1C
+    val REG_CTRL = 0x10
+    val SLICE0  = 0x00
+    val SLICE1  = 0x04
+    val SLICE2  = 0x08
+    val SLICE3  = 0x0C
 
     // 1. 配置影子寄存器
     println("[Step 1] 配置参数...")

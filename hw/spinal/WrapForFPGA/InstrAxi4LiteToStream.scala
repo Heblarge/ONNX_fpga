@@ -12,7 +12,7 @@ case class Axi4LiteToStreamConfig(
                                    axiDataWidth: Int = 32,
                                    axiAddrWidth: Int = 12,
                                    fifoDepth: Int = 4,
-                                   ctrlRegAddr: Int = 0x00
+                                   ctrlRegAddr: Int = 0x10
                                  ) {
   // [修改 2] 返回 AxiLite4Config，它非常简单，不需要配置 useBurst 等
   def getAxiConfig = AxiLite4Config(
@@ -78,7 +78,7 @@ class Inst128_Wrapper(use64BitBus: Boolean = false) extends Component {
     axiDataWidth = axiWidth,
     axiAddrWidth = 12,
     fifoDepth    = 4,
-    ctrlRegAddr  = 0x00
+    ctrlRegAddr  = 0x10
   )
 
   // [修改 6] 回调函数签名更新
@@ -86,7 +86,7 @@ class Inst128_Wrapper(use64BitBus: Boolean = false) extends Component {
 
   // 定义映射策略
   def myMapping(factory: AxiLite4SlaveFactory, reg: Instruction128): Unit = {
-    val base = 0x10 // 数据寄存器从 0x10 开始
+    val base = 0x00 // 数据寄存器从 0x00 开始
 
     if (use64BitBus) {
       // ==========================================
@@ -123,8 +123,11 @@ class Inst128_Wrapper(use64BitBus: Boolean = false) extends Component {
     // [修改 7] 顶层接口也需要是 AxiLite4
     val s_axi    = slave(AxiLite4(cfg.getAxiConfig))
     val m_stream = master(Stream(Bits(Instruction128().getBitsWidth bits)))
+    val busy     = out Bool()  // 添加 busy 输出
   }
-
+  //io.s_axi.b.valid := io.s_axi.aw.valid && io.s_axi.w.valid
+  //Sio.s_axi.b.payload.resp := 0
+  io.busy     := core.io.busy  // 连接 busy 信号
   io.s_axi    <> core.io.s_axi
   io.m_stream.valid    := core.io.m_stream.valid
   io.m_stream.payload  := core.io.m_stream.payload.asBits
