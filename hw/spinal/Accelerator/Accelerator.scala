@@ -43,6 +43,8 @@ case class AcceleratorCfg(
     systolicArraySideNum = systolicArraySideNum,
     elementWidthA = elementWidth,
     elementWidthB = elementWidth,
+    // shiftLeft_A = 0,
+    // shiftLeft_B = 0,
     numCores = numCores
   )
   val systolicArray2DWrapCfg = SystolicArray2D_Wrap_Config(
