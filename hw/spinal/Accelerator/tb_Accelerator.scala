@@ -180,7 +180,7 @@ object AcceleratorTb extends App {
           endTime = cycleCount
           totalCycles   = endTime - startTime
           cyclesPerTest = totalCycles.toDouble / testNum
-          
+
           totalOps = instSims.map { inst =>
             // M*K*N*2，其中 K=inst.input0Shape1，也是 inst.input1Shape0
             2L * inst.input0Shape0 * inst.input0Shape1 * inst.input1Shape1
@@ -189,7 +189,7 @@ object AcceleratorTb extends App {
 
           println(s"Total cycles: $totalCycles, Cycles/test: $cyclesPerTest")
           println(s"Total operations: $totalOps, FLOPS/cycle: $flopsPerCycle")
-          
+
           simSuccess()
         }
       }
