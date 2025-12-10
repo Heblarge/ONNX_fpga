@@ -102,7 +102,7 @@ object tb_Inst128_Wrapper extends App {
     println("\n[Test] 开始测试 Inst128_Wrapper...")
 
     // 地址映射 (参考 Inst192_Wrapper 中的 myMapping)
-    val REG_CTRL = 0x10
+    val REG_CTRL = 0x20
     val SLICE0  = 0x00
     val SLICE1  = 0x04
     val SLICE2  = 0x08
