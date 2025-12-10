@@ -3,6 +3,7 @@ package MatrixCacheInterface
 import Tiling._
 import DataPump._
 import spinal.core._
+import spinal.core.sim.SimDataPimper
 import spinal.lib._
 
 /** ****************************************************************************
@@ -14,23 +15,20 @@ case class OutputMatrixCache(addrWidth: Int, dataWidth: Int) extends Component {
   val io = new Bundle {
     val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
     val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val switch = in Bool()     // 单周期有效的切换脉冲：写完当前 bank 后触发
-    val dmaIntr= in Bool()     // 读端 DMA 完成当前 bank 后触发（释放读 bank）
-    val status = out Bool()    // 有可读 bank（任一 bank valid）时为 1（可被轮询）
-    val intr   = out Bool()    // 新的可读 bank 就绪的脉冲中断（来自 switch && !full）
+    val switch = in Bool()
+    val dmaIntr= in Bool()
+    val status = out Bool()
+    val intr   = out Bool()
     val intrClear = in Bool()
-    val full   = out Bool()    // 两个 bank 均占用（写满未释放），上游需暂停切换
+    val full   = out Bool()
   }
 
-  // 内部实际深度为 2×可见深度
   val visibleDepth  = 1 << addrWidth
   val internalDepth = visibleDepth * 2
 
   val matrixCacheInterface = OutputMatrixCacheInterface(addrWidth, dataWidth)
-
   val sdpramModel = SdpramModel(dataWidth = dataWidth, depth = internalDepth)
 
-  // 对外端口直连核心接口
   io.read   <> matrixCacheInterface.io.read
   io.write  <> matrixCacheInterface.io.write
   io.switch <> matrixCacheInterface.io.switch
@@ -40,10 +38,10 @@ case class OutputMatrixCache(addrWidth: Int, dataWidth: Int) extends Component {
   io.intr   <> matrixCacheInterface.io.intr
   io.full   <> matrixCacheInterface.io.full
 
-  // 核心接口与物理存储模型的连接
   matrixCacheInterface.io.read_sdpram  <> sdpramModel.io.read
   matrixCacheInterface.io.write_sdpram <> sdpramModel.io.write
 }
+
 
 /** ****************************************************************************
  * OutputMatrixCacheInterface
@@ -58,97 +56,74 @@ case class OutputMatrixCache(addrWidth: Int, dataWidth: Int) extends Component {
  *   - 内部：read_sdpram / write_sdpram（地址位宽 +1，MSB 为 bank 位）
  * **************************************************************************** */
 case class OutputMatrixCacheInterface(addrWidth: Int, dataWidth: Int) extends Component {
-
   val io = new Bundle {
     val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
     val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    // 控制/状态
-    val switch = in  Bool()   // 单拍：写完当前 bank 后触发切换
-    val dmaIntr= in  Bool()   // 单拍：读端完成当前 bank 后释放
-    val status = out Bool()   // 是否存在已写好且尚未被读完的 bank
-    val intr   = out Bool()   // 新 bank 可读的脉冲（switch 被接受）
-    val intrClear = in Bool() // 用于清除中断的寄存器
-    val full   = out Bool()   // 两个 bank 均有效（无空闲 bank）
-    // 对物理 SDPRAM 的主端口（地址 +1 位以承载 bank）
+    val switch = in  Bool()
+    val dmaIntr= in  Bool()
+    val status = out Bool()
+    val intr   = out Bool()
+    val intrClear = in Bool()
+    val full   = out Bool()
     val read_sdpram  = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
     val write_sdpram = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
   }
 
-  // 写/读指针（指向 bank 0 或 1），仅 1 bit
-  val wrPtr = Reg(UInt(1 bits)) init(0)  // 当前写 bank
-  val rdPtr = Reg(UInt(1 bits)) init(0)  // 当前读 bank
-
+  val wrPtr = Reg(UInt(1 bits)) init(0)
+  val rdPtr = Reg(UInt(1 bits)) init(0)
   val intrReg = Reg(Bool()) init(False)
-  val intrClearReg = Reg(Bool()) init(False)
-  val statusReg = Reg(Bool()) init(False)
-
-
-
-  when(io.intrClear.rise()){
-    intrClearReg := io.intrClear
-  }.otherwise{
-    intrClearReg := False
-  }
-
-  // 两个 bank 的有效标志（“写满待读”）
   val bankValid = Vec(Reg(Bool()), 2)
   bankValid.foreach(_ init(False))
 
-  // 便捷别名
-  val wrIdx = wrPtr
-  val rdIdx = rdPtr
+  // 状态输出
+  io.status := bankValid(0) || bankValid(1)
+  io.full   := bankValid(0) && bankValid(1)
+  io.intr   := intrReg
 
-  // 满/空/状态计算
-  val anyValid = bankValid(0) || bankValid(1)
-  val fullCond = bankValid(0) && bankValid(1)
-  //io.status := anyValid
-  statusReg := anyValid
-  io.status := statusReg
+  // =========================
+  // 中断逻辑 (Critical Fix)
+  // =========================
+  // 1. 默认保持原值
 
-  io.full   := fullCond
-
-  val acceptSwitch = io.switch && !fullCond
-  when(acceptSwitch) {
-    bankValid(wrIdx) := True
-    wrPtr := wrPtr + 1
-    intrReg := True
-  }.otherwise{
-    intrReg := intrReg
-  }
-
-  when(intrClearReg){
+  // 2. 清除中断 (Reset)
+  // AXI setOnSet 产生一个单周期高脉冲，直接清除寄存器
+  when(io.intrClear) {
     intrReg := False
   }
 
+  // 3. 产生中断 (Set) - 优先级更高！
+  // 如果 Switch 和 Clear 在同一拍发生，说明刚刚清除了旧中断，但马上新数据又来了
+  // 此时必须保持中断为高，否则新数据会被漏处理
+  val acceptSwitch = io.switch && !io.full
+  when(acceptSwitch) {
+    bankValid(wrPtr) := True
+    wrPtr := wrPtr + 1
+    intrReg := True  // Set overrides Reset
+  }
 
-  val acceptRelease = io.dmaIntr.rise() && bankValid(rdIdx)
+  // 释放逻辑
+  val acceptRelease = io.dmaIntr.rise() && bankValid(rdPtr)
   when(acceptRelease) {
-    bankValid(rdIdx) := False
+    bankValid(rdPtr) := False
     rdPtr := rdPtr + 1
   }
 
-  io.intr := intrReg
-//  io.intr := acceptSwitch
-
-  // -----------------------
-  // 地址映射到物理 SDPRAM
-  // -----------------------
-  // 写端：映射到 wrPtr 指向的 bank
-  val wrBankBit = wrPtr(0).asBits
-  val wrAddrInt = (wrBankBit ## io.write.Address.asBits).asUInt
-
+  // 地址映射
+  val wrAddrInt = (wrPtr.asBits ## io.write.Address.asBits).asUInt
   io.write_sdpram.Valid   := io.write.Valid
   io.write_sdpram.Address := wrAddrInt
   io.write_sdpram.Data    := io.write.Data
 
-  // 读端：映射到 rdPtr 指向的 bank
-  val rdBankBit = rdPtr(0).asBits
-  val rdAddrInt = (rdBankBit ## io.read.Address.asBits).asUInt
-
+  val rdAddrInt = (rdPtr.asBits ## io.read.Address.asBits).asUInt
   io.read_sdpram.Valid   := io.read.Valid
   io.read_sdpram.Address := rdAddrInt
-  // 下层 SDPRAM 为同步读：数据一拍后返回
   io.read.Data := io.read_sdpram.Data
+
+  // Debug 信号暴露
+  wrPtr.simPublic()
+  rdPtr.simPublic()
+  bankValid.simPublic()
+  intrReg.simPublic()
 }
 
 /** ****************************************************************************
