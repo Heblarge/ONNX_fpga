@@ -193,9 +193,9 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   val matBSubShifted = Vec(SInt(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
 
   val shiftLeft_A = SInt(log2Up(slicerCfg.elementWidthA + 1) + 1 bits)
-  shiftLeft_A := slicerCfg.shiftLeft_A
+  shiftLeft_A := -slicerCfg.shiftLeft_A
   val shiftLeft_B = SInt(log2Up(slicerCfg.elementWidthB + 1) + 1 bits)
-  shiftLeft_B := slicerCfg.shiftLeft_B
+  shiftLeft_B := -slicerCfg.shiftLeft_B
 
   for(i <- 0 until slicerCfg.systolicArraySideNum) {
     // ---------- A ----------

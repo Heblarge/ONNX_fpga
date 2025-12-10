@@ -51,8 +51,8 @@ object SlicerTb extends App {
     systolicArraySideNum = 5,
     elementWidthA = 9,
     elementWidthB = 7,
-    shiftLeft_A = 0,
-    shiftLeft_B = 0,
+    shiftLeft_A = 1,
+    shiftLeft_B = 1,
     numCores = 3
   )
   // val slicerCfg = SlicerCfg(
@@ -112,7 +112,7 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum,
           slicerCfg.systolicArraySideNum
         ).transpose
-        // matASub = matASub.map(row => row.map(elem => elem << slicerCfg.shiftLeft_A))
+        matASub = matASub.map(row => row.map(elem => elem << slicerCfg.shiftLeft_A))
 
         var matBSub = matGetSub(
           matB,
@@ -122,7 +122,7 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum
         )
         if (!isMatMul) matBSub = matRotateCw(matBSub)
-        // matBSub = matBSub.map(row =>row.map(elem => elem << slicerCfg.shiftLeft_B))
+        matBSub = matBSub.map(row =>row.map(elem => elem << slicerCfg.shiftLeft_B))
         matASub.zip(matBSub).foreach(testRefs3 += _)
       }
       testRefs2 += testRefs3
