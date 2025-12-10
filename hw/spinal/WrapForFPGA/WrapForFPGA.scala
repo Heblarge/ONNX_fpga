@@ -48,8 +48,8 @@ case class FPGACfg(
     systolicArraySideNum = systolicArraySideNum,
     elementWidthA = elementWidth,
     elementWidthB = elementWidth,
-    // shiftLeft_A = 0,
-    // shiftLeft_B = 0,
+    shiftLeft_A = 0,
+    shiftLeft_B = 0,
     numCores = numCores
   )
   val dataPumpMm2sCfg = DataPump_mm2s_Config(
