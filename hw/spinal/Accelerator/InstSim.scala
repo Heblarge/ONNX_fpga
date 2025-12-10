@@ -161,8 +161,6 @@ class InstSim(
     payload.input1Shape(0) #= input1Shape0
     payload.input1Shape(1) #= input1Shape1
     payload.outputAddress #= outputAddress
-    payload.outputShape(0) #= outputShape0
-    payload.outputShape(1) #= outputShape1
   }
 
   def driveSim(payload: Sliced_ComputeInstruction_TypeDef) = {

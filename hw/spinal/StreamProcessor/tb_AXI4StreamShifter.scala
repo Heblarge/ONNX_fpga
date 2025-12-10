@@ -108,8 +108,6 @@ object tb_Axi4StreamShifter extends App {
     instr.payload.input0Shape(1) #= 0
     instr.payload.input1Shape(0) #= 0
     instr.payload.input1Shape(1) #= 0
-    instr.payload.outputShape(0) #= 0
-    instr.payload.outputShape(1) #= 0
     }
 
     clearInstr()
@@ -140,8 +138,7 @@ object tb_Axi4StreamShifter extends App {
       instr.payload.input0Shape(1) #= 0
       instr.payload.input1Shape(0) #= 0
       instr.payload.input1Shape(1) #= 0
-      instr.payload.outputShape(0) #= 0
-      instr.payload.outputShape(1) #= 0
+
 
       instr.valid #= true
       dut.clockDomain.waitSampling()

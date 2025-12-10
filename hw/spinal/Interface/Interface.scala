@@ -95,25 +95,60 @@ case class ComputeInstruction_TypeDef(UIDWidth: Int, ShiftWidth: Int, AddressWid
   val input1Address = UInt(AddressWidth bits) // 输入1的地址
   val input1Shape = Vec(UInt(ShapeWidth bits), 2) // 输入1的形状
   val outputAddress = UInt(AddressWidth bits) // 输出的地址
-  val outputShape = Vec(UInt(ShapeWidth bits), 2) // 输出的形状
+  def outputShape: Vec[UInt] = {
+    // 声明输出形状信号，并初始化为 DontCare
+    val Shape = Vec(UInt(ShapeWidth bits), 2)
+    Shape.assignDontCare()
 
-  def assignFromInst(inst: ComputeInstruction1_TypeDef) = {
+    val input0_rows = input0Shape(0)
+    val input0_cols = input0Shape(1)
+    val input1_rows = input1Shape(0)
+    val input1_cols = input1Shape(1)
+
+    // 使用 switch 语句根据 matrixOperation 的值来推导输出形状
+    switch(matrixOperation) {
+      // 1. 矩阵乘法 (MatMul):
+      is(MatrixOperation_TypeDef.MatMul) {
+        when(doTranspose) {
+
+        Shape(0) := input1_cols
+        Shape(1) := input0_rows
+      } otherwise {
+        Shape(0) := input0_rows
+        Shape(1) := input1_cols
+      }
+      }
+      // 2. 元素级操作 (ElementAdd, ElementMul, ElementMax):
+      is(MatrixOperation_TypeDef.ElementAdd, MatrixOperation_TypeDef.ElementMul, MatrixOperation_TypeDef.ElementMax) {
+        when(doTranspose) {
+        Shape(0) := input0_cols
+        Shape(1) := input0_rows
+      } otherwise {
+        Shape(0) := input0_rows
+        Shape(1) := input0_cols
+      }
+      }
+    }
+    // 返回计算出的形状信号
+    Shape
+  }
+
+  def assignFromInst(inst: ComputeInstruction_Simplified_TypeDef) = {
     UID := inst.UID
     matrixOperation := inst.matrixOperation
     shiftLeft_AfterMatrixOperation := inst.shiftLeft_AfterMatrixOperation
     doTranspose := inst.doTranspose
     activationFunction := inst.activationFunction
     shiftLeft_AfterActivation := inst.shiftLeft_AfterActivation
-    input0Address := 0
+    input0Address := inst.input0Address
     input0Shape := inst.input0Shape
-    input1Address := 0
+    input1Address := inst.input1Address
     input1Shape := inst.input1Shape
-    outputAddress := 0
-    outputShape := inst.outputShape
+    outputAddress := inst.outputAddress
   }
 }
 
-case class ComputeInstruction1_TypeDef(UIDWidth: Int, ShiftWidth: Int, AddressWidth: Int, ShapeWidth: Int)
+case class ComputeInstruction_Simplified_TypeDef(UIDWidth: Int, ShiftWidth: Int, AddressWidth: Int, ShapeWidth: Int)
     extends Bundle {
   val UID = UInt(UIDWidth bits) // 唯一标识符
   val matrixOperation = MatrixOperation_TypeDef() // 矩阵操作类型
@@ -121,9 +156,11 @@ case class ComputeInstruction1_TypeDef(UIDWidth: Int, ShiftWidth: Int, AddressWi
   val doTranspose = Bool() // 是否进行转置操作
   val activationFunction = Activation_TypeDef() // 激活函数类型
   val shiftLeft_AfterActivation = SInt(ShiftWidth bits) // 激活函数后的移位量
+  def input0Address:UInt ={val Address=UInt(AddressWidth bits);Address:=0;Address} // 输入0的地址
   val input0Shape = Vec(UInt(ShapeWidth bits), 2) // 输入0的形状
+  def input1Address:UInt ={val Address=UInt(AddressWidth bits);Address:=0;Address} // 输入1的地址
   val input1Shape = Vec(UInt(ShapeWidth bits), 2) // 输入1的形状
-  val outputShape = Vec(UInt(ShapeWidth bits), 2) // 输出的形状
+  def outputAddress:UInt ={val Address=UInt(AddressWidth bits);Address:=0;Address} // 输出的地址
 }
 
 case class Sliced_ComputeInstruction_TypeDef(UIDWidth: Int, AddressWidth: Int, ShapeWidth: Int) extends Bundle {
@@ -330,5 +367,3 @@ object out_Mats_AfterActivation_Converter {
     output
   }
 }
-
-
