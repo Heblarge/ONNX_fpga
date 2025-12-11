@@ -46,7 +46,7 @@ case class AcceleratorCfg(
     numCores = numCores
   )
   val systolicArray2DWrapCfg = SystolicArray2D_Wrap_Config(
-    in_Length_Max = systolicArraySideNum,
+    in_Length_Max = 2048,
     in_Length_Min = systolicArraySideNum,
     in_MatA_row_num = systolicArraySideNum,
     in_MatB_col_num = systolicArraySideNum,

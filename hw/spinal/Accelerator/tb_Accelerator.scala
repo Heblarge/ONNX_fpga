@@ -75,8 +75,9 @@ object AcceleratorTb extends App {
       val matB = random.nextMat(instSim.input1Shape0, instSim.input1Shape1, 0, 1)
       (matA, matB)
     } else {
-      val matA = random.nextMat(instSim.input0Shape0, instSim.input0Shape1, -9, 10)
-      val matB = random.nextMat(instSim.input1Shape0, instSim.input1Shape1, -9, 10)
+      val max = pow(2, acceleratorCfg.elementWidth-1).toInt
+      val matA = random.nextMat(instSim.input0Shape0, instSim.input0Shape1, -max, max)
+      val matB = random.nextMat(instSim.input1Shape0, instSim.input1Shape1, -max, max)
       (matA, matB)
     }
   }
@@ -165,7 +166,7 @@ object AcceleratorTb extends App {
           val err = abs(zRef - zResult)
           val errRate = abs((zRef - zResult).toDouble / zRef.toDouble)
           assert(
-            if (errRate < errRateLimit) true else abs(zRef) < zeroLimit && abs(zResult) < zeroLimit,
+            err==0,
             s"matZRef compute error, test $n, position ($i, $j), zRef: $zRef(${zRef.toHexString}), ".red +
               s"zResult: $zResult(${zResult.toHexString}), err:$err, errRate: $errRate\n".red +
               s"$instSim\nmatA:\n${matToStringWithHex(matA)}\nmatB:\n${matToStringWithHex(matB)}\n" +

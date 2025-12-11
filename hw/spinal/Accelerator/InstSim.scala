@@ -47,34 +47,34 @@ class InstSim(
   computeShape()
 
   def this(random: Random, matSubRowNum: Int) = {
-    this(
-      InstSim.lastUID + random.nextInt(10),
-      random.nextSpinalEnum(MatrixOperation_TypeDef),
-      random.between(-2, 3),
-      random.nextBoolean(),
-      random.nextSpinalEnum(Activation_TypeDef),
-      random.between(-2, 3),
-      InstSim.lastInput0Address + random.nextInt(10),
-      InstSim.lastInput1Address + random.nextInt(10),
-      InstSim.lastOutputAddress + random.nextInt(10),
-      random.between(1, 10) * matSubRowNum,
-      random.between(1, 10) * matSubRowNum,
-      random.between(1, 10) * matSubRowNum
-    )
     // this(
-    //   InstSim.lastUID,
-    //   MatrixOperation_TypeDef.ElementAdd,
-    //   0,
-    //   false,
-    //   Activation_TypeDef.None,
-    //   0,
-    //   InstSim.lastInput0Address,
-    //   InstSim.lastInput1Address,
-    //   InstSim.lastOutputAddress,
-    //   1 * matSubRowNum,
-    //   1 * matSubRowNum,
-    //   1 * matSubRowNum
+    //   InstSim.lastUID + random.nextInt(10),
+    //   random.nextSpinalEnum(MatrixOperation_TypeDef),
+    //   random.between(-2, 3),
+    //   random.nextBoolean(),
+    //   random.nextSpinalEnum(Activation_TypeDef),
+    //   random.between(-2, 3),
+    //   InstSim.lastInput0Address + random.nextInt(10),
+    //   InstSim.lastInput1Address + random.nextInt(10),
+    //   InstSim.lastOutputAddress + random.nextInt(10),
+    //   random.between(1, 10) * matSubRowNum,
+    //   random.between(1, 10) * matSubRowNum,
+    //   random.between(1, 10) * matSubRowNum
     // )
+    this(
+      InstSim.lastUID,
+      MatrixOperation_TypeDef.ElementAdd,
+      0,
+      false,
+      Activation_TypeDef.Softplus,
+      0,
+      InstSim.lastInput0Address,
+      InstSim.lastInput1Address,
+      InstSim.lastOutputAddress,
+      1 * matSubRowNum,
+      1 * matSubRowNum,
+      1 * matSubRowNum
+    )
     if (activationFunction == Activation_TypeDef.Log) {
       // activationFunction = Activation_TypeDef.Softplus
       matrixOperation = MatrixOperation_TypeDef.ElementAdd
@@ -173,8 +173,6 @@ class InstSim(
     payload.outputShape(1) #= outputShape1
   }
 
-  def shiftsatbits = 64;
-
   def transposeSim(mat: Array[Array[BigInt]]) = if (doTranspose) mat.transpose else mat
   def transposeSim(mat: Array[Array[Int]]) = if (doTranspose) mat.transpose else mat
 
@@ -185,7 +183,7 @@ class InstSim(
       case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
       case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
     }
-    transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, shiftsatbits))
+    transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
   }
 
   def activationSim(matZ: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
@@ -196,7 +194,7 @@ class InstSim(
       case Activation_TypeDef.Softplus => matElementwiseSoftplus(matZ, cfg)
       case Activation_TypeDef.None     => matZ
     }
-    matElementwiseShift(matZ2, shiftLeft_AfterActivation, shiftsatbits)
+    matElementwiseShift(matZ2, shiftLeft_AfterActivation, cfg.elementWidth)
   }
 
   def acceleratorSim(matA: Array[Array[Int]], matB: Array[Array[Int]], cfg: AcceleratorCfg) = {
