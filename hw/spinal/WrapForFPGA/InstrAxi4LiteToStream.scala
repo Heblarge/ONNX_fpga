@@ -15,6 +15,7 @@ case class Axi4LiteToStreamConfig(
                                    ctrlRegAddr: Int = 0x20
                                  ) {
   // 返回 AxiLite4Config，它非常简单，不需要配置 useBurst 等
+
   def getAxiConfig = AxiLite4Config(
     addressWidth = axiAddrWidth,
     dataWidth    = axiDataWidth

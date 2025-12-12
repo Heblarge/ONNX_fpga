@@ -4,6 +4,7 @@ import spinal.core._
 import spinal.lib._
 import DataPump._
 import MatrixCacheInterface._
+import spinal.core.sim.SimDataPimper
 
 /** ****************************************************************************
  * InputMatrixCache
@@ -125,6 +126,11 @@ case class InputMatrixCacheInterface(addrWidth: Int, dataWidth: Int, lifeWidth: 
   io.read_sdpram.Valid   := io.read.Valid
   io.read_sdpram.Address := rdAddrInt
   io.read.Data := io.read_sdpram.Data
+
+  wrPtr.simPublic()
+  rdPtr.simPublic()
+  bankValid.simPublic()
+  lifeCnt.simPublic()
 }
 
 
