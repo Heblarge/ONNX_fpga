@@ -95,6 +95,9 @@ case class ComputeInstruction_TypeDef(UIDWidth: Int, ShiftWidth: Int, AddressWid
   val input1Address = UInt(AddressWidth bits) // 输入1的地址
   val input1Shape = Vec(UInt(ShapeWidth bits), 2) // 输入1的形状
   val outputAddress = UInt(AddressWidth bits) // 输出的地址
+  val shiftLeft_A = SInt(ShiftWidth bits)
+  val shiftLeft_B = SInt(ShiftWidth bits)
+
   def outputShape: Vec[UInt] = {
     // 声明输出形状信号，并初始化为 DontCare
     val Shape = Vec(UInt(ShapeWidth bits), 2)
@@ -145,6 +148,8 @@ case class ComputeInstruction_TypeDef(UIDWidth: Int, ShiftWidth: Int, AddressWid
     input1Address := inst.input1Address
     input1Shape := inst.input1Shape
     outputAddress := inst.outputAddress
+    shiftLeft_A := inst.shiftLeft_A
+    shiftLeft_B := inst.shiftLeft_B
   }
 }
 
@@ -161,6 +166,8 @@ case class ComputeInstruction_Simplified_TypeDef(UIDWidth: Int, ShiftWidth: Int,
   def input1Address:UInt ={val Address=UInt(AddressWidth bits);Address:=0;Address} // 输入1的地址
   val input1Shape = Vec(UInt(ShapeWidth bits), 2) // 输入1的形状
   def outputAddress:UInt ={val Address=UInt(AddressWidth bits);Address:=0;Address} // 输出的地址
+  val shiftLeft_A = SInt(ShiftWidth bits)
+  val shiftLeft_B = SInt(ShiftWidth bits)
 }
 
 case class Sliced_ComputeInstruction_TypeDef(UIDWidth: Int, AddressWidth: Int, ShapeWidth: Int) extends Bundle {

@@ -43,8 +43,6 @@ case class FPGACfg(
     systolicArraySideNum = systolicArraySideNum,
     elementWidthA = elementWidth,
     elementWidthB = elementWidth,
-    shiftLeft_A = 0,
-    shiftLeft_B = 0,
     numCores = numCores
   )
   

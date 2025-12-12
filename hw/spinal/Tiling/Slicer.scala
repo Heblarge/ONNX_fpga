@@ -33,8 +33,6 @@ case class SlicerCfg(
     systolicArraySideNum: Int,
     elementWidthA: Int,
     elementWidthB: Int,
-    shiftLeft_A: Int,
-    shiftLeft_B: Int,
     numCores: Int
 ) {
   val dataWidthA = systolicArraySideNum * elementWidthA
@@ -51,6 +49,14 @@ case class SlicerCfg(
 case class Slicer(slicerCfg: SlicerCfg) extends Component {
   def InstType =
     ComputeInstruction_Simplified_TypeDef(
+      UIDWidth = slicerCfg.UIDWidth,
+      ShiftWidth = slicerCfg.ShiftWidth,
+      AddressWidth = slicerCfg.AddressWidth,
+      ShapeWidth = slicerCfg.ShapeWidth
+    )
+
+  def InstType_internal =
+    ComputeInstruction_TypeDef(
       UIDWidth = slicerCfg.UIDWidth,
       ShiftWidth = slicerCfg.ShiftWidth,
       AddressWidth = slicerCfg.AddressWidth,
@@ -108,7 +114,9 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   }
 
   io.slicedInst.valid.setAsReg().init(False)
-  io.slicedInst.assignFromInst(instReg)
+  val instReg2 = Reg(InstType_internal)
+  instReg2.assignFromInst(instReg)
+  io.slicedInst.assignFromInst(instReg2)
   when(io.slicedInst.fire) {
     io.slicedInst.valid := False
   } elsewhen (io.inst.fire) {
@@ -192,16 +200,11 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   val matASubShifted = Vec(SInt(slicerCfg.elementWidthA bits), slicerCfg.systolicArraySideNum)
   val matBSubShifted = Vec(SInt(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
 
-  val shiftLeft_A = SInt(log2Up(slicerCfg.elementWidthA + 1) + 1 bits)
-  shiftLeft_A := -slicerCfg.shiftLeft_A
-  val shiftLeft_B = SInt(log2Up(slicerCfg.elementWidthB + 1) + 1 bits)
-  shiftLeft_B := -slicerCfg.shiftLeft_B
-
   for(i <- 0 until slicerCfg.systolicArraySideNum) {
     // ---------- A ----------
     val aElemBits = matASub(i)(matABSubSendRowCnt)
     shiftersA(i).io.input := aElemBits.asSInt
-    shiftersA(i).io.shiftAmount := shiftLeft_A
+    shiftersA(i).io.shiftAmount := -instReg.shiftLeft_A.resize(log2Up(slicerCfg.elementWidthA + 1) + 1 bits)
     matASubShifted(i) := shiftersA(i).io.output
 
     // ---------- B ----------
@@ -212,7 +215,7 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
     )
 
     shiftersB(i).io.input := bElemBits.asSInt
-    shiftersB(i).io.shiftAmount := shiftLeft_B
+    shiftersB(i).io.shiftAmount := -instReg.shiftLeft_B.resize(log2Up(slicerCfg.elementWidthB + 1) + 1 bits)
     matBSubShifted(i) := shiftersB(i).io.output
   }
 
@@ -221,7 +224,7 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   matAfterSlicer.B := matBSubShifted
 
 
-  matAfterSlicer.CoreInstruction.assignFromInst(instReg, matARowSliceCnt.resized, matBColSliceCnt.resized)
+  matAfterSlicer.CoreInstruction.assignFromInst(instReg2, matARowSliceCnt.resized, matBColSliceCnt.resized)
   matAfterSlicer.Final := matABSubSendRowCnt.willOverflowIfInc && matAColSliceCnt.willOverflowIfInc
   matAfterSlicer.valid.setAsReg().init(False)
   when(matInSubReadFinish) {
