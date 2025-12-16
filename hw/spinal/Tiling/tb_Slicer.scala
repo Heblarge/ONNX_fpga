@@ -32,7 +32,7 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
   sdpramA.noWrite()
   sdpramB.noWrite()
 }
-
+// TODO:不要跑这个，目前还在施工
 object SlicerTb extends App {
   val period = 10
   val instDriveSpeed = 0.5f
