@@ -32,7 +32,7 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
   sdpramA.noWrite()
   sdpramB.noWrite()
 }
-// TODO:不要跑这个，目前还在施工
+
 object SlicerTb extends App {
   val period = 10
   val instDriveSpeed = 0.5f
@@ -53,17 +53,7 @@ object SlicerTb extends App {
     elementWidthB = 7,
     numCores = 3
   )
-  // val slicerCfg = SlicerCfg(
-  //   UIDWidth = 16,
-  //   ShiftWidth = 16,
-  //   AddressWidth = 16,
-  //   ShapeWidth = 16,
-  //   SlicecntWidth = 16,
-  //   systolicArraySideNum = 2,
-  //   elementWidthA = 8,
-  //   elementWidthB = 8,
-  //   numCores = 2
-  // )
+
   val compiled = SimConfig.withFsdbWave
     .withConfig(
       SpinalConfig(
@@ -110,9 +100,7 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum,
           slicerCfg.systolicArraySideNum
         ).transpose
-        // matASub = matASub.map(row => row.map(elem => elem << instSim.shiftLeft_A))
-        // TODO: fix tb_Slicer, instSim
-
+        matASub = matASub.map(row => row.map(elem => elem << instSim.shiftLeft_A))
         var matBSub = matGetSub(
           matB,
           if (isMatMul) k * slicerCfg.systolicArraySideNum else i * slicerCfg.systolicArraySideNum,
@@ -121,8 +109,7 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum
         )
         if (!isMatMul) matBSub = matRotateCw(matBSub)
-        // matBSub = matBSub.map(row =>row.map(elem => elem << instSim.shiftLeft_B))
-        // TODO: fix tb_Slicer, instSim
+        matBSub = matBSub.map(row =>row.map(elem => elem << instSim.shiftLeft_B))
         matASub.zip(matBSub).foreach(testRefs3 += _)
       }
       testRefs2 += testRefs3

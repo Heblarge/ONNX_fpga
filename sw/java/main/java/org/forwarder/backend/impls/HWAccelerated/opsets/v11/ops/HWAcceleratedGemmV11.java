@@ -64,7 +64,9 @@ public class HWAcceleratedGemmV11 extends HWAcceleratedOperator implements GemmV
                 0,
                 rowsA,
                 colsA,
-                colsB
+                colsB,
+                0,
+                0
         );
         int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
 

@@ -216,7 +216,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                         0,
                         TILE_M,
                         K,
-                        TILE_N);
+                        TILE_N,
+                        0,
+                        0);
 
                 long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
                 copyTileToResult(hardwareResult, tileResult, m_offset, n_offset, TILE_M, TILE_N);

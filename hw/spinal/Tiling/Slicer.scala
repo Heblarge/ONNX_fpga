@@ -249,7 +249,29 @@ case class SlicerWrap(slicerCfg: SlicerCfg) extends Component {
     val matAfterSlicers = Vec.fill(slicerCfg.numCores)(master Stream slicer.MatAfterSlicerType)
     val instFinish = out Bool ()
   }
-  slicer.io.inst.assignFromInst(io.inst)
-  
 
+  val aLanesN = slicer.io.memoryReadPortA.Data.subdivideIn(slicerCfg.elementWidthA bits)
+  val aLanes32 = Vec(Bits(32 bits), slicerCfg.systolicArraySideNum)
+
+  for(i <- 0 until slicerCfg.systolicArraySideNum){
+    aLanes32(i) := aLanesN(i).asSInt.resize(32 bits).asBits
+  }
+  io.memoryReadPortA.Data := aLanes32.asBits
+  io.memoryReadPortA.Valid := slicer.io.memoryReadPortA.Valid
+  io.memoryReadPortA.Address := slicer.io.memoryReadPortA.Address
+
+  val bLanesN = slicer.io.memoryReadPortB.Data.subdivideIn(slicerCfg.elementWidthB bits)
+  val bLanes32 = Vec(Bits(32 bits), slicerCfg.systolicArraySideNum)
+
+  for(i <- 0 until slicerCfg.systolicArraySideNum){
+    bLanes32(i) := bLanesN(i).asSInt.resize(32 bits).asBits
+  }
+  io.memoryReadPortB.Data := bLanes32.asBits
+  io.memoryReadPortB.Valid := slicer.io.memoryReadPortB.Valid
+  io.memoryReadPortB.Address := slicer.io.memoryReadPortB.Address
+
+  slicer.io.inst.assignFromInst(io.inst)
+  slicer.io.slicedInst <> io.slicedInst
+  slicer.io.matAfterSlicers <> io.matAfterSlicers
+  io.instFinish <> slicer.io.instFinish
 }

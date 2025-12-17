@@ -41,7 +41,9 @@ class InstSim(
     val outputAddress: Int,
     val input0Shape0: Int,
     var input0Shape1: Int,
-    val input1Shape1: Int
+    val input1Shape1: Int,
+    val shiftLeft_A: Int,
+    val shiftLeft_B: Int
 ) {
   var input1Shape0, outputShape0, outputShape1 = 0
   computeShape()
@@ -59,22 +61,11 @@ class InstSim(
       InstSim.lastOutputAddress + random.nextInt(10),
       random.between(1, 10) * matSubRowNum,
       random.between(1, 10) * matSubRowNum,
-      random.between(1, 10) * matSubRowNum
+      random.between(1, 10) * matSubRowNum,
+      0,
+      0
     )
-    // this(
-    //   InstSim.lastUID,
-    //   MatrixOperation_TypeDef.ElementAdd,
-    //   0,
-    //   false,
-    //   Activation_TypeDef.None,
-    //   0,
-    //   InstSim.lastInput0Address,
-    //   InstSim.lastInput1Address,
-    //   InstSim.lastOutputAddress,
-    //   1 * matSubRowNum,
-    //   1 * matSubRowNum,
-    //   1 * matSubRowNum
-    // )
+
     if (activationFunction == Activation_TypeDef.Log) {
       // activationFunction = Activation_TypeDef.Softplus
       matrixOperation = MatrixOperation_TypeDef.ElementAdd
@@ -113,7 +104,9 @@ class InstSim(
       instJava.outputAddress,
       instJava.input0Shape0,
       instJava.input0Shape1,
-      instJava.input1Shape1
+      instJava.input1Shape1,
+      instJava.shiftLeft_A,
+      instJava.shiftLeft_B
     )
   }
 
@@ -145,7 +138,9 @@ class InstSim(
        |input1Address: ${input1Address}
        |input1Shape: (${input1Shape0}, ${input1Shape1})
        |outputAddress: ${outputAddress}
-       |outputShape: (${outputShape0}, ${outputShape1})""".stripMargin
+       |outputShape: (${outputShape0}, ${outputShape1})
+       |shiftLeft_A: ${shiftLeft_A}
+       |shiftLeft_B: ${shiftLeft_B}""".stripMargin
 
   def driveSim(payload: ComputeInstruction_TypeDef) = {
     payload.UID #= UID
@@ -161,6 +156,8 @@ class InstSim(
     payload.input1Shape(0) #= input1Shape0
     payload.input1Shape(1) #= input1Shape1
     payload.outputAddress #= outputAddress
+    payload.shiftLeft_A #= shiftLeft_A
+    payload.shiftLeft_B #= shiftLeft_B
   }
 
   def driveSim(payload: Sliced_ComputeInstruction_TypeDef) = {

@@ -22,7 +22,9 @@ public class test {
 				0,
 				8,
 				8,
-				8
+				8,
+				0,
+				0
 		);
 		int[][] result = AcceleratorSimInterface.runRefOneInst(matrixA, matrixB, instJava);
 

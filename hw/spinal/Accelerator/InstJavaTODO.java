@@ -15,6 +15,8 @@ public class InstJavaTODO {
     public int input0Shape0;
     public int input0Shape1;
     public int input1Shape1;
+    public int shiftLeft_A;
+    public int shiftLeft_B;
 
     public InstJavaTODO(
         int UID,
@@ -28,7 +30,9 @@ public class InstJavaTODO {
         int outputAddress,
         int input0Shape0,
         int input0Shape1,
-        int input1Shape1
+        int input1Shape1,
+        int shiftLeft_A,
+        int shiftLeft_B
 
     ) {
         this.UID = UID;
@@ -43,5 +47,7 @@ public class InstJavaTODO {
         this.input0Shape0 = input0Shape0;
         this.input0Shape1 = input0Shape1;
         this.input1Shape1 = input1Shape1;
+        this.shiftLeft_A = shiftLeft_A;
+        this.shiftLeft_B = shiftLeft_B;
     }
 }
