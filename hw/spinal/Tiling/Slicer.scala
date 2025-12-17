@@ -48,14 +48,6 @@ case class SlicerCfg(
  */
 case class Slicer(slicerCfg: SlicerCfg) extends Component {
   def InstType =
-    ComputeInstruction_Simplified_TypeDef(
-      UIDWidth = slicerCfg.UIDWidth,
-      ShiftWidth = slicerCfg.ShiftWidth,
-      AddressWidth = slicerCfg.AddressWidth,
-      ShapeWidth = slicerCfg.ShapeWidth
-    )
-
-  def InstType_internal =
     ComputeInstruction_TypeDef(
       UIDWidth = slicerCfg.UIDWidth,
       ShiftWidth = slicerCfg.ShiftWidth,
@@ -114,9 +106,7 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   }
 
   io.slicedInst.valid.setAsReg().init(False)
-  val instReg2 = Reg(InstType_internal)
-  instReg2.assignFromInst(instReg)
-  io.slicedInst.assignFromInst(instReg2)
+  io.slicedInst.assignFromInst(instReg)
   when(io.slicedInst.fire) {
     io.slicedInst.valid := False
   } elsewhen (io.inst.fire) {
@@ -224,7 +214,7 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   matAfterSlicer.B := matBSubShifted
 
 
-  matAfterSlicer.CoreInstruction.assignFromInst(instReg2, matARowSliceCnt.resized, matBColSliceCnt.resized)
+  matAfterSlicer.CoreInstruction.assignFromInst(instReg, matARowSliceCnt.resized, matBColSliceCnt.resized)
   matAfterSlicer.Final := matABSubSendRowCnt.willOverflowIfInc && matAColSliceCnt.willOverflowIfInc
   matAfterSlicer.valid.setAsReg().init(False)
   when(matInSubReadFinish) {
@@ -235,4 +225,31 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
 
   val matAfterSlicers = StreamDispatcher(in_Mats_Converter.withFragment(matAfterSlicer), slicerCfg.numCores)
   io.matAfterSlicers <> matAfterSlicers.mapVec(in_Mats_Converter.withoutFragment(_))
+}
+
+case class SlicerWrap(slicerCfg: SlicerCfg) extends Component {
+  val slicer = Slicer(slicerCfg)
+  def InstType =
+    ComputeInstruction_Simplified_TypeDef(
+      UIDWidth = slicerCfg.UIDWidth,
+      ShiftWidth = slicerCfg.ShiftWidth,
+      AddressWidth = slicerCfg.AddressWidth,
+      ShapeWidth = slicerCfg.ShapeWidth
+    )
+  def MemoryReadPortTypeA =
+    MemoryReadPort_TypeDef(AddressWidth = slicerCfg.AddressWidth, DataWidth = slicerCfg.systolicArraySideNum*32)
+  def MemoryReadPortTypeB =
+    MemoryReadPort_TypeDef(AddressWidth = slicerCfg.AddressWidth, DataWidth = slicerCfg.systolicArraySideNum*32)
+    
+  val io = new Bundle {
+    val inst = slave Stream InstType
+    val slicedInst = master Stream slicer.SlicedInstType
+    val memoryReadPortA = master(MemoryReadPortTypeA)
+    val memoryReadPortB = master(MemoryReadPortTypeB)
+    val matAfterSlicers = Vec.fill(slicerCfg.numCores)(master Stream slicer.MatAfterSlicerType)
+    val instFinish = out Bool ()
+  }
+  slicer.io.inst.assignFromInst(io.inst)
+  
+
 }

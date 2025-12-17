@@ -171,23 +171,6 @@ class InstSim(
     payload.outputShape(1) #= outputShape1
   }
 
-  def driveSim(payload: ComputeInstruction_Simplified_TypeDef) = {
-    payload.UID #= UID
-    payload.matrixOperation #= matrixOperation
-    payload.shiftLeft_AfterMatrixOperation #= shiftLeft_AfterMatrixOperation
-    payload.doTranspose #= doTranspose
-    payload.activationFunction #= activationFunction
-    payload.shiftLeft_AfterActivation #= shiftLeft_AfterActivation
-    // Note: input0Address, input1Address, outputAddress are defs, not settable
-    payload.input0Shape(0) #= input0Shape0
-    payload.input0Shape(1) #= input0Shape1
-    payload.input1Shape(0) #= input1Shape0
-    payload.input1Shape(1) #= input1Shape1
-    // TODO: shiftLeft_A and shiftLeft_B need to be added to InstSim class
-    // payload.shiftLeft_A #= shiftLeft_A
-    // payload.shiftLeft_B #= shiftLeft_B
-  }
-
   def shiftsatbits = 64;
 
   def transposeSim(mat: Array[Array[BigInt]]) = if (doTranspose) mat.transpose else mat

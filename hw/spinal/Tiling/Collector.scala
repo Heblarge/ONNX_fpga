@@ -138,3 +138,17 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
   instFinish := matZSliceCnt.willOverflow
   io.instFinish := RegNext(instFinish, False)
 }
+
+case class CollectorWrap(collectorCfg: CollectorCfg) extends Component {
+  val collector=Collector(collectorCfg)
+  def MemoryWritePortType =
+    MemoryWritePort_TypeDef(AddressWidth = collectorCfg.AddressWidth, DataWidth = collectorCfg.systolicArraySideNum*32)
+
+  val io = new Bundle {
+    val slicedInst = slave Stream collector.SlicedInstType
+    val memoryWritePort = master(MemoryWritePortType)
+    val matAfterActivations = Vec.fill(collectorCfg.numCores)(slave Stream collector.MatAfterActivationType)
+    val instFinish = out Bool ()
+  }
+
+}
