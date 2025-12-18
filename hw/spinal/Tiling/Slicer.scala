@@ -250,27 +250,29 @@ case class SlicerWrap(slicerCfg: SlicerCfg) extends Component {
     val instFinish = out Bool ()
   }
 
-  val aLanesN = slicer.io.memoryReadPortA.Data.subdivideIn(slicerCfg.elementWidthA bits)
-  val aLanes32 = Vec(Bits(32 bits), slicerCfg.systolicArraySideNum)
+  val aLanes32 = io.memoryReadPortA.Data.subdivideIn(32 bits)
+  val aLanesN = Vec(Bits(slicerCfg.elementWidthA bits), slicerCfg.systolicArraySideNum)
 
-  for(i <- 0 until slicerCfg.systolicArraySideNum){
-    aLanes32(i) := aLanesN(i).asSInt.resize(32 bits).asBits
+  for (i <- 0 until slicerCfg.systolicArraySideNum) {
+    aLanesN(i) := aLanes32(i).asSInt.resize(slicerCfg.elementWidthA).asBits
   }
-  io.memoryReadPortA.Data := aLanes32.asBits
+  slicer.io.memoryReadPortA.Data := aLanesN.asBits
   io.memoryReadPortA.Valid := slicer.io.memoryReadPortA.Valid
   io.memoryReadPortA.Address := slicer.io.memoryReadPortA.Address
 
-  val bLanesN = slicer.io.memoryReadPortB.Data.subdivideIn(slicerCfg.elementWidthB bits)
-  val bLanes32 = Vec(Bits(32 bits), slicerCfg.systolicArraySideNum)
+  val bLanes32 = io.memoryReadPortB.Data.subdivideIn(32 bits)
+  val bLanesN = Vec(Bits(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
 
-  for(i <- 0 until slicerCfg.systolicArraySideNum){
-    bLanes32(i) := bLanesN(i).asSInt.resize(32 bits).asBits
+  for (i <- 0 until slicerCfg.systolicArraySideNum) {
+    bLanesN(i) := bLanes32(i).asSInt.resize(slicerCfg.elementWidthB).asBits
   }
-  io.memoryReadPortB.Data := bLanes32.asBits
+  slicer.io.memoryReadPortB.Data := bLanesN.asBits
   io.memoryReadPortB.Valid := slicer.io.memoryReadPortB.Valid
   io.memoryReadPortB.Address := slicer.io.memoryReadPortB.Address
 
-  slicer.io.inst.assignFromInst(io.inst)
+  slicer.io.inst.payload.assignFromInst(io.inst.payload)
+  slicer.io.inst.valid <> io.inst.valid
+  slicer.io.inst.ready <> io.inst.ready
   slicer.io.slicedInst <> io.slicedInst
   slicer.io.matAfterSlicers <> io.matAfterSlicers
   io.instFinish <> slicer.io.instFinish
