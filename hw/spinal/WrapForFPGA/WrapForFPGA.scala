@@ -96,7 +96,7 @@ case class FPGACfg(
     axiDataWidth = 32,      // 对外：32 位 AXI 总线
     axiAddrWidth = 12,
     fifoDepth = 2,
-    ctrlRegAddr = 0x20
+    ctrlRegAddr = 0x10
   )
 }
 
