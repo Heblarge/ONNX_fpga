@@ -37,7 +37,7 @@ case class WrapForFPGATest(fpgaCfg: FPGACfg) extends Component {
   }
   
   io.sAxi4LiteInst <> dut.io.sAxi4LiteInst
-  io.instFinish := dut.io.instFinish
+  io.instFinish := dut.io.readSwitch
   
   // 内存连接
   memA.io.read.Valid := dut.io.memPortA.Valid

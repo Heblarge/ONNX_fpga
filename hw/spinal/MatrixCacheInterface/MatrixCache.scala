@@ -91,6 +91,7 @@ case class MatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) exte
   cacheC.io.switch  <> io.switchC
   cacheC.io.dmaIntr <> io.dmaDoneC
 
+
   // =============================
   // 3. 硬件中断输出
   // =============================

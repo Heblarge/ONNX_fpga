@@ -123,7 +123,8 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
     val memPortZ = master(MemoryWritePortType)
     
     // 指令完成信号
-    val instFinish = out Bool()
+    val readSwitch = out Bool()
+    val writeSwitch = out Bool()
   }
 
   // 连接 AXI4-Lite 桥接器
@@ -139,8 +140,9 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
   slicer.io.inst <> instStream
   slicer.io.slicedInst <> collector.io.slicedInst
   
-  // 暴露指令完成信号
-  io.instFinish := slicer.io.instFinish
+  // 控制内存控制器切换缓存空间
+  io.readSwitch := slicer.io.instFinish
+  io.writeSwitch := collector.io.instFinish
   
   // 直接暴露 memory port
   io.memPortA <> slicer.io.memoryReadPortA
@@ -190,8 +192,9 @@ object WrapForFPGA_Verilog extends App {
   
   SpinalConfig(
     targetDirectory = FileDir,
-    oneFilePerComponent = true,
+    oneFilePerComponent = false,
     removePruned = true,
+    defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
     bitVectorWidthMax = 100000
   ).generateVerilog(new WrapForFPGA(fpgaCfg))
 }
