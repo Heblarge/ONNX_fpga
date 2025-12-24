@@ -96,29 +96,35 @@ case class FPGACfg(
     axiDataWidth = 32,      // 对外：32 位 AXI 总线
     axiAddrWidth = 12,
     fifoDepth = 2,
-    ctrlRegAddr = 0x20
+    ctrlRegAddr = 0x10
   )
 }
 
 case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
-  val slicer = Slicer(fpgaCfg.slicerCfg)
-  val collector = Collector(fpgaCfg.collectorCfg)
+  val slicer = SlicerWrap(fpgaCfg.slicerCfg)
+  val collector = CollectorWrap(fpgaCfg.collectorCfg)
 
   // 创建 128 位指令的 AXI4-Lite to Stream 桥接器
   // use64BitBus = false 表示使用 32 位 AXI 总线
   val instBridge = new Inst128_Wrapper(use64BitBus = false)
-
+  def MemoryReadPortTypeA =
+    MemoryReadPort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum*32)
+  def MemoryReadPortTypeB =
+    MemoryReadPort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum*32)
+  def MemoryWritePortType =
+    MemoryWritePort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum*32)
   val io = new Bundle {
     // AXI4-Lite 指令接口（32 位总线）
     val sAxi4LiteInst = slave(AxiLite4(fpgaCfg.axi4LiteInstCfg.getAxiConfig))
     
     // Memory Ports - 直接暴露存储接口
-    val memPortA = master(MemoryReadPort_TypeDef(fpgaCfg.AddressWidth, fpgaCfg.dataWidth))
-    val memPortB = master(MemoryReadPort_TypeDef(fpgaCfg.AddressWidth, fpgaCfg.dataWidth))
-    val memPortZ = master(MemoryWritePort_TypeDef(fpgaCfg.AddressWidth, fpgaCfg.dataWidth))
+    val memPortA = master(MemoryReadPortTypeA)
+    val memPortB = master(MemoryReadPortTypeB)
+    val memPortZ = master(MemoryWritePortType)
     
     // 指令完成信号
-    val instFinish = out Bool()
+    val readSwitch = out Bool()
+    val writeSwitch = out Bool()
   }
 
   // 连接 AXI4-Lite 桥接器
@@ -134,8 +140,9 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
   slicer.io.inst <> instStream
   slicer.io.slicedInst <> collector.io.slicedInst
   
-  // 暴露指令完成信号
-  io.instFinish := slicer.io.instFinish
+  // 控制内存控制器切换缓存空间
+  io.readSwitch := slicer.io.instFinish
+  io.writeSwitch := collector.io.instFinish
   
   // 直接暴露 memory port
   io.memPortA <> slicer.io.memoryReadPortA
@@ -162,6 +169,7 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
   }
 }
 
+
 object WrapForFPGA_Verilog extends App {
   val FileDir = "rtl/WrapForFPGA/verilog"
   import java.io.File
@@ -171,7 +179,7 @@ object WrapForFPGA_Verilog extends App {
     UIDWidth = 19,
     AddressWidth = 20,
     ShapeWidth = 16,
-    systolicArraySideNum = 32,
+    systolicArraySideNum = 8,
     elementWidth = 24,
     intWidth = 12,
     systolicArrayInFifoDepth = 2,
@@ -184,8 +192,9 @@ object WrapForFPGA_Verilog extends App {
   
   SpinalConfig(
     targetDirectory = FileDir,
-    oneFilePerComponent = true,
+    oneFilePerComponent = false,
     removePruned = true,
+    defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
     bitVectorWidthMax = 100000
   ).generateVerilog(new WrapForFPGA(fpgaCfg))
 }

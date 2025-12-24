@@ -151,4 +151,19 @@ case class CollectorWrap(collectorCfg: CollectorCfg) extends Component {
     val instFinish = out Bool ()
   }
 
+  val LanesN = collector.io.memoryWritePort.Data.subdivideIn(collectorCfg.elementWidthZ bits)
+  val Lanes32 = Vec(Bits(32 bits), collectorCfg.systolicArraySideNum)
+
+  for(i <- 0 until collectorCfg.systolicArraySideNum){
+    Lanes32(i) := LanesN(i).asSInt.resize(32 bits).asBits
+  }
+  io.memoryWritePort.Data := Lanes32.asBits
+  io.memoryWritePort.Valid := collector.io.memoryWritePort.Valid
+  io.memoryWritePort.Address := collector.io.memoryWritePort.Address
+  io.memoryWritePort.clk := ClockDomain.current.readClockWire
+  io.memoryWritePort.Wen := B(io.memoryWritePort.Wen.getWidth bits, default -> io.memoryWritePort.Valid)
+
+  collector.io.slicedInst <> io.slicedInst
+  collector.io.matAfterActivations <> io.matAfterActivations
+  io.instFinish <> collector.io.instFinish
 }

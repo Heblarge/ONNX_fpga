@@ -153,7 +153,9 @@ public class HWAcceleratedSoftplusV13 extends HWAcceleratedQuantizedOperator imp
                     0,
                     TILE_ROWS,
                     cols,
-                    cols
+                    cols,
+                    0,
+                    0
             );
 
             copyTileFromSource(tileA, fixedPointInput, rowOffset, 0, TILE_ROWS, cols);

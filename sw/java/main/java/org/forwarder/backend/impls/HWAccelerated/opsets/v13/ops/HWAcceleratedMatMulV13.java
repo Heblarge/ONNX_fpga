@@ -251,7 +251,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                         0,
                         TILE_M,
                         K,
-                        TILE_N);
+                        TILE_N,
+                        0,
+                        0);
 
                 String tileIndex = String.format("M:%d, N:%d", m_idx, n_idx);
                 tracer.addTile(tileIndex, instruction);
