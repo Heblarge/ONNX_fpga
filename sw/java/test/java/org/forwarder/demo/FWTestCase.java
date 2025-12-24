@@ -40,6 +40,7 @@ import org.forwarder.Session;
 import org.forwarder.executor.impls.RayExecutor;
 import org.forwarder.executor.impls.SequentialExecutor;
 import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTracer;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Tensor;
 import org.onnx4j.model.Graph;
@@ -148,6 +149,7 @@ public abstract class FWTestCase extends TestCase {
 
                             if (backendName.equals("HWAccelerated")) {
                                 HWAcceleratedCollector.getInstance().reset();
+                                HWAcceleratedTracer.getInstance().reset();
                             }
 
                             // 输入全部 feed
@@ -168,15 +170,25 @@ public abstract class FWTestCase extends TestCase {
                                     }
 
                                     if (backendName.equals("HWAccelerated")) {
-                                        // 假设收集器有一个 saveReport 方法
-                                        // 您需要将 outputDir 传给它
+                                        // 保存存储占用信息
                                         try {
-                                            File statsFile = new File(outputDir, "hardware_stats.csv");
+                                            File statsFile = new File(outputDir, "hardware_stats.txt");
                                             String report = HWAcceleratedCollector.getInstance().getReport();
                                             FileUtils.writeStringToFile(statsFile, report, "UTF-8");
                                             logger.info("Hardware stats saved to " + statsFile.getAbsolutePath());
                                         } catch (Exception e) {
                                             logger.warn("Failed to save hardware stats", e);
+                                        }
+
+                                        // 保存节点信息到json文件
+                                        try {
+                                            File traceFile = new File(outputDir, "hardware_trace_report.json");
+                                            String traceJson = HWAcceleratedTracer.getInstance().getReportAsJson();
+                                            FileUtils.writeStringToFile(traceFile, traceJson, "UTF-8");
+                                            logger.info("Hardware trace report saved to " + traceFile.getAbsolutePath());
+                                        } catch (Exception e) {
+                                            logger.warn("Failed to save hardware trace report", e);
+                                            throw new RuntimeException("Failed to save hardware trace report", e);
                                         }
                                     }
 
