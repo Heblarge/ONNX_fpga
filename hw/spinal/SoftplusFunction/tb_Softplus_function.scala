@@ -17,10 +17,10 @@ case class SoftplusTables(P: Array[Int], N: Array[Int])
 
 class Softplus_function_sw(cfg: Softplus_function_cfg) {
   import cfg._
-  
+
   // 预计算P表和N表
   private val tables: SoftplusTables = generatePNTablesInts(cfg)
-  
+
   // 生成P和N表的内部方法
   private def generatePNTablesInts(cfg: Softplus_function_cfg): SoftplusTables = {
     val K1 = cfg.K1; val K2 = cfg.K2; val K3 = cfg.K3
@@ -64,7 +64,7 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
 
     SoftplusTables(P_table, N_table)
   }
-  
+
   // 核心计算函数（返回定点数结果）
   def compute(payloadInt: Int): Int = {
     val K1 = cfg.K1; val K2 = cfg.K2; val K3 = cfg.K3
@@ -72,6 +72,17 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
     val bit_frac = cfg.bit_frac
     val tMin = cfg.t_range._1
     val tMax = cfg.t_range._2
+
+    // 输入范围检查断言
+    val scale_factor = 1 << bit_frac
+    val min_fixed = Math.round(x_in_Min * scale_factor).toInt
+    val max_fixed = Math.round(x_in_Max * scale_factor).toInt
+    val x_float = payloadInt.toDouble / scale_factor
+    assert(payloadInt >= min_fixed && payloadInt <= max_fixed,
+      s"Softplus_function_sw.compute(payloadInt:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
+      s"Input: fixed-point x=$payloadInt (float: $x_float), " +
+      s"float range: [$x_in_Min, $x_in_Max], " +
+      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
 
     // scale_inv 与硬件 cfg.scale_inv 的整数计算 (以 Long 避免溢出)
     val scaleInvLong = (((1L << totalBits) - 1L) / (tMax - tMin)).toLong
@@ -99,7 +110,7 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
     val sum = P_raw + N_raw
     sum // 整数形式，与硬件 payload (fixed-point) 对齐
   }
-  
+
     // 提供浮点输入版本（可选）
   def compute(x: Double): Long = {
     val x_fixed = Math.round(x * (1 << bit_frac)).toInt
@@ -116,7 +127,7 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
     val result_fixed = compute(x)
     result_fixed.toDouble / (1 << bit_frac)
   }
-  
+
   // 获取表内容（用于调试和验证）
   def getPTable: Array[Int] = tables.P.clone()
   def getNTable: Array[Int] = tables.N.clone()
@@ -184,21 +195,6 @@ object SoftplusFunctionTest extends App {
     val step = 32
 
     var x_iter = Stream.iterate(start)(_ + step).takeWhile(_ <= end).iterator
-
-    //    val PostionThread = fork {
-    //      while (x_iter.hasNext) {
-    //        dut.io.inputX.valid #= true
-    //        dut.io.inputX.payload #= x_iter.next()
-    //        dut.clockDomain.waitSampling()
-    //        dut.io.inputX.payload #= x_iter.next()
-    //        dut.clockDomain.waitSampling()
-    //        //dut.io.inputX.valid #= false
-    //        //dut.clockDomain.waitSampling()
-    //      }
-    //      dut.clockDomain.waitSampling(10)
-    //    }
-    // 在 fork 之前，生成软件侧 P/N 表（与硬件生成方法一致）
-
 
   val softplus_sw = new Softplus_function_sw(cfg)
   // 用于精确断言：记录输入 (double) 与硬件输出的整数值

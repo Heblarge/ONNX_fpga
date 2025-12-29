@@ -63,6 +63,10 @@ case class EXP_function_cfg(
   require(bit_int >= 8)
   val rotate = bit_int// nof loop for CORDIC computation
   //如果rotate = bit_int则整数和小数部分的计算会同时完成
+
+  // 输入范围定义 - 基于测试实际范围
+  val x_in_Min = -3.0
+  val x_in_Max = 2.0 - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算
   def x_type = SInt(1+bit_int + bit_frac bits)
   def expx_int_bit = log2Up(Math.exp(x_max).ceil.toInt)
   def expx_bit = expx_int_bit + bit_frac
@@ -183,5 +187,3 @@ object exp_function_001 {
       .printPruned()
   }
 }
-
-

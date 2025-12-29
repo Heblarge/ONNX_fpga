@@ -8,6 +8,7 @@ import spinal.lib.sim.{FlowDriver, FlowMonitor, ScoreboardInOrder}
 import scala.collection.mutable
 import breeze.plot._
 import scala.math._
+import spire.std.int
 
 // 定点数数学工具类
 object FixedPointMath {
@@ -44,15 +45,6 @@ class LN_function_sw(cfg: LN_function_cfg) {
   import FixedPointMath._
   import LN_function_cfg._
 
-  // 预计算atanh(2^-j)值的定点表示
-//  val atanh_vals_fix: Array[Int] = {
-//    val scale_factor = 1 << bit_frac
-//    Array.tabulate(rotate + 1) { j =>
-//      if (j == 0) 0 // Dummy value for index 0
-//      else (atanh(pow(2, -j)) * scale_factor).round.toInt
-//    }
-//  }
-
 
   // 使用泰勒展开近似的atanh
   val atanh_vals_fix: Array[Int] = {
@@ -65,49 +57,10 @@ class LN_function_sw(cfg: LN_function_cfg) {
       }
     }
   }
-
-//  val atanh_vals_fix: Array[Int] = {
-//    val scale_factor = 1 << bit_frac
-//    Array.tabulate(rotate + 1) { j =>
-//      if (j == 0) 0
-//      else {
-//        val v = atanh_taylor(Math.pow(2.0, -j)) * scale_factor
-//        v.toInt // 截断
-//      }
-//    }
-//  }
-
-
-  // 预计算log(2)的定点表示
-  //val log2_fix: Int = (Math.log(2.0) * (1 << bit_frac)).toInt
   val log2_fix: Int = {
     val scale_factor = 1 << bit_frac
     math.round(log(2) * scale_factor).toInt
   }
-
-  // 规范化步骤：将x调整到[1, 2)范围
-//  private def normalize(x: Int): (Int, Int) = {
-//    val scale_factor = 1 << bit_frac
-//    var x_scaled = x
-//    var k = 0
-//
-//    // 处理x <= 0的情况（硬件可能处理方式不同）
-//    if (x_scaled <= 0) {
-//      return (scale_factor, 0) // 返回1.0的定点表示和k=0
-//    }
-//
-//    // 规范化到[1, 2)范围
-//    while (x_scaled >= 2 * scale_factor) {
-//      x_scaled >>= 1
-//      k += 1
-//    }
-//    while (x_scaled < scale_factor) {
-//      x_scaled <<= 1
-//      k -= 1
-//    }
-//
-//    (x_scaled, k)
-//  }
   private def normalize(x: Int): (Int, Int) = {
     val width     = bit_int + bit_frac
     val threshold = bit_int - 1
@@ -130,7 +83,16 @@ class LN_function_sw(cfg: LN_function_cfg) {
 
   // CORDIC核心计算
   def compute(x: Int): Long = {
+    // 输入范围检查断言
     val scale_factor = 1 << bit_frac
+    val min_fixed = Math.round(x_in_Min * scale_factor).toInt
+    val max_fixed = Math.round(x_in_Max * scale_factor).toInt
+    val x_float = x.toDouble / scale_factor
+    assert(x >= min_fixed && x <= max_fixed,
+      s"LN_function_sw.compute(x:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
+      s"Input: fixed-point x=$x (float: $x_float), " +
+      s"float range: [$x_in_Min, $x_in_Max], " +
+      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
 
     // 规范化输入（与硬件一致）
     val (x_norm, k) = normalize(x)
@@ -175,6 +137,7 @@ class LN_function_sw(cfg: LN_function_cfg) {
   }
   // 提供浮点输出版本（可选）
   def computeFloat(x: Int): Double = {
+
     val result_fixed = compute(x)
     result_fixed.toDouble / (1 << bit_frac)
   }
@@ -230,22 +193,12 @@ object sim_LN_function_test extends App {
   val random = new scala.util.Random
   random.setSeed(1233)
   // 使用生成的Q12值作为输入数据源
-  val x_iter = generateQ12Values(intRange = (1, 5), fracBits = cfg.bit_frac, skipZero = true).iterator
+  val x_iter = generateQ12Values(intRange = (cfg.x_in_Min.toInt, cfg.x_in_Max.toInt+1), fracBits = cfg.bit_frac, skipZero = true).iterator
   // 固定点输入的浮点输出计算函数
   def lnx_fixIn_fix_out(x: Int): Int = {
     Math.floor(Math.log(x.toDouble / Math.pow(2, cfg.bit_frac)) * Math.pow(2, cfg.bit_frac)).toInt
   }
 
-
-  // def lnx_fixIn_fpOut(x: Int): Double = {
-  //   val x_float = x.toDouble / Math.pow(2, cfg.bit_frac)
-  //   if (x_float > 0) {
-  //     val ln_x_float = Math.log(x_float)
-  //     ln_x_float
-  //   } else {
-  //     Double.NaN
-  //   }
-  // }
 // 初始化队列用于存储输入、参考输出和结果
   val x_Queue = mutable.Queue[Int]()
   val lnx_Queue = mutable.Queue[Double]()
