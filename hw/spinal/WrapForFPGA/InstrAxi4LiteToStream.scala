@@ -12,9 +12,10 @@ case class Axi4LiteToStreamConfig(
                                    axiDataWidth: Int = 32,
                                    axiAddrWidth: Int = 12,
                                    fifoDepth: Int = 4,
-                                   ctrlRegAddr: Int = 0x10
+                                   ctrlRegAddr: Int = 0x20
                                  ) {
-  // [修改 2] 返回 AxiLite4Config，它非常简单，不需要配置 useBurst 等
+  // 返回 AxiLite4Config，它非常简单，不需要配置 useBurst 等
+
   def getAxiConfig = AxiLite4Config(
     addressWidth = axiAddrWidth,
     dataWidth    = axiDataWidth
@@ -28,12 +29,10 @@ case class Axi4LiteToStreamConfig(
 class Axi4LiteToStream[T <: Data](
                                    config: Axi4LiteToStreamConfig,
                                    dataType: HardType[T],
-                                   // [修改 3] 回调函数类型改为 AxiLite4SlaveFactory
                                    mappingFunc: (AxiLite4SlaveFactory, T) => Unit
                                  ) extends Component {
 
   val io = new Bundle {
-    // [修改 4] 接口类型改为 AxiLite4
     val s_axi = slave(AxiLite4(config.getAxiConfig))
     val m_stream = master(Stream(dataType()))
     val busy = out Bool()
@@ -61,7 +60,7 @@ class Axi4LiteToStream[T <: Data](
 }
 
 // =============================================================
-// 3. 128-bit 指令包装器
+// 3. 128-bit 指令包装器 (原版保留)
 // =============================================================
 case class Instruction128() extends Bundle {
   val SLICE0 = UInt(32 bits)
@@ -81,9 +80,6 @@ class Inst128_Wrapper(use64BitBus: Boolean = false) extends Component {
     ctrlRegAddr  = 0x10
   )
 
-  // [修改 6] 回调函数签名更新
-  // 在 Inst128_Wrapper 类中
-
   // 定义映射策略
   def myMapping(factory: AxiLite4SlaveFactory, reg: Instruction128): Unit = {
     val base = 0x00 // 数据寄存器从 0x00 开始
@@ -94,11 +90,11 @@ class Inst128_Wrapper(use64BitBus: Boolean = false) extends Component {
       // ==========================================
       // 必须映射到 8字节对齐的地址，并利用 bitOffset 区分高低位
 
-      // Word 0 (Address 0x10)
+      // Word 0 (Address 0x00)
       factory.write(reg.SLICE0, address = base + 0x00, bitOffset = 0)
       factory.write(reg.SLICE1, address = base + 0x00, bitOffset = 32)
 
-      // Word 1 (Address 0x18) —— 注意这里是 +0x08，而不是 +0x08 和 +0x0C
+      // Word 1 (Address 0x08)
       factory.write(reg.SLICE2, address = base + 0x08, bitOffset = 0)
       factory.write(reg.SLICE3, address = base + 0x08, bitOffset = 32)
 
@@ -120,14 +116,12 @@ class Inst128_Wrapper(use64BitBus: Boolean = false) extends Component {
   )
 
   val io = new Bundle {
-    // [修改 7] 顶层接口也需要是 AxiLite4
     val s_axi    = slave(AxiLite4(cfg.getAxiConfig))
     val m_stream = master(Stream(Bits(Instruction128().getBitsWidth bits)))
-    val busy     = out Bool()  // 添加 busy 输出
+    val busy     = out Bool()
   }
-  //io.s_axi.b.valid := io.s_axi.aw.valid && io.s_axi.w.valid
-  //Sio.s_axi.b.payload.resp := 0
-  io.busy     := core.io.busy  // 连接 busy 信号
+
+  io.busy     := core.io.busy
   io.s_axi    <> core.io.s_axi
   io.m_stream.valid    := core.io.m_stream.valid
   io.m_stream.payload  := core.io.m_stream.payload.asBits
@@ -144,4 +138,90 @@ object Inst128_Wrapper_Verilog extends App {
       resetActiveLevel = LOW
     )
   ).generateVerilog(new Inst128_Wrapper(use64BitBus = true))
+}
+
+// =============================================================
+// 4. 160-bit 指令包装器 (新增版本)
+// =============================================================
+case class Instruction160() extends Bundle {
+  val SLICE0 = UInt(32 bits)
+  val SLICE1 = UInt(32 bits)
+  val SLICE2 = UInt(32 bits)
+  val SLICE3 = UInt(32 bits)
+  val SLICE4 = UInt(32 bits)  // 新增第5个32位寄存器
+}
+
+class Inst160_Wrapper(use64BitBus: Boolean = false) extends Component {
+
+  val axiWidth = if (use64BitBus) 64 else 32
+
+  val cfg = Axi4LiteToStreamConfig(
+    axiDataWidth = axiWidth,
+    axiAddrWidth = 12,
+    fifoDepth    = 4,
+    ctrlRegAddr  = 0x20  // 控制寄存器地址调整到 0x20，避免与数据寄存器冲突
+  )
+
+  // 定义映射策略
+  def myMapping(factory: AxiLite4SlaveFactory, reg: Instruction160): Unit = {
+    val base = 0x00 // 数据寄存器从 0x00 开始
+
+    if (use64BitBus) {
+      // ==========================================
+      // 64-bit 模式映射策略
+      // ==========================================
+      // 必须映射到 8字节对齐的地址，并利用 bitOffset 区分高低位
+
+      // Word 0 (Address 0x00)
+      factory.write(reg.SLICE0, address = base + 0x00, bitOffset = 0)
+      factory.write(reg.SLICE1, address = base + 0x00, bitOffset = 32)
+
+      // Word 1 (Address 0x08)
+      factory.write(reg.SLICE2, address = base + 0x08, bitOffset = 0)
+      factory.write(reg.SLICE3, address = base + 0x08, bitOffset = 32)
+
+      // Word 2 (Address 0x10) - 新增的第5个寄存器
+      factory.write(reg.SLICE4, address = base + 0x10, bitOffset = 0)
+
+    } else {
+      // ==========================================
+      // 32-bit 模式映射策略
+      // ==========================================
+      factory.write(reg.SLICE0, address = base + 0x00)
+      factory.write(reg.SLICE1, address = base + 0x04)
+      factory.write(reg.SLICE2, address = base + 0x08)
+      factory.write(reg.SLICE3, address = base + 0x0C)
+      factory.write(reg.SLICE4, address = base + 0x10)  // 新增寄存器映射到 0x10
+    }
+  }
+
+  val core = new Axi4LiteToStream(
+    config      = cfg,
+    dataType    = Instruction160(),
+    mappingFunc = myMapping
+  )
+
+  val io = new Bundle {
+    val s_axi    = slave(AxiLite4(cfg.getAxiConfig))
+    val m_stream = master(Stream(Bits(Instruction160().getBitsWidth bits)))
+    val busy     = out Bool()
+  }
+
+  io.busy     := core.io.busy
+  io.s_axi    <> core.io.s_axi
+  io.m_stream.valid    := core.io.m_stream.valid
+  io.m_stream.payload  := core.io.m_stream.payload.asBits
+  core.io.m_stream.ready := io.m_stream.ready
+}
+
+
+object Inst160_Wrapper_Verilog extends App {
+
+  SpinalConfig(
+    targetDirectory = "rtl/Inst160_Wrapper",
+    oneFilePerComponent = false,
+    defaultConfigForClockDomains = ClockDomainConfig(
+      resetActiveLevel = LOW
+    )
+  ).generateVerilog(new Inst160_Wrapper(use64BitBus = true))
 }

@@ -38,7 +38,7 @@ object SlicerTb extends App {
   val instDriveSpeed = 0.5f
   val slicedInstReceiveSpeed = 0.5f
   val dataReceiveSpeed = 0.5f
-  val seed = 114514
+  val seed = 114
   val random = new Random(seed)
   val testNum = 100
   // val testNum = 1
@@ -53,17 +53,7 @@ object SlicerTb extends App {
     elementWidthB = 7,
     numCores = 3
   )
-  // val slicerCfg = SlicerCfg(
-  //   UIDWidth = 16,
-  //   ShiftWidth = 16,
-  //   AddressWidth = 16,
-  //   ShapeWidth = 16,
-  //   SlicecntWidth = 16,
-  //   systolicArraySideNum = 2,
-  //   elementWidthA = 8,
-  //   elementWidthB = 8,
-  //   numCores = 2
-  // )
+
   val compiled = SimConfig.withFsdbWave
     .withConfig(
       SpinalConfig(
@@ -103,13 +93,14 @@ object SlicerTb extends App {
       val testRefs3 = ArrayBuffer[(Array[Int], Array[Int])]()
       val isMatMul = instSim.matrixOperation == MatrixOperation_TypeDef.MatMul
       for (k <- 0 until (if (isMatMul) instSim.input0Shape1 / slicerCfg.systolicArraySideNum else 1)) {
-        val matASub = matGetSub(
+        var matASub = matGetSub(
           matA,
           i * slicerCfg.systolicArraySideNum,
           if (isMatMul) k * slicerCfg.systolicArraySideNum else j * slicerCfg.systolicArraySideNum,
           slicerCfg.systolicArraySideNum,
           slicerCfg.systolicArraySideNum
         ).transpose
+        matASub = matASub.map(row => row.map(elem => elem << instSim.shiftLeft_A))
         var matBSub = matGetSub(
           matB,
           if (isMatMul) k * slicerCfg.systolicArraySideNum else i * slicerCfg.systolicArraySideNum,
@@ -118,6 +109,7 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum
         )
         if (!isMatMul) matBSub = matRotateCw(matBSub)
+        matBSub = matBSub.map(row =>row.map(elem => elem << instSim.shiftLeft_B))
         matASub.zip(matBSub).foreach(testRefs3 += _)
       }
       testRefs2 += testRefs3

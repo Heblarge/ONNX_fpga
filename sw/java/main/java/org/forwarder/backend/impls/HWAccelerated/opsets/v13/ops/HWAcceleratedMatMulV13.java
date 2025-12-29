@@ -2,9 +2,9 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
-// import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator; // (未使用的 import)
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTracer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -14,7 +14,6 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.MatMulV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
-// import scala.tools.nsc.doc.html.HtmlTags; // (未使用的 import)
 
 import java.util.List;
 import java.util.Arrays;
@@ -28,32 +27,40 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
-        MatMulInputsV13<INDArray> castedInputs = new MatMulInputsV13<>(node, inputs);
-        INDArray matrixA = castedInputs.getA();
-        INDArray matrixB = castedInputs.getB();
+        HWAcceleratedTracer tracer = HWAcceleratedTracer.getInstance();
+        tracer.startNode(node, inputs, node.getAttrs());
 
-        Graph graph = node.getGraph();
-        List<Long> targetInputShifts = castedInputs.getFpgaInShift();
-        long targetInputShiftA = targetInputShifts.get(0);
-        long targetInputShiftB = targetInputShifts.get(1);
-        String inputAName = node.getInputNames()[0];
-        long sourceShiftA = this.getProducerOutputShift(graph, inputAName, targetInputShiftA);
-        String inputBName = node.getInputNames()[1];
-        long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
-        long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
+        INDArray outputTensor = null;
+        try {
+            MatMulInputsV13<INDArray> castedInputs = new MatMulInputsV13<>(node, inputs);
+            INDArray matrixA = castedInputs.getA();
+            INDArray matrixB = castedInputs.getB();
 
-        String nodeName = node.getName();
+            Graph graph = node.getGraph();
+            List<Long> targetInputShifts = castedInputs.getFpgaInShift();
+            long targetInputShiftA = targetInputShifts.get(0);
+            long targetInputShiftB = targetInputShifts.get(1);
+            String inputAName = node.getInputNames()[0];
+            long sourceShiftA = this.getProducerOutputShift(graph, inputAName, targetInputShiftA);
+            String inputBName = node.getInputNames()[1];
+            long sourceShiftB = this.getProducerOutputShift(graph, inputBName, targetInputShiftB);
+            long targetOutputShift = castedInputs.getFpgaOutShift().get(0);
 
-        INDArray outputTensor = this.matmul(
-                matrixA,
-                matrixB,
-                sourceShiftA,
-                sourceShiftB,
-                targetInputShiftA,
-                targetInputShiftB,
-                targetOutputShift,
-                nodeName
-        );
+            String nodeName = node.getName();
+
+            outputTensor = this.matmul(
+                    matrixA,
+                    matrixB,
+                    sourceShiftA,
+                    sourceShiftB,
+                    targetInputShiftA,
+                    targetInputShiftB,
+                    targetOutputShift,
+                    nodeName
+            );
+        } finally {
+            tracer.endNode(outputTensor);
+        }
         return new MatMulOutputV13<>(outputTensor);
     }
 
@@ -63,11 +70,17 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
     }
 
     public INDArray matmul(INDArray a, INDArray b, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName) {
+        HWAcceleratedTracer tracer = HWAcceleratedTracer.getInstance();
+        HWAcceleratedTracer.TilingInfo tilingInfo = tracer.getActiveTilingInfo();
+
         if (a.rank() == 2 && b.rank() == 2) {
+            tilingInfo.strategy = "2D2D";
             return matmul2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else if (a.rank() == 3 && b.rank() == 2) {
+            tilingInfo.strategy = "3D2D";
             return matmul3D2D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else if (a.rank() == 3 && b.rank() == 3) {
+            tilingInfo.strategy = "3D3D";
             return matmul3D(a, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
         } else {
             throw new IllegalArgumentException("Unsupported tensor rank for MatMul: A=" + a.rank() + ", B=" + b.rank());
@@ -114,7 +127,11 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         long N = b.size(1);
 
         INDArray a2D = a.reshape('c', batchSize * M, K);
+
+        // HWAcceleratedTracer tracer = HWAcceleratedTracer.getInstance();
+        // tracer.pushBatchContext("Flattened[3D->2D]");
         INDArray result2D = matmul2D(a2D, b, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
+        // tracer.popBatchContext();
 
         long[] outputShape = {batchSize, M, N};
         return result2D.reshape('c', outputShape);
@@ -128,18 +145,23 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         long n = b.size(2);
 
         INDArray result = Nd4j.createUninitialized(a.dataType(), new long[]{batch, m, n}, 'c');
+        HWAcceleratedTracer tracer = HWAcceleratedTracer.getInstance();
 
         for (int i = 0; i < (int) batch; i++) {
+            // tracer.pushBatchContext(String.format("BatchSlice[%d]", i));
             INDArray sliceA = (batchA == 1) ? a.slice(0) : a.slice(i);
             INDArray sliceB = (batchB == 1) ? b.slice(0) : b.slice(i);
             INDArray product = matmul2D(sliceA, sliceB, sourceShiftA, sourceShiftB, targetInputShiftA, targetInputShiftB, targetOutputShift, nodeName);
             result.putSlice(i, product);
+            // tracer.popBatchContext();
         }
         return result;
     }
 
 
     private INDArray matMulOnAccelerator(INDArray a, INDArray b, int rowsA, int colsA, int colsB, long sourceShiftA, long sourceShiftB, long targetInputShiftA, long targetInputShiftB, long targetOutputShift, String nodeName){
+        HWAcceleratedTracer tracer = HWAcceleratedTracer.getInstance();
+        HWAcceleratedTracer.TilingInfo tilingInfo = tracer.getActiveTilingInfo();
 
         int rescaleShiftA = (int) (sourceShiftA - targetInputShiftA);
         int rescaleShiftB = (int) (sourceShiftB - targetInputShiftB);
@@ -163,8 +185,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         int shiftAmount = (int) (targetInputShiftA + targetInputShiftB - targetOutputShift);
 
         final int K = colsA;
-        int maxTileM = (MAX_HW_ELEMENTS / K);
-        int maxTileN = (MAX_HW_ELEMENTS / K);
+
+        int maxTileM = MAX_HW_ELEMENTS / K;
+        int maxTileN = MAX_HW_ELEMENTS / K;
 
         if (maxTileM < HW_DIM_MULTIPLE) {
             throw new IllegalArgumentException(
@@ -184,8 +207,19 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         int hwTileCap_M = (maxTileM / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
         int hwTileCap_N = (maxTileN / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
 
+        tilingInfo.mDim.totalPaddedSize = rowsA;
+        tilingInfo.nDim.totalPaddedSize = colsB;
+        tilingInfo.kDim.totalPaddedSize = K;
+        tilingInfo.mDim.tiled = rowsA > hwTileCap_M;
+        tilingInfo.nDim.tiled = colsB > hwTileCap_N;
+
+        boolean isTiled = tilingInfo.mDim.tiled || tilingInfo.nDim.tiled;
+        tilingInfo.status = isTiled ? "TILING" : "NO_TILING";
+
+
         long[][] hardwareResult = new long[rowsA][colsB];
 
+        int m_idx = 0;
         for (int m_offset = 0; m_offset < rowsA; ) {
             int rowsRemainingM = rowsA - m_offset;
             int TILE_M = Math.min(rowsRemainingM, hwTileCap_M);
@@ -194,6 +228,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
             long[][] tileA = new long[TILE_M][K];
             copyTileFromSource(tileA, fixedPointA, m_offset, 0, TILE_M, K);
 
+            int n_idx = 0;
             for (int n_offset = 0; n_offset < colsB; ) {
                 int rowsRemainingN = colsB - n_offset;
                 int TILE_N = Math.min(rowsRemainingN, hwTileCap_N);
@@ -216,14 +251,21 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                         0,
                         TILE_M,
                         K,
-                        TILE_N);
+                        TILE_N,
+                        0,
+                        0);
+
+                String tileIndex = String.format("M:%d, N:%d", m_idx, n_idx);
+                tracer.addTile(tileIndex, instruction);
 
                 long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
                 copyTileToResult(hardwareResult, tileResult, m_offset, n_offset, TILE_M, TILE_N);
 
                 n_offset += TILE_N;
+                n_idx++;
             }
             m_offset += TILE_M;
+            m_idx++;
         }
 
         HWAcceleratedCollector.getInstance().recordLayerUsage(nodeName, fixedPointA, fixedPointB, hardwareResult);

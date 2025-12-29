@@ -138,3 +138,32 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
   instFinish := matZSliceCnt.willOverflow
   io.instFinish := RegNext(instFinish, False)
 }
+
+case class CollectorWrap(collectorCfg: CollectorCfg) extends Component {
+  val collector=Collector(collectorCfg)
+  def MemoryWritePortType =
+    MemoryWritePort_TypeDef(AddressWidth = collectorCfg.AddressWidth, DataWidth = collectorCfg.systolicArraySideNum*32)
+
+  val io = new Bundle {
+    val slicedInst = slave Stream collector.SlicedInstType
+    val memoryWritePort = master(MemoryWritePortType)
+    val matAfterActivations = Vec.fill(collectorCfg.numCores)(slave Stream collector.MatAfterActivationType)
+    val instFinish = out Bool ()
+  }
+
+  val LanesN = collector.io.memoryWritePort.Data.subdivideIn(collectorCfg.elementWidthZ bits)
+  val Lanes32 = Vec(Bits(32 bits), collectorCfg.systolicArraySideNum)
+
+  for(i <- 0 until collectorCfg.systolicArraySideNum){
+    Lanes32(i) := LanesN(i).asSInt.resize(32 bits).asBits
+  }
+  io.memoryWritePort.Data := Lanes32.asBits
+  io.memoryWritePort.Valid := collector.io.memoryWritePort.Valid
+  io.memoryWritePort.Address := collector.io.memoryWritePort.Address
+  io.memoryWritePort.clk := ClockDomain.current.readClockWire
+  io.memoryWritePort.Wen := B(io.memoryWritePort.Wen.getWidth bits, default -> io.memoryWritePort.Valid)
+
+  collector.io.slicedInst <> io.slicedInst
+  collector.io.matAfterActivations <> io.matAfterActivations
+  io.instFinish <> collector.io.instFinish
+}

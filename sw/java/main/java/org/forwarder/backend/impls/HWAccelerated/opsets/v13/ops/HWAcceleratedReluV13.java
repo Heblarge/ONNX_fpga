@@ -147,7 +147,9 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
                     0,
                     TILE_ROWS,
                     cols,
-                    cols
+                    cols,
+                    0,
+                    0
             );
 
             copyTileFromSource(tileA, fixedPointInput, rowOffset, 0, TILE_ROWS, cols);

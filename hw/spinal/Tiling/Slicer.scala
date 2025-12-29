@@ -6,6 +6,7 @@ import DataPump._
 
 import spinal.core._
 import spinal.lib._
+import MatrixComputeUnit.SystolicArray2D.SIntShifter
 
 /**
  * Slicer Configuration Parameters
@@ -19,6 +20,8 @@ import spinal.lib._
  * @param systolicArraySideNum Systolic array side dimension - 脉动阵列边长
  * @param elementWidthA Matrix A element width - 矩阵A元素宽度
  * @param elementWidthB Matrix B element width - 矩阵B元素宽度
+ * @param shiftLeft_A
+ * @param shiftLeft_B
  * @param numCores Number of processing cores - 处理核心数量
  */
 case class SlicerCfg(
@@ -88,6 +91,7 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
     val memoryReadPortA = master(MemoryReadPortTypeA)
     val memoryReadPortB = master(MemoryReadPortTypeB)
     val matAfterSlicers = Vec.fill(slicerCfg.numCores)(master Stream MatAfterSlicerType)
+    val instFinish = out Bool ()
   }
 
   io.inst.ready.setAsReg().init(True)
@@ -172,13 +176,44 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
   val matABSubSendRowCnt = Cnt(slicerCfg.systolicArraySideNum - 1, io.inst.fire, matAfterSlicer.fire)
   matABSubSendFinish := matABSubSendRowCnt.willOverflow
   instFinish := matABSubSendFinish && matAColSliceCnt.willOverflowIfInc && matBColSliceCnt.willOverflowIfInc && matARowSliceCnt.willOverflowIfInc
+  io.instFinish := RegNext(instFinish, False)
 
-  matAfterSlicer.A := matASub.mapVec(_(matABSubSendRowCnt).asSInt)
-  matAfterSlicer.B := Mux(
-    isMatMul,
-    matBSub(matABSubSendRowCnt).mapVec(_.asSInt),
-    matBSub.shuffle(slicerCfg.systolicArraySideNum - 1 - _).mapVec(_(matABSubSendRowCnt).asSInt)
-  )
+  // ================== 新增：A / B shifter ==================
+  // 一维长度就是 systolic 阵列宽度
+  val shiftersA = Seq.fill(slicerCfg.systolicArraySideNum) {
+    SIntShifter(slicerCfg.elementWidthA, slicerCfg.elementWidthA)
+  }
+  val shiftersB = Seq.fill(slicerCfg.systolicArraySideNum) {
+    SIntShifter(slicerCfg.elementWidthB, slicerCfg.elementWidthB)
+  }
+
+  val matASubShifted = Vec(SInt(slicerCfg.elementWidthA bits), slicerCfg.systolicArraySideNum)
+  val matBSubShifted = Vec(SInt(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
+
+  for(i <- 0 until slicerCfg.systolicArraySideNum) {
+    // ---------- A ----------
+    val aElemBits = matASub(i)(matABSubSendRowCnt)
+    shiftersA(i).io.input := aElemBits.asSInt
+    shiftersA(i).io.shiftAmount := -instReg.shiftLeft_A.resize(log2Up(slicerCfg.elementWidthA + 1) + 1 bits)
+    matASubShifted(i) := shiftersA(i).io.output
+
+    // ---------- B ----------
+    val bElemBits = Mux(
+      isMatMul,
+      matBSub(matABSubSendRowCnt)(i),
+      matBSub(slicerCfg.systolicArraySideNum - 1 - i)(matABSubSendRowCnt)
+    )
+
+    shiftersB(i).io.input := bElemBits.asSInt
+    shiftersB(i).io.shiftAmount := -instReg.shiftLeft_B.resize(log2Up(slicerCfg.elementWidthB + 1) + 1 bits)
+    matBSubShifted(i) := shiftersB(i).io.output
+  }
+
+  // 用移位后的数据喂给阵列
+  matAfterSlicer.A := matASubShifted
+  matAfterSlicer.B := matBSubShifted
+
+
   matAfterSlicer.CoreInstruction.assignFromInst(instReg, matARowSliceCnt.resized, matBColSliceCnt.resized)
   matAfterSlicer.Final := matABSubSendRowCnt.willOverflowIfInc && matAColSliceCnt.willOverflowIfInc
   matAfterSlicer.valid.setAsReg().init(False)
@@ -190,4 +225,57 @@ case class Slicer(slicerCfg: SlicerCfg) extends Component {
 
   val matAfterSlicers = StreamDispatcher(in_Mats_Converter.withFragment(matAfterSlicer), slicerCfg.numCores)
   io.matAfterSlicers <> matAfterSlicers.mapVec(in_Mats_Converter.withoutFragment(_))
+}
+
+case class SlicerWrap(slicerCfg: SlicerCfg) extends Component {
+  val slicer = Slicer(slicerCfg)
+  def InstType =
+    ComputeInstruction_Simplified_TypeDef(
+      UIDWidth = slicerCfg.UIDWidth,
+      ShiftWidth = slicerCfg.ShiftWidth,
+      AddressWidth = slicerCfg.AddressWidth,
+      ShapeWidth = slicerCfg.ShapeWidth
+    )
+  def MemoryReadPortTypeA =
+    MemoryReadPort_TypeDef(AddressWidth = slicerCfg.AddressWidth, DataWidth = slicerCfg.systolicArraySideNum*32)
+  def MemoryReadPortTypeB =
+    MemoryReadPort_TypeDef(AddressWidth = slicerCfg.AddressWidth, DataWidth = slicerCfg.systolicArraySideNum*32)
+    
+  val io = new Bundle {
+    val inst = slave Stream InstType
+    val slicedInst = master Stream slicer.SlicedInstType
+    val memoryReadPortA = master(MemoryReadPortTypeA)
+    val memoryReadPortB = master(MemoryReadPortTypeB)
+    val matAfterSlicers = Vec.fill(slicerCfg.numCores)(master Stream slicer.MatAfterSlicerType)
+    val instFinish = out Bool ()
+  }
+
+  val aLanes32 = io.memoryReadPortA.Data.subdivideIn(32 bits)
+  val aLanesN = Vec(Bits(slicerCfg.elementWidthA bits), slicerCfg.systolicArraySideNum)
+
+  for (i <- 0 until slicerCfg.systolicArraySideNum) {
+    aLanesN(i) := aLanes32(i).asSInt.resize(slicerCfg.elementWidthA).asBits
+  }
+  slicer.io.memoryReadPortA.Data := aLanesN.asBits
+  io.memoryReadPortA.Valid := slicer.io.memoryReadPortA.Valid
+  io.memoryReadPortA.Address := slicer.io.memoryReadPortA.Address
+  io.memoryReadPortA.clk := ClockDomain.current.readClockWire
+
+  val bLanes32 = io.memoryReadPortB.Data.subdivideIn(32 bits)
+  val bLanesN = Vec(Bits(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
+
+  for (i <- 0 until slicerCfg.systolicArraySideNum) {
+    bLanesN(i) := bLanes32(i).asSInt.resize(slicerCfg.elementWidthB).asBits
+  }
+  slicer.io.memoryReadPortB.Data := bLanesN.asBits
+  io.memoryReadPortB.Valid := slicer.io.memoryReadPortB.Valid
+  io.memoryReadPortB.Address := slicer.io.memoryReadPortB.Address
+  io.memoryReadPortB.clk := ClockDomain.current.readClockWire
+
+  slicer.io.inst.payload.assignFromInst(io.inst.payload)
+  slicer.io.inst.valid <> io.inst.valid
+  slicer.io.inst.ready <> io.inst.ready
+  slicer.io.slicedInst <> io.slicedInst
+  slicer.io.matAfterSlicers <> io.matAfterSlicers
+  io.instFinish <> slicer.io.instFinish
 }

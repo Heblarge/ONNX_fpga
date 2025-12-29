@@ -153,7 +153,9 @@ public class HWAcceleratedLogV13 extends HWAcceleratedQuantizedOperator implemen
                     0,
                     TILE_ROWS,
                     cols,
-                    cols
+                    cols,
+                    0,
+                    0
             );
 
             copyTileFromSource(tileA, fixedPointInput, rowOffset, 0, TILE_ROWS, cols);
