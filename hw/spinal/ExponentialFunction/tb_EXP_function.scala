@@ -48,6 +48,17 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
   private def getBit(n: Long, k: Int): Boolean = (n & (1L << k)) != 0
 
   def compute(x: Int): Long = {
+    // 输入范围检查断言
+    val scale_factor = 1 << bit_frac
+    val min_fixed = Math.round(x_in_Min * scale_factor).toInt
+    val max_fixed = Math.round(x_in_Max * scale_factor).toInt
+    val x_float = x.toDouble / scale_factor
+    assert(x >= min_fixed && x <= max_fixed,
+      s"EXP_function_sw.compute(x:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
+      s"Input: fixed-point x=$x (float: $x_float), " +
+      s"float range: [$x_in_Min, $x_in_Max], " +
+      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
+
     // ------------------------------------
     // 初始值设置 (与硬件一致)
     // ------------------------------------
@@ -55,26 +66,26 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
     val abs_int_x = Math.abs(int_x).toLong
     val neg = int_x < 0
     val frac_x = (x & ((1 << bit_frac) - 1)).toLong
-    
+
     // 初始化寄存器数组 (模拟硬件流水线)
     val frac_x_regs = Array.fill(rotate + 1)(0L)
     val expx_frac_regs = Array.fill(rotate + 1)(0L)
     val abs_int_x_regs = Array.fill(bit_int + 1)(0L)
     val expx_int_regs = Array.fill(bit_int + 1)(0L)
     val neg_regs = Array.fill(bit_int + 1)(false)
-    
+
     // 设置初始值
     frac_x_regs(0) = frac_x
     abs_int_x_regs(0) = abs_int_x
     neg_regs(0) = neg
     expx_int_regs(0) = pow2(bit_frac).toLong // 1.0 的定点表示
     expx_frac_regs(0) = pow2(bit_frac).toLong // 1.0 的定点表示
-    
+
     // 预计算 poweroftwo 值 (与硬件一致)
-    val poweroftwo_values = (1 to rotate).map(i => 
+    val poweroftwo_values = (1 to rotate).map(i =>
       pow2(bit_frac - i).toLong
     )
-    
+
     // ------------------------------------
     // 分数部分计算 (模拟硬件流水线)
     // ------------------------------------
@@ -82,7 +93,7 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
       // 默认传递当前值到下一级
       frac_x_regs(i + 1) = frac_x_regs(i)
       expx_frac_regs(i + 1) = expx_frac_regs(i)
-      
+
       // 与硬件相同的条件判断
       if (frac_x_regs(i) > poweroftwo_values(i)) {
         frac_x_regs(i + 1) = frac_x_regs(i) - poweroftwo_values(i)
@@ -90,7 +101,7 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
         expx_frac_regs(i + 1) = sat(floor(product, bit_frac), expx_int_bit, bit_frac)
       }
     }
-    
+
     // ------------------------------------
     // 整数部分计算 (模拟硬件流水线)
     // ------------------------------------
@@ -99,7 +110,7 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
       abs_int_x_regs(i + 1) = abs_int_x_regs(i)
       neg_regs(i + 1) = neg_regs(i)
       expx_int_regs(i + 1) = expx_int_regs(i)
-      
+
       // 检查当前位是否为1
       if (getBit(abs_int_x_regs(i), i)) {
         if (neg_regs(i)) {
@@ -190,7 +201,7 @@ object sim_EXP_function_test extends App {
 
   val random = new scala.util.Random
   val start = -3 * Math.pow(2, cfg.bit_frac).toInt
-  val end =  2 * Math.pow(2, cfg.bit_frac).toInt
+  val end =  3 * Math.pow(2, cfg.bit_frac).toInt
   val step = (end - start) / 499 // 199 steps to get 200 points
 
   val x_iter = (start to end by step).map(_.toInt).iterator
@@ -280,50 +291,6 @@ object sim_EXP_function_test extends App {
   val sorted_abserror_values_double = sorted_abserror_values.map(_.toDouble)
   val sorted_relerror_values_double = sorted_relerror_values.map(_.toDouble)
 
-
-//var f = Figure()
-//var p = f.subplot(0)
-//p += plot(sorted_x_values, sorted_y_values, '-')
-//p.title = "input vs error"
-//p.xlabel = "input"
-//p.ylabel = "error"
-//  // 设置 y 轴的范围
-//var minY = sorted_y_values.min
-//var maxY = sorted_y_values.max
-//println("max error:"+maxY)
-////如果有需要可以保存
-//f.saveas("tb_EXP_function_input_vs_error.png")
-//
-//sortedPairs = display_x_array.zip(display_output_array).sortBy(_._1)
-//sorted_x_values = sortedPairs.map(_._1.toDouble)
-//sorted_y_values = sortedPairs.map(_._2)
-//f = Figure()
-//p = f.subplot(0)
-//p += plot(sorted_x_values, sorted_y_values, '-')
-//p.title = "input vs output"
-//p.xlabel = "input"
-//p.ylabel = "output"
-//minY = sorted_y_values.min
-//maxY = sorted_y_values.max
-////p.ylim = (minY, maxY*2)
-////yTicks = (minY to maxY by (maxY - minY) / 10).toArray // 10 ticks
-//f.saveas("tb_EXP_function_input_vs_output.png")
-//
-//sortedPairs = display_x_array.zip(display_Relative_error_array).sortBy(_._1)
-//sorted_x_values = sortedPairs.map(_._1.toDouble)
-//sorted_y_values = sortedPairs.map(_._2)
-//f = Figure()
-//p = f.subplot(0)
-//p += plot(sorted_x_values, sorted_y_values, '-')
-//p.title = "input vs Relative error"
-//p.xlabel = "input"
-//p.ylabel = "Relative error"
-//minY = sorted_y_values.min
-//maxY = sorted_y_values.max
-//println("max error:"+maxY*100+"%")
-////p.ylim = (minY, maxY*2)
-////yTicks = (minY to maxY by (maxY - minY) / 10).toArray // 10 ticks
-//f.saveas("tb_EXP_function_input_vs_Relative_error.png")
 
 // —— 绘制对比图 ——
   val fCompare = Figure()

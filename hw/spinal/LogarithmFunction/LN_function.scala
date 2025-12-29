@@ -13,16 +13,18 @@ case class LN_function_cfg(
 
   val rotate = bit_frac // CORDIC 算法的迭代次数等于小数部分的位数
   val using_compensation_iters = true // 启用补偿迭代，针对特定迭代点（j=4和j=13）减少误差
+  val x_in_Min=1.0
+  val x_in_Max=6.0-(1* Math.pow(2, -bit_frac))
 
   // 定义输入数据类型：无符号整数，总位数为整数部分 + 小数部分
   def x_type = UInt(bit_int + bit_frac bits)
-  
+
   // 计算 ln(2) 的整数部分所需的位数（向上取整的对数）
   def ln_int_bit = log2Up(Math.log(2).ceil.toInt)
-  
+
   // 输出 ln(x) 的总位数：整数部分 + 小数部分 + 额外的整数位
   def ln_bit = ln_int_bit + bit_frac + bit_int
-  
+
   // 定义输出数据类型：有符号整数，位数为 ln_bit
   def ln_type = SInt(ln_bit bits)
 
@@ -130,7 +132,7 @@ case class Normalizer(cfg: LN_function_cfg) extends Component {
   val shifted_x_comb = Mux(valid_in_dd,
     Mux(!RegNext(k).msb,  // 如果k为正（之前是右移）
       right_shift_results(shift_amount_dd.resized),
-      left_shift_results(shift_amount_dd.resized) 
+      left_shift_results(shift_amount_dd.resized)
     ),
     U(0)
   )
@@ -247,7 +249,7 @@ case class LN_function(cfg: LN_function_cfg) extends Component {
 
   // 最终结果计算：z_n * 2 + k * ln(2)（定点数缩放）
   val ln_x = ((z_n.last << 1) + iteration_k.last * ((Math.log(2) * Math.pow(2, bit_frac)).toInt)).resize(ln_bit bits)
-  
+
   // 输出结果和有效信号
   io.lnx.valid := RegNext(iteration_valid.last)
   io.lnx.payload := RegNext(ln_x)

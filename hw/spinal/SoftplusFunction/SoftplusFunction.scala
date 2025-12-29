@@ -17,6 +17,9 @@ case class Softplus_function_cfg(
   def x_Type = SInt(bit_all bits)
   def softplusx_Type = SInt(bit_all bits) // 最终输出位宽
 
+  // 添加输入范围定义
+  val x_in_Min = t_range._1.toDouble
+  val x_in_Max = t_range._2.toDouble - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算
 }
 
 case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
