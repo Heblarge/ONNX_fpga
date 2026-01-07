@@ -2,6 +2,7 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13;
 
 import org.forwarder.backend.impls.HWAccelerated.opsets.v12.HWAcceleratedOperatorSetV12;
 import org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops.*;
+import org.forwarder.backend.impls.dl4j.opsets.aiOnnx.v13.ops.DL4JGemmReluV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.AiOnnxOpsetInitializerV13;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.*;
 
@@ -43,9 +44,8 @@ public class HWAcceleratedOperatorSetV13 extends HWAcceleratedOperatorSetV12 imp
     public MatMulV13           getMatMulV13(){
         return new           HWAcceleratedMatMulV13();
     }
-    public GemmV13             getGemmV13(){
-        return new             HWAcceleratedGemmV13();
-    }
+    public GemmV13             getGemmV13(){return new               HWAcceleratedGemmV13();}
+    public GemmReluV13         getGemmReluV13(){return new           HWAcceleratedGemmReluV13();}
     public AddV13              getAddV13(){
         return new              HWAcceleratedAddV13();
     }

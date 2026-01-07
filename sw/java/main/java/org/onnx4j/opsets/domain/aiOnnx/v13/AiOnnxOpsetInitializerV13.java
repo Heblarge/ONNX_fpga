@@ -34,6 +34,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract GemmV13 getGemmV13();
 
+    public abstract GemmReluV13 getGemmReluV13();
+
     public abstract WhereV13 getWhereV13();
 
     public abstract AddV13 getAddV13();
@@ -98,6 +100,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
         operators.put(QuantizeLinearV13.OP_TYPE, this.getQuantizeLinearV13());
 
         operators.put(DequantizeLinearV13.OP_TYPE, this.getDequantizeLinearV13());
+
+        operators.put(GemmReluV13.OP_TYPE, this.getGemmReluV13());
 
         return operators;
     }

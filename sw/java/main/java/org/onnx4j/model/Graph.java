@@ -36,6 +36,9 @@ import org.onnx4j.prototypes.OnnxProto3.TensorProto;
 import org.onnx4j.prototypes.OnnxProto3.ValueInfoProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.onnx4j.prototypes.OnnxOperatorsProto3.OperatorProto;
+import org.onnx4j.prototypes.OnnxOperatorsProto3.OperatorSetProto;
+
 
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.ImmutableGraph.Builder;
@@ -49,6 +52,10 @@ public class Graph extends NamedOnnxObject {
 	private Constant[] constants;
 	private GraphInput[] inputs;
 	private GraphOutput[] outputs;
+	// === Custom operator registry ===
+	private Map<String, OperatorProto> operatorProtos = new HashMap<>();
+	private Map<String, OperatorSetProto> operatorSets = new HashMap<>();
+
 
 	public Graph(Model model, GraphProto graphProto) {
 		super(graphProto.getName(), graphProto.getDocString());
@@ -239,6 +246,33 @@ public class Graph extends NamedOnnxObject {
 		}
 
 		return builder.build();
+	}
+
+	/**
+	 * Register a custom operator set (for dynamic custom ops).
+	 */
+	public void registerOperatorSet(OperatorSetProto customOpset) {
+		if (customOpset == null) return;
+
+		String domain = customOpset.getDomain();
+		long version = customOpset.getOpsetVersion();
+
+		// Save the whole opset
+		operatorSets.put(domain + ":" + version, customOpset);
+
+		// Register each operator inside the opset
+		for (OperatorProto op : customOpset.getOperatorList()) {
+			String type = op.getOpType();
+			operatorProtos.put(type, op);
+			logger.info("Custom operator registered: {}", type);
+		}
+
+		logger.info("Custom opset registered: domain={}, version={}, operators={}",
+				domain, version, customOpset.getOperatorCount());
+	}
+
+	public OperatorProto getCustomOp(String type) {
+		return operatorProtos.get(type);
 	}
 
 }

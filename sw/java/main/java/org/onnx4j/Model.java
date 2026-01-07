@@ -29,8 +29,11 @@ import org.onnx4j.opsets.operator.OperatorSetId;
 import org.onnx4j.prototypes.OnnxProto3;
 import org.onnx4j.prototypes.OnnxProto3.ModelProto;
 import org.onnx4j.prototypes.OnnxProto3.Version;
+import org.onnx4j.prototypes.OnnxOperatorsProto3.OperatorSetProto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import org.onnx4j.prototypes.Newopsets;
 
 public class Model extends OnnxObject implements AutoCloseable {
 
@@ -60,20 +63,21 @@ public class Model extends OnnxObject implements AutoCloseable {
 		super(onnxModel.getDocString());
 
 		this.doCheck(onnxModel);
-		
-		this.tensorManager = new TensorManager<Tensor>() {
 
+		this.tensorManager = new TensorManager<Tensor>() {
 			@Override
 			protected void dispose(Tensor tensor) {
 				tensor.close();
 			}
-			
 		};
+
 		this.tensorOptions = tensorOptions;
 		this.irVersion = onnxModel.getIrVersion();
 		this.modelVersion = onnxModel.getModelVersion();
 		this.opsetIds = OperatorSetId.from(onnxModel.getOpsetImportList());
 		this.graph = new Graph(this, onnxModel.getGraph());
+
+		registerCustomOps(Newopsets.getNewOpset());
 
 		super.docString = onnxModel.getDocString();
 
@@ -142,6 +146,13 @@ public class Model extends OnnxObject implements AutoCloseable {
 		long modelIrVersion = onnxModel.getIrVersion();
 		if (modelIrVersion > Version.IR_VERSION_VALUE || modelIrVersion < Version._START_VERSION_VALUE)
 			throw new ModelException(ModelExceptionEnums.IR_VER_UNSUPPORTED, modelIrVersion, Version.IR_VERSION_VALUE);
+	}
+
+	private void registerCustomOps(OperatorSetProto customOpset) {
+		if (customOpset != null && this.graph != null) {
+			this.graph.registerOperatorSet(customOpset);
+			logger.info("Custom operator set '{}' registered.", customOpset.getDomain());
+		}
 	}
 
 }

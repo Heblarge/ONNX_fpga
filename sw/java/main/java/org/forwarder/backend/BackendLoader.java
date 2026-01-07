@@ -33,10 +33,13 @@ public enum BackendLoader {
 
 	@SuppressWarnings("rawtypes")
 	public void initialize() {
+
 		if (hasInitialized == false) {
 			ServiceLoader<Backend> backends = ServiceLoader.load(Backend.class);
 			Iterator<Backend> it = backends.iterator();
-			
+
+
+
 			if (it.hasNext() == false) {
 				logger.warn("No any backends found");
 			} else {

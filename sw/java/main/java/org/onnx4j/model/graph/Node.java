@@ -24,6 +24,7 @@ import org.onnx4j.Tensor;
 import org.onnx4j.model.graph.node.Attributes;
 import org.onnx4j.prototypes.OnnxProto3.NodeProto;
 import org.onnx4j.model.Graph;
+import org.onnx4j.prototypes.OnnxOperatorsProto3.OperatorProto;
 
 public final class Node extends NamedOnnxObject {
 
@@ -33,6 +34,7 @@ public final class Node extends NamedOnnxObject {
 	protected String[] inputNames;
 	protected String[] outputNames;
 	protected Attributes attributes;
+	protected OperatorProto operatorProto;
 
 	public Node(Model model, NodeProto nodeProto, Tensor.Options tensorOptions) {
 		super(nodeProto.getName(), nodeProto.getDocString());
@@ -45,6 +47,9 @@ public final class Node extends NamedOnnxObject {
 		this.attributes = new Attributes(model, nodeProto.getAttributeList());
 
 		this.model = model;
+		if (this.model != null && this.model.getGraph() != null) {
+			this.operatorProto = this.model.getGraph().getCustomOp(this.opType);
+		}
 	}
 
 
@@ -65,6 +70,15 @@ public final class Node extends NamedOnnxObject {
 		return opType;
 	}
 
+	public String getDomain() {
+		return domain;
+	}
+
+	public OperatorProto getOperatorProto() {
+		return this.operatorProto;
+	}
+
+
 	@Override
 	public String toString() {
 		return "Node [domain=" + domain + ", opType=" + opType + ", inputNames=" + Arrays.toString(inputNames)
@@ -74,5 +88,6 @@ public final class Node extends NamedOnnxObject {
 	public Graph getGraph() {
 		return this.model.getGraph();
 	}
+
 
 }
