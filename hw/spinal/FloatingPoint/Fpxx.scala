@@ -3,6 +3,7 @@ package FloatingPoint
 import spinal.core._
 import spinal.core.sim._
 import java.nio.ByteBuffer
+import spire.std.boolean
 
 sealed trait InfinityEncoding;
 case class NoInfinity(replaceWith: BigInt) extends InfinityEncoding;
@@ -183,10 +184,12 @@ case class Fpxx(c: FpxxConfig) extends Bundle {
 }
 
 object FpxxHost {
+    implicit def apply(s: Short): FpxxHost = {
+        FpxxHost(BigInt(1, ByteBuffer.allocate(2).putShort(s).array()), FpxxConfig.float16())
+    }
     implicit def apply(f: Float): FpxxHost = {
         FpxxHost(BigInt(1, ByteBuffer.allocate(4).putFloat(f).array()), FpxxConfig.float32())
     }
-
     implicit def apply(d: Double): FpxxHost = {
         FpxxHost(BigInt(1, ByteBuffer.allocate(8).putDouble(d).array()), FpxxConfig.float64())
     }
