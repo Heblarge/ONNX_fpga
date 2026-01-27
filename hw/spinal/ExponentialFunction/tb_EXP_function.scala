@@ -201,7 +201,7 @@ object sim_EXP_function_test extends App {
 
   val random = new scala.util.Random
   val start = -3 * Math.pow(2, cfg.bit_frac).toInt
-  val end =  3 * Math.pow(2, cfg.bit_frac).toInt
+  val end =  2 * Math.pow(2, cfg.bit_frac).toInt
   val step = (end - start) / 499 // 199 steps to get 200 points
 
   val x_iter = (start to end by step).map(_.toInt).iterator
