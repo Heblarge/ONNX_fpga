@@ -82,7 +82,16 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
       s"Softplus_function_sw.compute(payloadInt:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
       s"Input: fixed-point x=$payloadInt (float: $x_float), " +
       s"float range: [$x_in_Min, $x_in_Max], " +
-      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
+      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac)."
+    )
+    val lowerBoundFixed = tMin << bit_frac
+    val upperBoundFixed = tMax << bit_frac
+
+    if (payloadInt < lowerBoundFixed) {
+      return 0
+    } else if (payloadInt > upperBoundFixed) {
+      return payloadInt // 直接返回输入，模拟 ln(1+exp(x)) ≈ x
+    }
 
     // scale_inv 与硬件 cfg.scale_inv 的整数计算 (以 Long 避免溢出)
     val scaleInvLong = (((1L << totalBits) - 1L) / (tMax - tMin)).toLong
@@ -190,8 +199,8 @@ object SoftplusFunctionTest extends App {
     dut.clockDomain.waitSampling(5)
 
 
-    val start = -16*1024*4
-    val end = 16*1024*4
+    val start = cfg.t_range._1*1024*4
+    val end = cfg.t_range._2*1024*4 - 1
     val step = 32
 
     var x_iter = Stream.iterate(start)(_ + step).takeWhile(_ <= end).iterator

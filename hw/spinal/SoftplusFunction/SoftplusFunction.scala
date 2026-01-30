@@ -9,7 +9,7 @@ case class Softplus_function_cfg(
                                   K1: Int = 7,
                                   K2: Int = 6,
                                   K3: Int = 6,
-                                  t_range: (Int, Int) = (-16, 16))
+                                  t_range: (Int, Int) = (-256, 240))  // (-256.0, 239.722412109375)
 {
   def total_bits = K1 + K2 + K3
   def scale_inv = ((1 << total_bits) - 1) / (t_range._2 - t_range._1)
@@ -90,6 +90,17 @@ case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
 
   val sum = P_raw + N_raw
 
-  io.softplusx.payload := RegNext(sum) init 0
+  val lowerBound = S(t_range._1 << bit_frac, bit_all bits)
+  val upperBound = S(t_range._2 << bit_frac, bit_all bits)
+  val final_val = SInt(bit_all bits)
+  when(io.x.payload < lowerBound) {
+    final_val := 0
+  } elsewhen (io.x.payload > upperBound) {
+    final_val := io.x.payload
+  } otherwise {
+    final_val := sum
+  }
+
+  io.softplusx.payload := RegNext(final_val) init 0
   io.softplusx.valid := RegNext(io.x.valid) init False
 }

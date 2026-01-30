@@ -193,7 +193,7 @@ object sim_LN_function_test extends App {
   val random = new scala.util.Random
   random.setSeed(1233)
   // 使用生成的Q12值作为输入数据源
-  val x_iter = generateQ12Values(intRange = (cfg.x_in_Min.toInt, cfg.x_in_Max.toInt+1), fracBits = cfg.bit_frac, skipZero = true).iterator
+  val x_iter = generateQ12Values(intRange = (cfg.x_in_Min.toInt, cfg.x_in_Max.toInt), fracBits = cfg.bit_frac, skipZero = true).iterator
   // 固定点输入的浮点输出计算函数
   def lnx_fixIn_fix_out(x: Int): Int = {
     Math.floor(Math.log(x.toDouble / Math.pow(2, cfg.bit_frac)) * Math.pow(2, cfg.bit_frac)).toInt
@@ -219,7 +219,7 @@ object sim_LN_function_test extends App {
   }
 // 执行仿真
   module_compiled.doSim("ln_tb", seed = 1233) { dut =>
-    SimTimeout(6000000)
+    SimTimeout(60000000)
     val scoreboard = ScoreboardInOrder[Int]()
     // 配置输入驱动
     FlowDriver(dut.io.x, dut.clockDomain) { payload =>

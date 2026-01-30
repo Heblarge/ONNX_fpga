@@ -13,8 +13,9 @@ case class LN_function_cfg(
 
   val rotate = bit_frac // CORDIC 算法的迭代次数等于小数部分的位数
   val using_compensation_iters = true // 启用补偿迭代，针对特定迭代点（j=4和j=13）减少误差
-  val x_in_Min=1.0
-  val x_in_Max=6.0-(1* Math.pow(2, -bit_frac))
+  val x_in_Min=0.0001
+  val x_in_Max=256 -(1* Math.pow(2, -bit_frac))
+    //6.0-(1* Math.pow(2, -bit_frac))
 
   // 定义输入数据类型：无符号整数，总位数为整数部分 + 小数部分
   def x_type = UInt(bit_int + bit_frac bits)
