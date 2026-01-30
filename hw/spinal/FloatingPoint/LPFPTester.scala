@@ -75,10 +75,10 @@ object FpxxPETest extends App {
 
   // --- 这里的配置可以灵活切换 ---
   // val fpxxCfg = FpxxConfig.float16() 
-  val fpxxCfg = FpxxConfig.float16() // FP8 E4M3 示例
+  val fpxxCfg = FpxxConfig.float8_e4m3fnuz() // FP8 E4M3 示例
   
   val accIntBits  = 32 bits
-  val accFracBits = 16 bits
+  val accFracBits = 20 bits
 
   val compiled = SimConfig.withVcdWave.compile {
     new FpxxPE(fpxxCfg, accIntBits, accFracBits)
@@ -93,6 +93,7 @@ object FpxxPETest extends App {
     dut.io.clear       #= false
 
     var hwValue       = BigDecimal(0)
+    var mulValue = BigDecimal(0)
     var softwareGolden = BigDecimal(0)
     var validCount    = 0
     val testCount     = 20
@@ -108,14 +109,26 @@ object FpxxPETest extends App {
       }
     }
 
+    fork {
+      while(true) {
+        dut.clockDomain.waitSampling()
+        if(dut.io.mulresult.valid.toBoolean) {
+        mulValue = dut.io.mulresult.payload.toBigDecimal
+    }
+  }
+}
+
     val rnd = new Random(42)
     println(f"Testing Config: Exp=${fpxxCfg.exp_size}, Mant=${fpxxCfg.mant_size}")
-    println(f"${"Index"}%-5s | ${"Input A"}%-10s | ${"Input B"}%-10s | ${"Software Golden"}%-20s | ${"Hardware LPFP"}")
-    println("-" * 100)
+    println(
+      f"${"Index"}%-5s | ${"Input A"}%-10s | ${"Input B"}%-10s | " +
+      f"${"Software Golden"}%-20s | ${"Mul result"}%-20s | ${"Hardware LPFP"}"
+    )
+    println("-" * 120)
 
     for (i <- 0 until testCount) {
-      // 为了适应 FP8 较小的动态范围，减小随机数范围
-      val range = if(fpxxCfg.exp_size < 5) 2.0f else 10.0f
+      // 这是tester的range，根据测试的是fp8还是fp16，功能性测试还是压力测试需要取不同值
+      val range = 1.0f
       val fA = (rnd.nextFloat() * 2.0f - 1.0f) * range
       val fB = (rnd.nextFloat() * 2.0f - 1.0f) * range
 
@@ -138,7 +151,10 @@ object FpxxPETest extends App {
       dut.io.inSig.valid #= false
       
       dut.clockDomain.waitSampling(1) 
-      println(f"$i%-5d | $fA%10.4f | $fB%10.4f | $softwareGolden%20.10f | $hwValue%20.10f")
+      println(
+        f"$i%-5d | $fA%10.4f | $fB%10.4f | " +
+        f"$softwareGolden%20.10f | $mulValue%20.10f | $hwValue%20.10f"
+      )
     }
 
     waitUntil(validCount == testCount)

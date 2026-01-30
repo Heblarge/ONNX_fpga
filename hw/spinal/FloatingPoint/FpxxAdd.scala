@@ -404,6 +404,6 @@ class FpxxAddCompatible(o: FpxxAdd.Options) extends Component {
     arbitrateTo(io.result)
   }
 
-  implicit val maskConfig = StageMask.Config(5, List(1, 3, 0, 2, 4))
+  implicit val maskConfig = StageMask.Config(5, List(0,1,2,3,4))
   Builder(o.pipeStages(Seq(n0, n1, n2, n3, n4, n5)))
 }

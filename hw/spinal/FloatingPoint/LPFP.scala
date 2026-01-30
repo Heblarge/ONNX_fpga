@@ -24,6 +24,8 @@ class FpxxPE(
     val clear = in Bool()
 
     val out = master Stream(AFix.SQ(accIntBits, accFracBits))
+
+    val mulresult = master Stream(AFix.SQ(accIntBits, accFracBits))
   }
 
   // ------------------------------------------------------------
@@ -31,8 +33,9 @@ class FpxxPE(
   // ------------------------------------------------------------
   val mul = new FpxxMulCompatible(
     FpxxMul.Options(
-      cIn        = fpxxCfg,
-      cOut       = None,
+      //更改cIn和cOut来决定浮点数的格式
+      cIn        = FpxxConfig.float8_e4m3fnuz(),
+      cOut       = Some(FpxxConfig.float8_e4m3mul()),
       pipeStages = mulStages
     )
   )
@@ -45,10 +48,11 @@ class FpxxPE(
   // ------------------------------------------------------------
   // FP → FIX
   // ------------------------------------------------------------
+
   val f2i = new Fpxx2AFixCompatible(
     intNrBits  = accIntBits,
     fracNrBits = accFracBits,
-    c          = fpxxCfg,
+    c          = FpxxConfig.float8_e4m3mul(),//这个也要同步更改
     pipeStages = f2iStages,
     generateFlags = false
   )
@@ -56,6 +60,11 @@ class FpxxPE(
   f2i.io.op.valid   := mul.io.result.valid
   f2i.io.op.payload := mul.io.result.payload
   
+  // ------------------------------------------------------------
+  // 单次乘法结果输出
+  // ------------------------------------------------------------
+  io.mulresult.valid   := f2i.io.result.valid
+  io.mulresult.payload := f2i.io.result.number
 
   // ------------------------------------------------------------
   // Local Accumulator (FIXED)

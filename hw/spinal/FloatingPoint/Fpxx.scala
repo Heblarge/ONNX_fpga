@@ -38,6 +38,25 @@ object FpxxConfig {
       exp_bias = CustomBias(8),
       signed_zero = false
     )
+
+    def float16_mul() = FpxxConfig(7,20)
+    def float8_e5m2mul() = FpxxConfig(
+      7,
+      4,
+      SpecialNan(BigInt("10000000", 2)),
+      inf_encoding = NoInfinity(BigInt("10000000", 2)),
+      exp_bias = CustomBias(16),
+      signed_zero = false
+    )
+
+    def float8_e4m3mul() = FpxxConfig(
+      6,
+      6,
+      SpecialNan(BigInt("10000000", 2)),
+      inf_encoding = NoInfinity(BigInt("10000000", 2)),
+      exp_bias = CustomBias(8),
+      signed_zero = false    
+    )
 }
 
 case class FpxxConfig(

@@ -97,7 +97,7 @@ case class FpxxMulCompatible(o: FpxxMul.Options) extends Component {
   def pipeStages = o.pipeStages
 
   // 移除 IEEE 断言以支持 E4M3/E5M2
-  assert(o.cIn.exp_size == cOutU.exp_size, "Can only handle equal input and output exponents")
+  //assert(o.cIn.exp_size == cOutU.exp_size, "Can only handle equal input and output exponents")
 
   val io = new Bundle {
     val input = slave Flow (new Bundle {
@@ -136,6 +136,14 @@ case class FpxxMulCompatible(o: FpxxMul.Options) extends Component {
     val exp_mul  = insert((n0.a.exp +^ n0.b.exp).intoSInt - o.cIn.bias)
     // 尾数乘法
     val mant_mul = insert(n0.mant_a * n0.mant_b)
+
+    val expExtWidth = (o.cIn.exp_size max cOutU.exp_size) + 3
+
+    val exp_ext = insert(
+      n0.a.exp.resize(expExtWidth).asSInt +
+      n0.b.exp.resize(expExtWidth).asSInt -
+      S(o.cIn.bias, expExtWidth bits)
+    )
   }
 
   val n2 = new Node {
@@ -149,6 +157,22 @@ case class FpxxMulCompatible(o: FpxxMul.Options) extends Component {
     val mant_mul_rounded =
       mant_mul_adj.fixTo(mant_mul_adj.getWidth downto mant_mul_adj.getWidth - cOutU.mant_size, o.rounding)
 
+
+    val expExtWidth = (o.cIn.exp_size max cOutU.exp_size) + 3
+
+    val exp_unbiased = SInt(expExtWidth bits)
+
+    exp_unbiased :=
+      n1.exp_ext +
+      n1.mant_mul.msb.asUInt.intoSInt +
+      mant_mul_rounded.msb.asUInt.intoSInt
+
+    val exp_biased = exp_unbiased + S(cOutU.bias, expExtWidth bits)
+
+
+    val maxExpOut = (1 << cOutU.exp_size) - 1
+
+  
     // 最终指数计算：基础指数 + 乘积进位 + 舍入进位
     // 这里的逻辑非常关键：它允许 rounding 产生的进位把指数从 0 推到 1，从而挽救下溢
     val exp_mul_adj = n1.exp_mul + n1.mant_mul.msb.asUInt.intoSInt + mant_mul_rounded.msb.asUInt.intoSInt
@@ -159,19 +183,20 @@ case class FpxxMulCompatible(o: FpxxMul.Options) extends Component {
     val final_sign = Bool()
 
     final_sign := n0.sign_mul
-    final_exp  := exp_mul_adj.asUInt.resized
+    final_exp  := exp_biased.asUInt.resized
     final_mant := mant_mul_rounded.resized
 
     // 溢出判定
     val is_overflow = Bool()
+    val is_underflow = exp_biased <= 0
     cOutU.inf_encoding match {
       case IEEEInfinity() =>
         val maxIEEEExp = (1 << cOutU.exp_size) - 1
-        is_overflow := exp_mul_adj >= maxIEEEExp
+        is_overflow := exp_biased >= maxIEEEExp
       case NoInfinity(_) =>
         // FNUZ: > MaxExp 才是溢出
         val maxFNUZExp = (1 << cOutU.exp_size) - 1
-        is_overflow := exp_mul_adj > maxFNUZExp
+        is_overflow := exp_biased > maxFNUZExp
     }
 
     // 结果选择逻辑
@@ -198,7 +223,7 @@ case class FpxxMulCompatible(o: FpxxMul.Options) extends Component {
           final_exp.setAll
           final_mant.setAll
       }
-    }.elsewhen(n0.is_zero || exp_mul_adj <= 0) {
+    }.elsewhen(n0.is_zero || is_underflow) {
       // Output Flush-to-Zero
       // 只要最终指数 <= 0，一律归零
       final_exp := 0
