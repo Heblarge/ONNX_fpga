@@ -190,8 +190,8 @@ object SoftplusFunctionTest extends App {
     dut.clockDomain.waitSampling(5)
 
 
-    val start = -16*1024*4
-    val end = 16*1024*4
+    val start = -16 * 1024*4
+    val end = 16 * 1024*4 - 1
     val step = 32
 
     var x_iter = Stream.iterate(start)(_ + step).takeWhile(_ <= end).iterator
