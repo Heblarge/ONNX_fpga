@@ -4,6 +4,8 @@ import spinal.core._
 import spinal.lib._
 import spinal.lib.misc.pipeline._
 
+//如果需要更改浮点格式的话，改动：mul的cin写为对应浮点格式（fp8_xxx/fp16）,cout写为对应浮点乘法结果格式(fp8_xxxmul/fp16mul)；f2i的c写为对应浮点乘法结果格式。
+
 class FpxxPE(
     fpxxCfg     : FpxxConfig,
     accIntBits  : BitCount,
@@ -34,8 +36,8 @@ class FpxxPE(
   val mul = new FpxxMulCompatible(
     FpxxMul.Options(
       //更改cIn和cOut来决定浮点数的格式
-      cIn        = FpxxConfig.float8_e4m3fnuz(),
-      cOut       = Some(FpxxConfig.float8_e4m3mul()),
+      cIn        = FpxxConfig.float16(),
+      cOut       = Some(FpxxConfig.float16_mul()),
       pipeStages = mulStages
     )
   )
@@ -52,7 +54,7 @@ class FpxxPE(
   val f2i = new Fpxx2AFixCompatible(
     intNrBits  = accIntBits,
     fracNrBits = accFracBits,
-    c          = FpxxConfig.float8_e4m3mul(),//这个也要同步更改
+    c          = FpxxConfig.float16_mul(),//这个也要同步更改
     pipeStages = f2iStages,
     generateFlags = false
   )

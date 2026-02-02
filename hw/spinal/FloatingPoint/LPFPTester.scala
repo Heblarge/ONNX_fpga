@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.core.sim._
 import scala.util.Random
 
-// --- RTL GEN ---
+// LPFPTester的val fpxxCfg = FpxxConfig.float8_e4m3fnuz() 这一行需要与LPFP中的浮点格式对应
 
 
 // --- 增强型软件浮点逻辑 ---
@@ -75,7 +75,7 @@ object FpxxPETest extends App {
 
   // --- 这里的配置可以灵活切换 ---
   // val fpxxCfg = FpxxConfig.float16() 
-  val fpxxCfg = FpxxConfig.float8_e4m3fnuz() // FP8 E4M3 示例
+  val fpxxCfg = FpxxConfig.float16() // FP8 E4M3 示例
   
   val accIntBits  = 32 bits
   val accFracBits = 20 bits
@@ -128,7 +128,7 @@ object FpxxPETest extends App {
 
     for (i <- 0 until testCount) {
       // 这是tester的range，根据测试的是fp8还是fp16，功能性测试还是压力测试需要取不同值
-      val range = 1.0f
+      val range = 60.0f
       val fA = (rnd.nextFloat() * 2.0f - 1.0f) * range
       val fB = (rnd.nextFloat() * 2.0f - 1.0f) * range
 
