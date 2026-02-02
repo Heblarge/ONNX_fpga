@@ -38,20 +38,20 @@ case class DualCache_Ctrl(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) e
 
     // Cache A 接口 (Slave)
     val readA   = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    //val writeA  = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val writeA  = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
     val switchA, dmaDoneA = in Bool()
 
     // Cache B 接口 (Slave)
     val readB   = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    //val writeB  = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val writeB  = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
     val switchB, dmaDoneB = in Bool()
 
     // 外部 Memory 接口 (Master)
     // 这些接口将连接到顶层的 SdpramXilinx
     val memA_read  = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
-    //val memA_write = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
+    val memA_write = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
     val memB_read  = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
-    //val memB_write = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
+    val memB_write = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
   }
 
   val cacheA = InputCache_Ctrl(addrWidth, dataWidth, lifeWidth)
@@ -62,9 +62,9 @@ case class DualCache_Ctrl(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) e
   // ============================================================
   // 这样 RAM 的读端口将运行在用户提供的读时钟下，确保 1-cycle latency
   io.memA_read.clk  := io.readA.clk
-  //io.memA_write.clk := io.writeA.clk
+  io.memA_write.clk := io.writeA.clk
   io.memB_read.clk  := io.readB.clk
-  //io.memB_write.clk := io.writeB.clk
+  io.memB_write.clk := io.writeB.clk
 
   // ============================================================
   // 2. 零延迟同步助手 (利用 addTag 绕过 CDC 检查)
@@ -86,15 +86,14 @@ case class DualCache_Ctrl(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) e
     int.Address := ext.Address.addTag(crossClockDomain)
     int.Data    := ext.Data.addTag(crossClockDomain)
     int.Wen     := ext.Wen.addTag(crossClockDomain)
-
     int.clk     := False
   }
 
   // 3. 执行同步连接
   syncReadSlave(io.readA, cacheA.io.read)
-  //syncWriteSlave(io.writeA, cacheA.io.write)
+  syncWriteSlave(io.writeA, cacheA.io.write)
   syncReadSlave(io.readB, cacheB.io.read)
-  //syncWriteSlave(io.writeB, cacheB.io.write)
+  syncWriteSlave(io.writeB, cacheB.io.write)
 
   // 单 bit 控制信号（切换、DMA完成）仍通过同步器，确保控制器状态机稳定
   cacheA.io.switch  := BufferCC(io.switchA)
@@ -110,20 +109,20 @@ case class DualCache_Ctrl(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) e
   io.memA_read.Address := cacheA.io.mem_read.Address
   cacheA.io.mem_read.Data := io.memA_read.Data
 
-//  io.memA_write.Valid   := cacheA.io.mem_write.Valid
-//  io.memA_write.Address := cacheA.io.mem_write.Address
-//  io.memA_write.Data    := cacheA.io.mem_write.Data
-//  io.memA_write.Wen     := cacheA.io.mem_write.Wen
+  io.memA_write.Valid   := cacheA.io.mem_write.Valid
+  io.memA_write.Address := cacheA.io.mem_write.Address
+  io.memA_write.Data    := cacheA.io.mem_write.Data
+  io.memA_write.Wen     := cacheA.io.mem_write.Wen
 
   // Cache B 通路
   io.memB_read.Valid   := cacheB.io.mem_read.Valid
   io.memB_read.Address := cacheB.io.mem_read.Address
   cacheB.io.mem_read.Data := io.memB_read.Data
 
-//  io.memB_write.Valid   := cacheB.io.mem_write.Valid
-//  io.memB_write.Address := cacheB.io.mem_write.Address
-//  io.memB_write.Data    := cacheB.io.mem_write.Data
-//  io.memB_write.Wen     := cacheB.io.mem_write.Wen
+  io.memB_write.Valid   := cacheB.io.mem_write.Valid
+  io.memB_write.Address := cacheB.io.mem_write.Address
+  io.memB_write.Data    := cacheB.io.mem_write.Data
+  io.memB_write.Wen     := cacheB.io.mem_write.Wen
 
   // ============================================================
   // 5. AXI 控制与状态 (使用寄存器防止锁存器)

@@ -38,6 +38,131 @@ import spinal.lib.bus.amba4.axilite._
  * +--------+--------------+------+--------+--------------------------------------------------------+
  *
  * **************************************************************************** */
+case class MatrixCacheController(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  val io = new Bundle {
+    // === 1. AXI4-Lite Config & Status Interface ===
+    val axi = slave(AxiLite4(addressWidth = 8, dataWidth = 32))
+
+    // === 2. Global Interrupt Output ===
+    val globalIntr = out Bool()
+
+    // === 3. Cache A (Input) ===
+    val readA     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
+    val writeA    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val switchA   = in Bool()
+    val dmaDoneA  = in Bool()
+
+    // === 4. Cache B (Input) ===
+    val readB     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
+    val writeB    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val switchB   = in Bool()
+    val dmaDoneB  = in Bool()
+
+    // === 5. Cache C (Output) ===
+    val readC     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
+    val writeC    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val switchC   = in Bool()
+    val dmaDoneC  = in Bool()
+
+    // === Ports Connecting to BRAMs ===
+    val memA_read     = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
+    val memA_write    = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
+    val memB_read     = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
+    val memB_write    = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
+    val memC_read     = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
+    val memC_write    = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
+  }
+
+  // =============================
+  // 1. 实例化子模块
+  // =============================
+  val cacheA = InputMatrixCacheController(addrWidth, dataWidth, lifeWidth)
+  val cacheB = InputMatrixCacheController(addrWidth, dataWidth, lifeWidth)
+  val cacheC = OutputMatrixCacheController(addrWidth, dataWidth)
+
+  // =============================
+  // 2. 数据通路连接
+  // =============================
+  cacheA.io.read    <> io.readA
+  cacheA.io.write   <> io.writeA
+  cacheA.io.switch  <> io.switchA
+  cacheA.io.dmaIntr <> io.dmaDoneA
+
+  cacheB.io.read    <> io.readB
+  cacheB.io.write   <> io.writeB
+  cacheB.io.switch  <> io.switchB
+  cacheB.io.dmaIntr <> io.dmaDoneB
+
+  cacheC.io.read    <> io.readC
+  cacheC.io.write   <> io.writeC
+  cacheC.io.switch  <> io.switchC
+  cacheC.io.dmaIntr <> io.dmaDoneC
+
+  // =============================
+  // 连接外部
+  // =============================
+  io.memA_read  <> cacheA.io.memRead
+  io.memA_write <> cacheA.io.memWrite
+
+  io.memB_read  <> cacheB.io.memRead
+  io.memB_write <> cacheB.io.memWrite
+
+  io.memC_read  <> cacheC.io.memRead
+  io.memC_write <> cacheC.io.memWrite
+
+  // =============================
+  // 3. 硬件中断输出
+  // =============================
+  io.globalIntr := cacheC.io.intr
+
+  // =============================
+  // 4. AXI4-Lite 寄存器映射
+  // =============================
+  val busCtrl = new AxiLite4SlaveFactory(io.axi)
+
+  // --- 寄存器 0x00: Cache A 生命周期配置 (RW) ---
+  val lifeCfgRegA = Reg(UInt(lifeWidth bits)) init(0)
+  busCtrl.readAndWrite(lifeCfgRegA, address = 0x00)
+  cacheA.io.lifeCfg := lifeCfgRegA
+
+  // --- 寄存器 0x04: Cache B 生命周期配置 (RW) ---
+  val lifeCfgRegB = Reg(UInt(lifeWidth bits)) init(0)
+  busCtrl.readAndWrite(lifeCfgRegB, address = 0x04)
+  cacheB.io.lifeCfg := lifeCfgRegB
+
+  // --- 寄存器 0x08: 状态寄存器 (Read Only) ---
+  busCtrl.read(cacheA.io.status, address = 0x08, bitOffset = 0)
+  busCtrl.read(cacheB.io.status, address = 0x08, bitOffset = 1)
+  busCtrl.read(cacheC.io.status, address = 0x08, bitOffset = 2)
+  busCtrl.read(cacheC.io.intr,   address = 0x08, bitOffset = 3)
+  busCtrl.read(cacheC.io.full,   address = 0x08, bitOffset = 4)
+
+  // --- 寄存器 0x0C: 中断清除控制 (Write 1 to Clear) ---
+  cacheC.io.intrClear := False
+  busCtrl.setOnSet(cacheC.io.intrClear, address = 0x0C, bitOffset = 0)
+
+  // =============================
+  // [关键修复] 仿真可见性设置
+  // =============================
+  // 标记此信号为 simPublic，确保 VCS/Verilator 仿真后端保留此信号，
+  // 从而允许 Testbench 通过 dut.cacheC.io.full 访问它。
+  cacheC.io.full.simPublic()
+}
+
+object MatrixCacheController_verilog {
+
+  new File("rtl/MatrixCacheController").mkdir() // 创建输出目录
+
+  def main(arg:Array[String]): Unit ={
+    SpinalConfig(
+      targetDirectory = "rtl/MatrixCacheController",
+      oneFilePerComponent = false,
+      defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
+    ).generateVerilog(MatrixCacheController(addrWidth=13,dataWidth=256))
+      .printPruned()
+  }
+}
+
 
 case class MatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
   val io = new Bundle {

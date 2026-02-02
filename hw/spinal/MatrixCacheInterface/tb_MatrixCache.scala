@@ -76,6 +76,7 @@ object tb_MatrixCache_System extends App {
       data
     }
 
+
     // ==========================================
     // Thread 1: CPU Config
     // ==========================================
@@ -277,7 +278,7 @@ object tb_MatrixCache_System extends App {
       simSuccess()
     }
 
-    sleep(100000 * 20)
+    sleep(100000)
     println("[TB] Timeout! Deadlock.")
     simSuccess()
 

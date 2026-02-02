@@ -21,17 +21,17 @@ case class OutputCache_Ctrl(addrWidth: Int, dataWidth: Int) extends Component {
     // 外部读写接口（连接到外部使用者）
     val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
     val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    
+
     // 控制信号
     val switch     = in Bool()      // 写主机完成当前 bank 写入后触发（切换到新 bank）
     val dmaIntr    = in Bool()      // 读端 DMA 完成当前 bank 读取后触发（释放读 bank）
     val intrClear  = in Bool()      // 清除中断信号
-    
+
     // 状态输出
     val status     = out Bool()     // 存在任意有效 bank（有可读数据）
     val intr       = out Bool()     // 保持型中断（新 bank 就绪）
     val full       = out Bool()     // 两个 bank 均有效（无可写空间）
-    
+
     // memory 接口（连接到外部 memory）
     val mem_read   = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
     val mem_write  = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
@@ -40,10 +40,10 @@ case class OutputCache_Ctrl(addrWidth: Int, dataWidth: Int) extends Component {
   // 当前写 / 读 bank 指针
   val wrPtr = Reg(UInt(1 bits)) init(0)
   val rdPtr = Reg(UInt(1 bits)) init(0)
-  
+
   // 中断寄存器（保持型）
   val intrReg = Reg(Bool()) init(False)
-  
+
   // bank valid 标志：该 bank 是否存有可读数据
   val bankValid = Vec(Reg(Bool()), 2)
   bankValid.foreach(_ init(False))
@@ -91,6 +91,7 @@ case class OutputCache_Ctrl(addrWidth: Int, dataWidth: Int) extends Component {
   io.mem_write.Valid   := io.write.Valid
   io.mem_write.Address := wrAddrInt
   io.mem_write.Data    := io.write.Data
+  io.mem_write.Wen     := io.write.Wen
 
   // 读地址映射
   val rdAddrInt = (rdPtr.asBits ## io.read.Address.asBits).asUInt

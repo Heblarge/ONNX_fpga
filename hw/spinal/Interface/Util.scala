@@ -110,6 +110,33 @@ package object Util {
     Array.tabulate(rowNum, colNum)((i, j) => mat(i * colNum + j))
   }
 
+  // 参考 Util.memGetMat 的结构，但适配当前的 Byte Addressing 和 32-bit 对齐存储
+  def memGetMatTiled(
+                      mem: Mem[Bits],
+                      baseAddr: Int,
+                      sideNum: Int,
+                      shape0: Int,
+                      shape1: Int
+                    ): Array[Array[Int]] = {
+    val bytesPerVector = sideNum * 4
+    val numBlocksX = shape1 / sideNum
+    val totalVectors = shape0 * numBlocksX
+    val rawMem = Array.tabulate(totalVectors) { i =>
+      mem.getBigInt(baseAddr + i * bytesPerVector)
+    }
+    Array.tabulate(shape0, shape1) { (i, j) =>
+      val vectorIdx = i * numBlocksX + (j / sideNum) // 确定在哪一个向量
+      val elemIdx = j % sideNum                      // 确定向量中的哪一段
+      val vectorVal = rawMem(vectorIdx)
+      val elemBits = (vectorVal >> (elemIdx * 32)) & BigInt("FFFFFFFF", 16)
+      if ((elemBits & 0x80000000L) != 0) {
+        (elemBits | BigInt("FFFFFFFF00000000", 16)).toInt
+      } else {
+        elemBits.toInt
+      }
+    }
+  }
+
   def memSetMat[T <: Data](mem: Mem[T], addr: Int, mat: Array[Array[Int]], memColNum: Int, elementWidth: Int) =
     matToMem(mat, memColNum, elementWidth).zipWithIndex.foreach { case (matInMemRow, i) =>
       mem.setBigInt(addr + i, matInMemRow)

@@ -6,6 +6,8 @@ import spinal.core._
 import spinal.core.sim.SimDataPimper
 import spinal.lib._
 
+
+
 /** ****************************************************************************
  * - 封装 OutputMatrixCacheInterface 与底层 SDPRAM 模型
  * - 对外暴露与原内存端口一致的读/写接口（单倍深度视图）
@@ -42,6 +44,43 @@ case class OutputMatrixCache(addrWidth: Int, dataWidth: Int) extends Component {
   matrixCacheInterface.io.write_sdpram <> sdpramModel.io.write
 }
 
+
+/** ****************************************************************************
+ * - 封装 OutputMatrixCacheInterface 与底层 SDPRAM 模型
+ * - 对外暴露与原内存端口一致的读/写接口（单倍深度视图）
+ * - 内部以双倍深度的 SDPRAM 实现 ping-pong 映射
+ * **************************************************************************** */
+case class OutputMatrixCacheController(addrWidth: Int, dataWidth: Int) extends Component {
+  val io = new Bundle {
+    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val switch = in Bool()
+    val dmaIntr= in Bool()
+    val status = out Bool()
+    val intr   = out Bool()
+    val intrClear = in Bool()
+    val full   = out Bool()
+    val memRead   = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+    val memWrite  = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+  }
+
+  val visibleDepth  = 1 << addrWidth
+  val internalDepth = visibleDepth * 2
+
+  val matrixCacheInterface = OutputMatrixCacheInterface(addrWidth, dataWidth)
+
+  io.read   <> matrixCacheInterface.io.read
+  io.write  <> matrixCacheInterface.io.write
+  io.switch <> matrixCacheInterface.io.switch
+  io.dmaIntr<> matrixCacheInterface.io.dmaIntr
+  io.status <> matrixCacheInterface.io.status
+  io.intrClear <> matrixCacheInterface.io.intrClear
+  io.intr   <> matrixCacheInterface.io.intr
+  io.full   <> matrixCacheInterface.io.full
+
+  matrixCacheInterface.io.read_sdpram  <> io.memRead
+  matrixCacheInterface.io.write_sdpram <> io.memWrite
+}
 
 /** ****************************************************************************
  * OutputMatrixCacheInterface
@@ -113,9 +152,13 @@ case class OutputMatrixCacheInterface(addrWidth: Int, dataWidth: Int) extends Co
   io.write_sdpram.Valid   := io.write.Valid
   io.write_sdpram.Address := wrAddrInt
   io.write_sdpram.Data    := io.write.Data
+  io.write_sdpram.clk     := io.write.clk
+  io.write_sdpram.Wen     := io.write.Wen
+
 
   val rdAddrInt = (rdPtr.asBits ## io.read.Address.asBits).asUInt
   io.read_sdpram.Valid   := io.read.Valid
+  io.read_sdpram.clk     := io.read.clk
   io.read_sdpram.Address := rdAddrInt
   io.read.Data := io.read_sdpram.Data
 

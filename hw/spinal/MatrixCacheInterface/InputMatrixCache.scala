@@ -47,6 +47,46 @@ case class InputMatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16)
   inputMatrixCacheInterface.io.read_sdpram  <> sdpramModel.io.read
   inputMatrixCacheInterface.io.write_sdpram <> sdpramModel.io.write
 }
+
+
+case class InputMatrixCacheController(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  val io = new Bundle {
+    val read       = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val write      = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val switch     = in Bool()      // 读主机完成当前 bank 读取后触发（一次“消费”）
+    val dmaIntr    = in Bool()      // 写端 DMA 完成当前 bank 写入后触发（写 bank 填满）
+    val lifeCfg    = in UInt(lifeWidth bits) // 配置“下一块写入矩阵”的生命周期（可被读的次数）
+    val status     = out Bool()     // 是否存在可写 bank（任意 bank 空闲）
+    val empty      = out Bool()     // 两个 bank 均为空（无可读数据）
+
+    val memRead       = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+    val memWrite      = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+  }
+
+  // 实例化接口核心
+  val inputMatrixCacheInterface = InputMatrixCacheInterface(addrWidth, dataWidth, lifeWidth)
+
+  // 物理双端口存储模型（深度×2）
+  val visibleDepth  = 1 << addrWidth
+  val internalDepth = visibleDepth * 2
+  //val sdpramModel = SdpramModel(dataWidth = dataWidth, depth = internalDepth)
+
+  // 连接外部端口
+  io.read    <> inputMatrixCacheInterface.io.read
+  io.write   <> inputMatrixCacheInterface.io.write
+  io.switch  <> inputMatrixCacheInterface.io.switch
+  io.dmaIntr <> inputMatrixCacheInterface.io.dmaIntr
+  io.lifeCfg <> inputMatrixCacheInterface.io.lifeCfg
+  io.status  <> inputMatrixCacheInterface.io.status
+  io.empty   <> inputMatrixCacheInterface.io.empty
+
+  // 内部存储连接
+  inputMatrixCacheInterface.io.read_sdpram  <> io.memRead
+  inputMatrixCacheInterface.io.write_sdpram <> io.memWrite
+}
+
+
+
 /** ****************************************************************************
  * InputMatrixCacheInterface
  * 功能：
@@ -122,8 +162,12 @@ case class InputMatrixCacheInterface(addrWidth: Int, dataWidth: Int, lifeWidth: 
   io.write_sdpram.Valid   := io.write.Valid
   io.write_sdpram.Address := wrAddrInt
   io.write_sdpram.Data    := io.write.Data
+  io.write_sdpram.clk     := io.write.clk
+  io.write_sdpram.Wen     := io.write.Wen
 
   io.read_sdpram.Valid   := io.read.Valid
+  io.read_sdpram.clk     := io.read.clk
+
   io.read_sdpram.Address := rdAddrInt
   io.read.Data := io.read_sdpram.Data
 

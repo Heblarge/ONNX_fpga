@@ -17,16 +17,69 @@ object InstSim {
 
   def apply(random: Random, matSubRowNum: Int) = new InstSim(random, matSubRowNum)
 
-  def memSetInstSims[T <: Data](
-      mem: Mem[T],
-      instSims: Seq[InstSim],
-      isinput0: Boolean,
-      mats: Seq[Array[Array[Int]]],
-      memColNum: Int,
-      elementWidth: Int
-  ) = instSims.zip(mats).foreach { case (instSim, mat) =>
-    memSetMat(mem, if (isinput0) instSim.input0Address else instSim.input1Address, mat, memColNum, elementWidth)
+//  def memSetInstSims[T <: Data](
+//      mem: Mem[T],
+//      instSims: Seq[InstSim],
+//      isinput0: Boolean,
+//      mats: Seq[Array[Array[Int]]],
+//      memColNum: Int,
+//      elementWidth: Int
+//  ) = instSims.zip(mats).foreach { case (instSim, mat) =>
+//    memSetMat(mem, if (isinput0) instSim.input0Address else instSim.input1Address, mat, memColNum, elementWidth)
+//  }
+def memSetInstSims(
+                    mem: Mem[Bits],
+                    instSims: Seq[InstSim],
+                    isA: Boolean,
+                    mats: Seq[Array[Array[Int]]],
+                    sideNum: Int,
+                    elementWidth: Int
+                  ): Unit = {
+  // 每个向量（Block）占用 32位 * 5 = 20 Bytes
+  val bytesPerVector = sideNum * 4
+
+  for (m <- instSims.indices) {
+    val inst = instSims(m)
+    val mat = mats(m)
+    val baseAddr = if (isA) inst.input0Address else inst.input1Address
+
+    // 获取矩阵的宽度 (列数)
+    // 注意：matB 的列数对应 shape1，matA 的列数也对应 shape1 (在 Slicer 逻辑中 Input0Shape1 是宽度)
+    // Slicer 逻辑：GlobalStride = Shape1 / SideNum
+
+    // 这个东西可以模拟实际的内存空间情况，数据按照32bit对齐紧密堆放再在内存中，
+    // 内存总线位宽是sideNum*4 Bytes，假如说sideNum=5，那么就是5*32=160bits一次吐出来，用一个bigint模拟
+    // 并且这里讨个巧让mem的索引就是Byte寻址的地址，所以这个例子下mem中只有0、20、40、60...这些索引（地址）上有数据
+    val shape1 = if(isA) inst.input0Shape1 else inst.input1Shape1
+    val numBlocksX = shape1 / sideNum
+
+    for (row <- mat.indices) {
+      // 遍历这一行的每一个 Block
+      for (blkCol <- 0 until numBlocksX) {
+        // 1. 计算 Slicer 预期的地址索引
+        // Logic: (GlobalRow * NumBlocksPerRow) + BlockCol
+        val addrIndex = row * numBlocksX + blkCol
+        val physAddr = baseAddr + (addrIndex * bytesPerVector)
+
+        // 2. 提取当前 Block 的数据 (sideNum 个元素)
+        var rowBits = BigInt(0)
+        for (colOffset <- 0 until sideNum) {
+          val globalCol = blkCol * sideNum + colOffset
+          // 防止越界（虽然通常矩阵大小是 sideNum 倍数）
+          val elementVal = if (globalCol < mat(row).length) mat(row)(globalCol) else 0
+          val element = BigInt(elementVal)
+
+          // 3. 数据打包 (32-bit 对齐)
+          rowBits |= (element & BigInt("FFFFFFFF", 16)) << (colOffset * 32)
+        }
+
+        // 4. 写入内存
+        mem.setBigInt(physAddr.toLong, rowBits)
+      }
+    }
   }
+}
+
 }
 
 class InstSim(
@@ -56,9 +109,23 @@ class InstSim(
       random.nextBoolean(),
       random.nextSpinalEnum(Activation_TypeDef),
       random.between(-2, 3),
-      InstSim.lastInput0Address + random.nextInt(10),
-      InstSim.lastInput1Address + random.nextInt(10),
-      InstSim.lastOutputAddress + random.nextInt(10),
+//      InstSim.lastInput0Address + random.nextInt(10),
+//      InstSim.lastInput1Address + random.nextInt(10),
+//      InstSim.lastOutputAddress + random.nextInt(10),
+      // 对齐：(随机值 / 步长) * 步长
+      {
+        val step = matSubRowNum * 4
+        ((InstSim.lastInput0Address + random.nextInt(10)) / step + 1) * step
+      },
+      {
+        val step = matSubRowNum * 4
+        ((InstSim.lastInput1Address + random.nextInt(10)) / step + 1) * step
+      },
+      {
+        val step = matSubRowNum * 4
+        ((InstSim.lastOutputAddress + random.nextInt(10)) / step + 1) * step
+      },
+
       random.between(1, 10) * matSubRowNum,
       random.between(1, 10) * matSubRowNum,
       random.between(1, 10) * matSubRowNum,
@@ -89,9 +156,13 @@ class InstSim(
       computeShape()
     }
     InstSim.lastUID = UID + 1
-    InstSim.lastInput0Address = input0Address + input0Shape0 * input0Shape1 / matSubRowNum
-    InstSim.lastInput1Address = input1Address + input1Shape0 * input1Shape1 / matSubRowNum
-    InstSim.lastOutputAddress = outputAddress + outputShape0 * outputShape1 / matSubRowNum
+//    InstSim.lastInput0Address = input0Address + input0Shape0 * input0Shape1 / matSubRowNum
+//    InstSim.lastInput1Address = input1Address + input1Shape0 * input1Shape1 / matSubRowNum
+//    InstSim.lastOutputAddress = outputAddress + outputShape0 * outputShape1 / matSubRowNum
+    val bytesPerVector = matSubRowNum * 4
+    InstSim.lastInput0Address = input0Address + (input0Shape0 * input0Shape1 / matSubRowNum) * bytesPerVector
+    InstSim.lastInput1Address = input1Address + (input1Shape0 * input1Shape1 / matSubRowNum) * bytesPerVector
+    InstSim.lastOutputAddress = outputAddress + (outputShape0 * outputShape1 / matSubRowNum) * bytesPerVector
   }
 
   def this(instJava: InstJavaTODO) = {

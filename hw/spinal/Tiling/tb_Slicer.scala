@@ -15,8 +15,14 @@ import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 
 case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
-  val sdpramA = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthA)
-  val sdpramB = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthB)
+
+  // FIX: 仿真内存必须是 32位 * SideNum 宽度，以匹配 InstSim 中的 (col * 32) 写入逻辑
+  val ramDataWidth = slicerCfg.systolicArraySideNum * 32
+
+  val sdpramA = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = ramDataWidth)
+  val sdpramB = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = ramDataWidth)
+//  val sdpramA = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthA)
+//  val sdpramB = Sdpram(addrWidth = slicerCfg.AddressWidth, dataWidth = slicerCfg.dataWidthB)
   val slicer = Slicer(slicerCfg)
   val io = new Bundle {
     val inst = slave Stream slicer.InstType
@@ -27,10 +33,44 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
   slicer.io.inst <> io.inst
   slicer.io.slicedInst <> io.slicedInst
   slicer.io.matAfterSlicers <> io.Mats_to_Cores_Streams
-  slicer.io.memoryReadPortA <> sdpramA.io.read
-  slicer.io.memoryReadPortB <> sdpramB.io.read
+
+  // ================== A Port Glue Logic ==================
+  sdpramA.io.read.Valid := slicer.io.memoryReadPortA.Valid
+  sdpramA.io.read.Address := slicer.io.memoryReadPortA.Address
+  // 如果 Sdpram 是同步读，可能需要时钟连接，具体取决于 Util.Sdpram 实现
+  // sdpramA.io.read.clk := ClockDomain.current.readClockWire
+
+  // 数据适配：从 RAM 读出 32位宽数据 -> 截取 -> 拼成 Slicer 需要的紧凑位宽
+  val rawDataA = sdpramA.io.read.Data // 160 bits (5 * 32)
+  val slicedDataA = Vec(Bits(slicerCfg.elementWidthA bits), slicerCfg.systolicArraySideNum)
+  for(i <- 0 until slicerCfg.systolicArraySideNum) {
+    // 取出第 i 个 32位数据，resize 到 elementWidthA (9 bits)
+    slicedDataA(i) := rawDataA.subdivideIn(32 bits)(i).resize(slicerCfg.elementWidthA)
+  }
+  slicer.io.memoryReadPortA.Data := slicedDataA.asBits
+
+  // ================== B Port Glue Logic ==================
+  sdpramB.io.read.Valid := slicer.io.memoryReadPortB.Valid
+  sdpramB.io.read.Address := slicer.io.memoryReadPortB.Address
+
+  val rawDataB = sdpramB.io.read.Data // 160 bits (5 * 32)
+  val slicedDataB = Vec(Bits(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
+  for(i <- 0 until slicerCfg.systolicArraySideNum) {
+    // 取出第 i 个 32位数据，resize 到 elementWidthB (7 bits)
+    slicedDataB(i) := rawDataB.subdivideIn(32 bits)(i).resize(slicerCfg.elementWidthB)
+  }
+  slicer.io.memoryReadPortB.Data := slicedDataB.asBits
+
   sdpramA.noWrite()
   sdpramB.noWrite()
+
+//  slicer.io.inst <> io.inst
+//  slicer.io.slicedInst <> io.slicedInst
+//  slicer.io.matAfterSlicers <> io.Mats_to_Cores_Streams
+//  slicer.io.memoryReadPortA <> sdpramA.io.read
+//  slicer.io.memoryReadPortB <> sdpramB.io.read
+//  sdpramA.noWrite()
+//  sdpramB.noWrite()
 }
 
 object SlicerTb extends App {
@@ -45,7 +85,7 @@ object SlicerTb extends App {
   val slicerCfg = SlicerCfg(
     UIDWidth = 19,
     ShiftWidth = 6,
-    AddressWidth = 17,
+    AddressWidth = 20,
     ShapeWidth = 15,
     SlicecntWidth = 13,
     systolicArraySideNum = 5,

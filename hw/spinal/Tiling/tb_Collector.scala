@@ -14,18 +14,26 @@ import scala.util.Random
 import scala.collection.mutable.ArrayBuffer
 
 case class CollectorTest(collectorCfg: CollectorCfg) extends Component {
-  val sdpramZ = Sdpram(addrWidth = collectorCfg.AddressWidth, dataWidth = collectorCfg.dataWidthZ)
+
+  // 仿真内存位宽改为 32 * SideNum，模拟 32-bit 对齐存储
+  val ramDataWidth = collectorCfg.systolicArraySideNum * 32
+  val sdpramZ = Sdpram(addrWidth = collectorCfg.AddressWidth, dataWidth = ramDataWidth)
+//  val sdpramZ = Sdpram(addrWidth = collectorCfg.AddressWidth, dataWidth = collectorCfg.dataWidthZ)
   val collector = Collector(collectorCfg)
   val io = new Bundle {
     val slicedInst = slave Stream collector.SlicedInstType
     val matAfterActivations =
       Vec.fill(collectorCfg.numCores)(slave Stream collector.MatAfterActivationType)
   }
-
   collector.io.slicedInst <> io.slicedInst
   collector.io.matAfterActivations <> io.matAfterActivations
-  collector.io.memoryWritePort <> sdpramZ.io.write
+  sdpramZ.io.write <> collector.io.memoryWritePort
   sdpramZ.noRead()
+
+//  collector.io.slicedInst <> io.slicedInst
+//  collector.io.matAfterActivations <> io.matAfterActivations
+//  collector.io.memoryWritePort <> sdpramZ.io.write
+//  sdpramZ.noRead()
 }
 
 object CollectorTb extends App {
@@ -39,7 +47,7 @@ object CollectorTb extends App {
   // val testNum = 1
   val collectorCfg = CollectorCfg(
     UIDWidth = 19,
-    AddressWidth = 17,
+    AddressWidth = 20,
     ShapeWidth = 15,
     SlicecntWidth = 13,
     slicedInstFifoDepth = 33,
@@ -177,14 +185,22 @@ object CollectorTb extends App {
         dut.clockDomain.waitSampling()
         val instSim = instSims(n)
         val matZRef = instSim.transposeSim(matZs(n))
-        val matZResult = memGetMat(
+//        val matZResult = memGetMat(
+//          dut.sdpramZ.mem,
+//          instSim.outputAddress,
+//          collectorCfg.systolicArraySideNum,
+//          collectorCfg.elementWidthZ,
+//          instSim.outputShape0,
+//          instSim.outputShape1
+//        )
+        val matZResult = memGetMatTiled(
           dut.sdpramZ.mem,
           instSim.outputAddress,
           collectorCfg.systolicArraySideNum,
-          collectorCfg.elementWidthZ,
           instSim.outputShape0,
           instSim.outputShape1
         )
+
         matZipForeach(matZRef, matZResult) { (zRef, zResult, i, j) =>
           assert(
             zRef == zResult,

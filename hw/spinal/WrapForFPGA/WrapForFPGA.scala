@@ -108,11 +108,11 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
   // use64BitBus = false 表示使用 32 位 AXI 总线
   val instBridge = new Inst128_Wrapper(use64BitBus = false)
   def MemoryReadPortTypeA =
-    MemoryReadPort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum*32)
+    MemoryReadPort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum * 32)
   def MemoryReadPortTypeB =
-    MemoryReadPort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum*32)
+    MemoryReadPort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum * 32)
   def MemoryWritePortType =
-    MemoryWritePort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum*32)
+    MemoryWritePort_TypeDef(AddressWidth = fpgaCfg.AddressWidth, DataWidth = fpgaCfg.systolicArraySideNum * 32)
   val io = new Bundle {
     // AXI4-Lite 指令接口（32 位总线）
     val sAxi4LiteInst = slave(AxiLite4(fpgaCfg.axi4LiteInstCfg.getAxiConfig))

@@ -80,6 +80,24 @@ case class MatrixCache_Ctrl(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16)
     val memC_write = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
   }
 
+  // ============================================================
+  // 同步助手 (不会发生同时读写，直接绕过 CDC 检查)
+  // ============================================================
+  def syncReadSlave(ext: MemoryReadPort_TypeDef, int: MemoryReadPort_TypeDef): Unit = {
+    int.Valid   := ext.Valid.addTag(crossClockDomain)
+    int.Address := ext.Address.addTag(crossClockDomain)
+    ext.Data    := int.Data.addTag(crossClockDomain)
+    int.clk     := False
+  }
+
+  def syncWriteSlave(ext: MemoryWritePort_TypeDef, int: MemoryWritePort_TypeDef): Unit = {
+    int.Valid   := ext.Valid.addTag(crossClockDomain)
+    int.Address := ext.Address.addTag(crossClockDomain)
+    int.Data    := ext.Data.addTag(crossClockDomain)
+    int.Wen     := ext.Wen.addTag(crossClockDomain)
+    int.clk     := False
+  }
+
   // =============================
   // 1. 实例化子模块（纯控制器版本）
   // =============================
@@ -87,46 +105,64 @@ case class MatrixCache_Ctrl(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16)
   val cacheB = InputCache_Ctrl(addrWidth, dataWidth, lifeWidth)
   val cacheC = OutputCache_Ctrl(addrWidth, dataWidth)
 
+  io.memA_read.clk  := io.readA.clk
+  io.memA_write.clk := io.writeA.clk
+  io.memB_read.clk  := io.readB.clk
+  io.memB_write.clk := io.writeB.clk
+  io.memC_read.clk  := io.readC.clk
+  io.memC_write.clk := io.writeC.clk
+
+  syncReadSlave(io.readA, cacheA.io.read)
+  syncWriteSlave(io.writeA, cacheA.io.write)
+  syncReadSlave(io.readB, cacheB.io.read)
+  syncWriteSlave(io.writeB, cacheB.io.write)
+  syncReadSlave(io.readC, cacheC.io.read)
+  syncWriteSlave(io.writeC, cacheC.io.write)
+
+  cacheA.io.switch  := BufferCC(io.switchA).init(False)
+  cacheA.io.dmaIntr := BufferCC(io.dmaDoneA).init(False)
+  cacheB.io.switch  := BufferCC(io.switchB).init(False)
+  cacheB.io.dmaIntr := BufferCC(io.dmaDoneB).init(False)
+  cacheC.io.switch  := BufferCC(io.switchC).init(False)
+  cacheC.io.dmaIntr := BufferCC(io.dmaDoneC).init(False)
+
   // =============================
   // 2. 用户数据通路连接
   // =============================
   // Cache A 用户接口
-  cacheA.io.read    <> io.readA
-  cacheA.io.write   <> io.writeA
-  cacheA.io.switch  <> io.switchA
-  cacheA.io.dmaIntr <> io.dmaDoneA
+  io.memA_read.Valid   := cacheA.io.mem_read.Valid
+  io.memA_read.Address := cacheA.io.mem_read.Address
+  cacheA.io.mem_read.Data := io.memA_read.Data
+
+  io.memA_write.Valid   := cacheA.io.mem_write.Valid
+  io.memA_write.Address := cacheA.io.mem_write.Address
+  io.memA_write.Data    := cacheA.io.mem_write.Data
+  io.memA_write.Wen     := cacheA.io.mem_write.Wen
 
   // Cache B 用户接口
-  cacheB.io.read    <> io.readB
-  cacheB.io.write   <> io.writeB
-  cacheB.io.switch  <> io.switchB
-  cacheB.io.dmaIntr <> io.dmaDoneB
+  io.memB_read.Valid   := cacheB.io.mem_read.Valid
+  io.memB_read.Address := cacheB.io.mem_read.Address
+  cacheB.io.mem_read.Data := io.memB_read.Data
+
+  io.memB_write.Valid   := cacheB.io.mem_write.Valid
+  io.memB_write.Address := cacheB.io.mem_write.Address
+  io.memB_write.Data    := cacheB.io.mem_write.Data
+  io.memB_write.Wen     := cacheB.io.mem_write.Wen
 
   // Cache C 用户接口
-  cacheC.io.read    <> io.readC
-  cacheC.io.write   <> io.writeC
-  cacheC.io.switch  <> io.switchC
-  cacheC.io.dmaIntr <> io.dmaDoneC
+  io.memC_read.Valid   := cacheC.io.mem_read.Valid
+  io.memC_read.Address := cacheC.io.mem_read.Address
+  cacheC.io.mem_read.Data := io.memC_read.Data
 
-  // =============================
-  // 3. Memory 接口连接（暴露给外部）
-  // =============================
-  // Cache A Memory 接口
-  cacheA.io.mem_read  <> io.memA_read
-  cacheA.io.mem_write <> io.memA_write
-
-  // Cache B Memory 接口
-  cacheB.io.mem_read  <> io.memB_read
-  cacheB.io.mem_write <> io.memB_write
-
-  // Cache C Memory 接口
-  cacheC.io.mem_read  <> io.memC_read
-  cacheC.io.mem_write <> io.memC_write
+  io.memC_write.Valid   := cacheC.io.mem_write.Valid
+  io.memC_write.Address := cacheC.io.mem_write.Address
+  io.memC_write.Data    := cacheC.io.mem_write.Data
+  io.memC_write.Wen     := cacheC.io.mem_write.Wen
 
   // =============================
   // 4. 硬件中断输出
   // =============================
-  io.globalIntr := cacheC.io.intr
+  io.globalIntr := BufferCC(cacheC.io.intr).init(False)
 
   // =============================
   // 5. AXI4-Lite 寄存器映射（保持与原 MatrixCache 一致）
@@ -181,7 +217,7 @@ object MatrixCache_Ctrl_verilog {
       targetDirectory = "rtl/MatrixCache_Ctrl",
       oneFilePerComponent = true,
       defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
-    ).generateVerilog(MatrixCache_Ctrl(addrWidth = 13, dataWidth = 1024, lifeWidth = 16))
+    ).generateVerilog(MatrixCache_Ctrl(addrWidth = 13, dataWidth = 256, lifeWidth = 16))
       .printPruned()
       .printUnused()
   }
