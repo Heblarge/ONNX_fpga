@@ -13,7 +13,7 @@ import scala.collection.mutable
 
 class ReLU_function_sw(cfg: ReLU_function_cfg) {
   import cfg._
-  
+
   // ReLU函数的定点数实现
   def compute(x: Int): Int = {
     // ReLU函数：max(0, x)
@@ -91,7 +91,7 @@ object ReLUFunctionTest extends App {
 
   // 生成测试数据
   val start = -11 * 1024 * 4
-  val end = 6 * 1024 * 4
+  val end = 6 * 1024 * 4 - 1
   val step = 32
   val x_iter = generateTestValues(start, end, step).iterator
 
@@ -107,7 +107,7 @@ object ReLUFunctionTest extends App {
 
   simCompiled.doSim("relu_tb") { dut =>
     SimTimeout(6000000)
-    
+
     dut.clockDomain.forkStimulus(10)
     dut.io.x.payload #= 0
     dut.io.x.valid #= false
@@ -138,10 +138,10 @@ object ReLUFunctionTest extends App {
 
         val absolute_error = Math.abs(float_received - float_ref)
         val relative_error = if (float_ref != 0) absolute_error / float_ref * 100 else 0.0
-        
+
         display_abserror_Queue.enqueue(absolute_error)
         display_relerror_Queue.enqueue(relative_error)
-        
+
         println(s"Input: ${display_x_Queue.head.toDouble/(1024.0*4)} -> HW: $float_received, SW: $float_ref")
         println(s"\tAbsolute error: $absolute_error")
         println(s"\tRelative error: ${relative_error}%")
@@ -150,15 +150,15 @@ object ReLUFunctionTest extends App {
 
     driverThread.join()
     dut.clockDomain.waitSampling(100) // 等待所有输出完成
-    
+
     println("Simulation completed successfully!")
     simSuccess()
   }
 
   // ========== 结果可视化和分析 ==========
-  
+
   // 确保数据长度一致
-  assert(display_x_Queue.size == display_out_Queue.size, 
+  assert(display_x_Queue.size == display_out_Queue.size,
     s"Input (${display_x_Queue.size}) and output (${display_out_Queue.size}) data size mismatch!")
   assert(display_x_Queue.size == display_ref_Queue.size,
     s"Input (${display_x_Queue.size}) and reference (${display_ref_Queue.size}) data size mismatch!")
@@ -203,9 +203,9 @@ object ReLUFunctionTest extends App {
   val absErrorTolerance = 0.001
   val relErrorTolerance = 0.1
 
-  assert(maxAbsError <= absErrorTolerance, 
+  assert(maxAbsError <= absErrorTolerance,
     s"Max absolute error $maxAbsError exceeds tolerance $absErrorTolerance")
-  assert(maxRelError <= relErrorTolerance, 
+  assert(maxRelError <= relErrorTolerance,
     s"Max relative error ${maxRelError}% exceeds tolerance ${relErrorTolerance}%")
 
   println("All assertions passed! ✓")

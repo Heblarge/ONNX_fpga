@@ -175,25 +175,21 @@ object sim_LN_function_test extends App {
     .withFSDBWave
     .withConfig(SpinalConfig(bitVectorWidthMax = 20000))
     .compile(report)
-// 生成Q12格式的测试输入值
-  def generateQ12Values(intRange: (Int, Int) = (0, 100), fracBits: Int = 12, skipZero: Boolean = false): Seq[Int] = {
-    val fracVals = (0 until (1 << fracBits)).map(_ / Math.pow(2, fracBits))
-    val intVals = (intRange._1 to intRange._2)
-    val q12Vals = for {
-      i <- intVals
-      f <- fracVals
-    } yield ((i + f) * Math.pow(2, fracBits)).toInt
-    if (skipZero) {
-      q12Vals.filter(_ > 0)
-    } else {
-      q12Vals
-    }
+// 生成Q12格式的测试输入值，完全覆盖配置定义的浮点范围
+  def generateQ12Values(cfg: LN_function_cfg, skipZero: Boolean = false): Seq[Int] = {
+    val scale_factor = 1 << cfg.bit_frac
+    // 使用ceil确保最小值不小于x_in_Min，使用round处理最大值
+    val min_fixed = Math.ceil(cfg.x_in_Min * scale_factor).toInt
+    val max_fixed = Math.round(cfg.x_in_Max * scale_factor).toInt
+
+    // 直接在定点数范围内生成所有可能的值
+    (min_fixed to max_fixed).toSeq
   }
 // 初始化随机数生成器
   val random = new scala.util.Random
   random.setSeed(1233)
-  // 使用生成的Q12值作为输入数据源
-  val x_iter = generateQ12Values(intRange = (cfg.x_in_Min.toInt, cfg.x_in_Max.toInt), fracBits = cfg.bit_frac, skipZero = true).iterator
+  // 使用生成的Q12值作为输入数据源，完全覆盖配置定义的范围
+  val x_iter = generateQ12Values(cfg, skipZero = true).iterator
   // 固定点输入的浮点输出计算函数
   def lnx_fixIn_fix_out(x: Int): Int = {
     Math.floor(Math.log(x.toDouble / Math.pow(2, cfg.bit_frac)) * Math.pow(2, cfg.bit_frac)).toInt

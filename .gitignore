@@ -67,3 +67,8 @@ onnx_debug_py/java_hw_final_layer_outputs/*
 
 vfastLog/*
 project/*
+
+memory-bank/techContext.md
+tb_LN_function_absolute_error.png
+tb_LN_function_comparison.png
+tb_LN_function_relative_error.png

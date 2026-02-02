@@ -1,4 +1,5 @@
 # 新算子的注册流程
+
 流程中以GemmRelu为例
 
 一个onnx官方不提供的新算子能正常在模型中工作需要两个部分
@@ -9,7 +10,7 @@
 本身其实只需要在onnx的Proto文件加入新算子的proto就可以完成，但onnx本身已经打包好了自己支持算子的proto和operatorsPrototype文件，并且没有公布这些这文件。
 所以原创的算子不能丝滑被抽象层的Graph和Node识别为合法。
 
-所以我们采取了这样的方式，设计了一个Newopsets.java,在这里去加入我们新算子的名字和Proto。并在Model中去执行getNewOpset()
+这里我们选择在TQ阶段和GV阶段都额外注册自定义的算子，为了方便实现迟迅设计了一个Newopsets.java,在这里去加入我们新算子的名字和Proto。并在Model中去执行getNewOpset()
 ```java
 registerCustomOps(Newopsets.getNewOpset());
 ```
@@ -103,3 +104,6 @@ public GemmReluV13 getGemmReluV13() {
 return null;
 }
 ```
+
+## PS: TQ层的融合算子导出
+TQ层的python现在在导出GemmRelu的时候是调用
