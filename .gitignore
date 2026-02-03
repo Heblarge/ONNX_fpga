@@ -4,7 +4,7 @@
 extract.json
 /rtl/
 *.html
-.png
+
 
 
 # sbt specific
@@ -72,7 +72,5 @@ project/*
 memory-bank/*
 
 #generated chart
-tb_LN_function_absolute_error.png
-tb_LN_function_comparison.png
-tb_LN_function_relative_error.png
+/*.png
 memory-bank/activeContext.md
