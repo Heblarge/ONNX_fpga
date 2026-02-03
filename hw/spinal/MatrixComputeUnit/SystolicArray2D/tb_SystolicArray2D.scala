@@ -42,13 +42,8 @@ abstract class SystolicArray2D_Sim extends App {
     out_MatZ_element_Width = 32,
     Enable_Transpose_logic = true
   )
-  //verilator
-  /* val Sim_compiled = SimConfig.
-  withFstWave.
-  compile(new SystolicArray2D(cfg)) 
-  */
+
   //VCS
-  
   import spinal.sim.VCSFlags
   val flag = VCSFlags(
     compileFlags = List("-kdb","-lca", "+notimingchecks"),
@@ -422,7 +417,7 @@ object SystolicArray2D_Sim_matmul extends SystolicArray2D_Sim
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        
+
         if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
         {
         if(AllTestCaseSentReported!=true)
@@ -629,7 +624,7 @@ object SystolicArray2D_Sim_ElementWise extends SystolicArray2D_Sim
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        
+
         if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
         {
         if(AllTestCaseSentReported!=true)
@@ -835,7 +830,7 @@ object SystolicArray2D_Sim_AllMode extends SystolicArray2D_Sim
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        
+
         if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
         {
         if(AllTestCaseSentReported!=true)

@@ -68,7 +68,11 @@ onnx_debug_py/java_hw_final_layer_outputs/*
 vfastLog/*
 project/*
 
-memory-bank/techContext.md
+#LLM agent memory-bank
+memory-bank/*
+
+#generated chart
 tb_LN_function_absolute_error.png
 tb_LN_function_comparison.png
 tb_LN_function_relative_error.png
+memory-bank/activeContext.md

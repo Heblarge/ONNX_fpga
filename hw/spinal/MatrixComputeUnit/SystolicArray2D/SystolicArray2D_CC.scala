@@ -41,10 +41,10 @@ case class SystolicArray2D_CC_Config(
   SpinalInfo("SystolicArray2D_CC_Config:")
   /**
  * 计算并返回x除以y的上限
- * 
+ *
  * 对于给定的两个整数x和y，此方法计算x除以y的结果，并返回能够被y整除的最小整数
  * 如果x是y的倍数，结果就是x除以y的值；如果x不是y的倍数，结果比x除以y的值大1
- * 
+ *
  * @param x 被除数
  * @param y 除数
  * @return 能够被y整除的最小整数
@@ -56,7 +56,7 @@ case class SystolicArray2D_CC_Config(
   val in_MatB_thoughput = in_MatB_col_num*in_MatB_element_Width
   SpinalInfo("in_MatA_thoughput="+in_MatA_thoughput)
   SpinalInfo("in_MatB_thoughput="+in_MatB_thoughput)
-  
+
   val SystolicArray2D_Cfg = SystolicArray2D_Config(
     in_Length_Max = in_Length_Max,
     in_Length_Min = in_Length_Min,
@@ -163,7 +163,7 @@ case class SystolicArray2D_CC(
     val compressed_MatZ_data=Stream(out_Mats_TypeDef(cfg).Z)
     // 定义一个压缩器，用于将SystolicArray2D实例的输出矩阵Z进行宽度适配压缩,这里使用了时钟域clk_core，表明压缩操作在clk_core时钟域内进行
     val compresser=clk_core(StreamWidthAdapter(SystolicArray2D_Instance.io.out_Mats, compressed_MatZ_data))
-    
+
     val compressed_MatZ_beforeFIFO=compressed_MatZ_data.map(payload=>{
       val turn_to=new out_Mats_TypeDef(cfg)
       turn_to.Z:=payload
@@ -171,7 +171,7 @@ case class SystolicArray2D_CC(
       turn_to
     })
     val compressed_MatZ_afterFIFO=Stream(out_Mats_TypeDef(cfg))
-    
+
     val Fifo = StreamFifoCC(
       dataType = out_Mats_TypeDef(cfg),
       depth = cfg.out_FIFO_Depth*cfg.in_Length_Min,
