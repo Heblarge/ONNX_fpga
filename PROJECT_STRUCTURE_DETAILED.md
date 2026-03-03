@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-本项目是一个结合 ONNX 模型推理和 SpinalHDL 硬件加速的混合架构系统。项目采用软件-硬件协同设计，使用 Java 进行 ONNX 模型推理，使用 SpinalHDL 进行硬件加速器设计，支持 MNIST 等深度学习模型的端到端推理和硬件加速。
+本项目是一个结合 ONNX 模型推理和 SpinalHDL 硬件加速的混合架构系统。项目采用软件-硬件协同设计，使用 Java 进行 ONNX 模型推理，使用 SpinalHDL 进行硬件加速器设计，支持深度学习模型的端到端推理和硬件加速。
 
 ## 详细项目结构
 
@@ -40,7 +40,7 @@
 #### 4. 测试框架 (sw/java/test/)
 - **单元测试**
   - `ExpSimJavaTest.java`: 指数函数硬件模拟测试
-  - `LNSimJavaTest.java`: 对数函数硬件模拟测试  
+  - `LNSimJavaTest.java`: 对数函数硬件模拟测试
   - `SoftplusSimJavaTest.java`: Softplus 函数硬件模拟测试
   - `MyTopLevelSimJavaTest.java`: 顶层硬件模拟测试
 
@@ -123,7 +123,7 @@
 
 ##### 3.2 数据泵系统 (hw/spinal/DataPump/)
 - `DataPump_mm2s.scala`: 内存到流数据泵
-- `DataPump_s2mm.scala`: 流到内存数据泵  
+- `DataPump_s2mm.scala`: 流到内存数据泵
 - `DataPump_mm2mm.scala`: 内存到内存数据泵
 - `MemoryPort.scala`: 内存端口定义
 
@@ -184,4 +184,3 @@
 - `performance_results_analyze.py`: 性能结果分析
 - `performance_results.csv`: 性能数据
 - 各种误差分析和比较图表
-

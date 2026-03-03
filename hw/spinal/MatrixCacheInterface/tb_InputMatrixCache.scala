@@ -8,15 +8,15 @@ import java.io.File
 import scala.util.Random
 
 /** ****************************************************************************
- * sim_InputMatrixCache_test
+ * tb_InputMatrixCache
  * - 验证包含生命周期的 InputMatrixCache 行为
  * - 前5帧：写入并读取，每帧 lifeCfg = 3
  * - 后5帧：仅写入，每帧 lifeCfg = 1
  * **************************************************************************** */
-object sim_InputMatrixCache_test extends App {
+object tb_InputMatrixCache extends App {
 
   // 仿真输出目录
-  new File("rtl/InputMatrixCache/sim_InputMatrixCache_test_report").mkdirs()
+  new File("rtl/InputMatrixCache/tb_InputMatrixCache_report").mkdirs()
 
   val flags = VCSFlags(
     compileFlags = List("-kdb", "-lca", "+notimingchecks"),
@@ -30,7 +30,7 @@ object sim_InputMatrixCache_test extends App {
 
   // 生成 Verilog
   val report = SpinalConfig(
-    targetDirectory = "rtl/InputMatrixCache/sim_InputMatrixCache_test_report",
+    targetDirectory = "rtl/InputMatrixCache/tb_InputMatrixCache_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(InputMatrixCache(addrWidth, dataWidth, lifeWidth))
@@ -200,16 +200,16 @@ object sim_InputMatrixCache_test extends App {
 //import scala.util.Random
 //
 ///** ****************************************************************************
-// * object sim_InputMatrixCache_test
+// * object tb_InputMatrixCache
 // * VCS 仿真模板，用于验证 InputMatrixCache 的 ping-pong 双缓存行为
 // * - 模拟 DMA 写入并触发 dmaIntr
 // * - 模拟读主机读取并触发 switch
 // * - 前5帧读写交替，后5帧仅写入
 // * **************************************************************************** */
-//object sim_InputMatrixCache_test extends App {
+//object tb_InputMatrixCache extends App {
 //
 //  // 仿真输出路径
-//  new File("rtl/InputMatrixCache/sim_InputMatrixCache_test_report").mkdirs()
+//  new File("rtl/InputMatrixCache/tb_InputMatrixCache_report").mkdirs()
 //
 //  // VCS 仿真编译参数
 //  val flags = VCSFlags(
@@ -224,7 +224,7 @@ object sim_InputMatrixCache_test extends App {
 //
 //  // 生成 Verilog
 //  val report = SpinalConfig(
-//    targetDirectory = "rtl/InputMatrixCache/sim_InputMatrixCache_test_report",
+//    targetDirectory = "rtl/InputMatrixCache/tb_InputMatrixCache_report",
 //    oneFilePerComponent = true,
 //    defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
 //  ).generateVerilog(InputMatrixCache(addrWidth, dataWidth))

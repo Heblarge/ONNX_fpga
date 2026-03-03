@@ -92,8 +92,7 @@ case class SystolicArray2D_Wrapper(
       ShiftWidth = cfg.ShiftWidth,
       SlicecntWidth = cfg.SlicecntWidth
     )
-  }
-//  case class in_Mats_TypeDef(cfg: SystolicArray2D_Wrap_Config) extends Bundle {
+  }//  case class in_Mats_TypeDef(cfg: SystolicArray2D_Wrap_Config) extends Bundle {
 //    val A = Vec.fill(cfg.in_MatA_row_num)(SInt(cfg.in_MatA_element_Width bits))
 //    val B = Vec.fill(cfg.in_MatB_col_num)(SInt(cfg.in_MatB_element_Width bits))
 //    val CoreInstruction = CoreInstruction_Type()
@@ -104,6 +103,7 @@ case class SystolicArray2D_Wrapper(
     * 定义输入矩阵类型，包括矩阵A/B和核心指令。
     * Defines the input matrix type, including matrices A/B and core instructions.
     */
+
   def in_Mats_Type(): in_Mats_TypeDef = {
     new in_Mats_TypeDef(in_MatA_row_num = cfg.in_MatA_row_num,
       in_MatA_element_Width = cfg.in_MatA_element_Width,
@@ -143,7 +143,7 @@ case class SystolicArray2D_Wrapper(
 
   //将输入fork两份
   val (in_Mats_with_Core_Instruction_for_SystolicArray2D_CC_inst,
-   in_Mats_with_Core_Instruction_for_CoreInstFifo) = 
+   in_Mats_with_Core_Instruction_for_CoreInstFifo) =
     clk_in(StreamFork2(io.in_Mats_with_Core_Instruction, synchronous=false))
   // 实例化 CC 模块
   /**
@@ -162,7 +162,7 @@ case class SystolicArray2D_Wrapper(
     val instruction = io.in_Mats_with_Core_Instruction.payload.CoreInstruction
     // 将指令转换为OpMode（逻辑字段设置）
     OpMode_wire.do_PostTranspose     := instruction.SystolicArray2D_CC_Instruction.doTranspose
-    OpMode_wire.MatrixOperation      := instruction.SystolicArray2D_CC_Instruction.matrixOperation 
+    OpMode_wire.MatrixOperation      := instruction.SystolicArray2D_CC_Instruction.matrixOperation
     OpMode_wire.post_Shift           := instruction.SystolicArray2D_CC_Instruction.shiftLeft_AfterMatrixOperation.resized
     // A/B 数据直接转发
     for (i <- 0 until cfg.in_MatA_row_num) {
@@ -176,7 +176,7 @@ case class SystolicArray2D_Wrapper(
     cc_in_payload
   }
   SystolicArray2D_CC_inst_in_Mats>>SystolicArray2D_CC_inst.io.in_Mats
-  
+
 //   Core Instruction FIFO
   /**
     * CoreInstFifo
@@ -207,7 +207,7 @@ case class SystolicArray2D_Wrapper(
       inst_pushed := False
     }
   }
-  
+
 
   // 将 FIFO输出的core instruction 对齐到输出的cc_out(SystolicArray2D_CC_inst.io.out_Mats)
 
@@ -300,4 +300,3 @@ object SystolicArray2D_Wrap_Verilog extends App {
     ClockDomain.external("SystolicArray2D_Wrapper_core")))
   rtl.printPruned()
 }
-

@@ -6,6 +6,13 @@ import spinal.core
 import Interface.MatrixOperation_TypeDef
 import spinal.lib.misc.pipeline._
 import Util._
+import spinal.core.sim.SimConfig
+import spinal.core.sim._
+import spinal.sim.VCSFlags
+import spinal.lib.sim._
+import spinal.lib.sim.SimStreamAssert
+import spinal.lib.sim.ScoreboardInOrder_Bigint
+
 /** **************************************************************
  *
  *    SystolicArray2DUnitSpecial
@@ -39,7 +46,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
   val SL_MulMax2Add=StageLink(MulMax_Node,Add_Node)
   val CL_Add2Filter=CtrlLink(Add_Node,Filter_Node)
   val SL_Filter2Shift=StageLink(Filter_Node,Shift_Node)
-  
+
   /* MulMax_Node */
   val PAYLOAD_A = Payload(Fragment(SInt(cfg.inA_Width bits)))
   val PAYLOAD_B = Payload(Fragment(SInt(cfg.inB_Width bits)))
@@ -55,10 +62,10 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
   val PAYLOAD_compare_1 = Payload((SInt(cfg.inA_Width bits)))
   val PAYLOAD_compare_2 = Payload((SInt(cfg.inB_Width bits)))
   val PAYLOAD_greater = Payload((SInt(cfg.ABProduct_Width bits)))
-  
+
   //这一级的输入，从上游流中获取
-  
-  MulMax_Node.driveFrom(upStream_for_result.pipelined(true,true,false))((self,payload)=> 
+
+  MulMax_Node.driveFrom(upStream_for_result.pipelined(true,true,false))((self,payload)=>
     {
       self(PAYLOAD_A):= payload.A
       self(PAYLOAD_B):= payload.B
@@ -68,9 +75,9 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
   val MulMax_Node_logic = new MulMax_Node.Area{
     //这一级的共用乘法器
     (PAYLOAD_product).fragment:=
-      (PAYLOAD_factor_1).fragment * 
+      (PAYLOAD_factor_1).fragment *
       (PAYLOAD_factor_2).fragment
-    
+
     (PAYLOAD_product).last:=
       (PAYLOAD_factor_1).last &&
       (PAYLOAD_factor_2).last
@@ -112,7 +119,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
   val PAYLOAD_sum = Payload(Fragment(SInt(cfg.ProductSum_Width bits)))
   val reg_ProductSum=Reg(SInt(cfg.ProductSum_Width bits)) init 0
   val Add_Node_logic = new Add_Node.Area{
-    
+
     //这一级共用的加法器
     PAYLOAD_sum.fragment:=PAYLOAD_addend_1.fragment+PAYLOAD_addend_2.fragment
     PAYLOAD_Ctrl:=PAYLOAD_Ctrl
@@ -143,7 +150,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
     }
   }
   /* Filter_Node */
-  
+
   /* Shift_Node */
   val PAYLOAD_result = Payload(SInt(cfg.outZ_Width bits))
   val Shift_Node_logic = new Shift_Node.Area{
@@ -171,7 +178,7 @@ case class SystolicArray2DUnitSpecial(cfg: SystolicArray2DUnit_Config) extends S
     payload.ID:=self(PAYLOAD_ID)
  }
   Builder(
-    SL_MulMax2Add, 
+    SL_MulMax2Add,
     CL_Add2Filter,
     SL_Filter2Shift)
 }
@@ -191,12 +198,7 @@ object SystolicArray2DUnitSpecial_Verilog extends App{
 
   //tools.HDElkDiagramGen(SpinalVerilog(new SystolicArray2DUnitSpecial(cfg)))
 }
-import spinal.core.sim.SimConfig
-import spinal.core.sim._
-import spinal.sim.VCSFlags
-import spinal.lib.sim._
-import spinal.lib.sim.SimStreamAssert
-import spinal.lib.sim.ScoreboardInOrder_Bigint
+
 
 abstract class SystolicArray2DUnitSpecial_Sim extends App {
   val FileDir = "rtl/SystolicArray2DUnitSpecial/verilog"
@@ -256,7 +258,7 @@ object SystolicArray2DUnitSpecial_Sim_Matmul extends SystolicArray2DUnitSpecial_
         println(s"New matrix started with shift = $currentShift bits")
         isNewMatrix = false
       }
-      
+
       // Generate all random values first
       var afragment = payload.A.fragment.randomizedBigInt()
       var aFinal = payload.A.last.randomize()
@@ -292,7 +294,7 @@ object SystolicArray2DUnitSpecial_Sim_Matmul extends SystolicArray2DUnitSpecial_
       println(s"Ctrl.Shift: $currentShift")
       println(s"Ctrl.Transpose: $transposeValue")
       println(s"ID: $id")
-      
+
       scoreboard_downStream.pushRef(downStream_Ref)
       var product = downStream_Ref.A.fragment * downStream_Ref.B.fragment
       sumProduct += product
@@ -306,7 +308,7 @@ object SystolicArray2DUnitSpecial_Sim_Matmul extends SystolicArray2DUnitSpecial_
         sumProduct = BigInt(0)
         isNewMatrix = true  // 标记下一个矩阵开始
       }
-    
+
       true  // 驱动 valid
     }
 
@@ -336,7 +338,7 @@ object SystolicArray2DUnitSpecial_Sim_Matmul extends SystolicArray2DUnitSpecial_
     dut.clockDomain.forkStimulus(10)
     // ===== 等待仿真结束 =====
     dut.clockDomain.waitActiveEdgeWhere(
-      scoreboard_result.matches == testLength 
+      scoreboard_result.matches == testLength
     )
     println("TEST PASS".green)
     simSuccess()
@@ -350,31 +352,31 @@ object SystolicArray2DUnitSpecial_Sim_ElementMax extends SystolicArray2DUnitSpec
     val testLength = 10
     val scoreboard_result = ScoreboardInOrder[BigInt]
     val scoreboard_downStream = ScoreboardInOrder[SystolicArray2DUnit_StreamingBundle_Sim_TypeDef]
-    
+
     val maxShiftBits = 4
     var currentShift = 0
     var refCounter = 0 // 用于跟踪生成的参考数据数量
 
     StreamDriver(dut.io.upStream, dut.clockDomain) { payload =>
       val downStream_Ref = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
-      
+
       // 使用局部计数器代替scoreboard_downStream.refCount
     refCounter += 1
-    
+
     // 每10个元素重新随机化shift值
     if (refCounter % 10 == 0) {
       currentShift = scala.util.Random.nextInt(maxShiftBits + 1)
     }
-      
+
       // 生成随机值（包含负数和零）
-      val aVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0 
+      val aVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0
                 else if (scala.util.Random.nextDouble() < 0.2) -payload.A.fragment.randomizedBigInt()
                 else payload.A.fragment.randomizedBigInt()
-                
-      val bVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0 
+
+      val bVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0
                 else if (scala.util.Random.nextDouble() < 0.2) -payload.B.fragment.randomizedBigInt()
                 else payload.B.fragment.randomizedBigInt()
-      
+
       val aFinal = payload.A.last.randomize()
       val bFinal = payload.B.last.randomize()
       val transposeValue = payload.Ctrl.Transpose.randomize()
@@ -398,18 +400,18 @@ object SystolicArray2DUnitSpecial_Sim_ElementMax extends SystolicArray2DUnitSpec
       // 计算参考结果（最大值）
       val maxVal = if (aVal > bVal) aVal else bVal
       val shiftedResult = maxVal >> currentShift
-      
+
       // 每个元素都产生结果
       scoreboard_result.pushRef(shiftedResult)
       scoreboard_downStream.pushRef(downStream_Ref)
-      
+
       true
     }
 
     // 流控制
     StreamReadyRandomizer(dut.io.downStream, dut.clockDomain)
     StreamReadyRandomizer(dut.io.result, dut.clockDomain)
-    
+
     // 下游监控
     val downStream_DUT = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
     StreamMonitor(dut.io.downStream, dut.clockDomain) { payload =>
@@ -429,13 +431,13 @@ object SystolicArray2DUnitSpecial_Sim_ElementMax extends SystolicArray2DUnitSpec
     }
 
     dut.clockDomain.forkStimulus(10)
-    
+
     dut.clockDomain.waitActiveEdgeWhere(
-      scoreboard_result.matches >= testLength 
+      scoreboard_result.matches >= testLength
     )
     println("TEST PASS".green)
     simSuccess()
-    
+
   }
 }
 object SystolicArray2DUnitSpecial_Sim_ElementAdd extends SystolicArray2DUnitSpecial_Sim
@@ -445,31 +447,31 @@ object SystolicArray2DUnitSpecial_Sim_ElementAdd extends SystolicArray2DUnitSpec
     val testLength = 10
     val scoreboard_result = ScoreboardInOrder[BigInt]
     val scoreboard_downStream = ScoreboardInOrder[SystolicArray2DUnit_StreamingBundle_Sim_TypeDef]
-    
+
     val maxShiftBits = 4
     var currentShift = 0
     var refCounter = 0 // 用于跟踪生成的参考数据数量
 
     StreamDriver(dut.io.upStream, dut.clockDomain) { payload =>
       val downStream_Ref = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
-      
+
       // 使用局部计数器代替scoreboard_downStream.refCount
     refCounter += 1
-    
+
     // 每10个元素重新随机化shift值
     if (refCounter % 10 == 0) {
       currentShift = scala.util.Random.nextInt(maxShiftBits + 1)
     }
-      
+
       // 生成随机值（包含负数和零）
-      val aVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0 
+      val aVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0
                 else if (scala.util.Random.nextDouble() < 0.2) -payload.A.fragment.randomizedBigInt()
                 else payload.A.fragment.randomizedBigInt()
-                
-      val bVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0 
+
+      val bVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0
                 else if (scala.util.Random.nextDouble() < 0.2) -payload.B.fragment.randomizedBigInt()
                 else payload.B.fragment.randomizedBigInt()
-      
+
       val aFinal = payload.A.last.randomize()
       val bFinal = payload.B.last.randomize()
       val transposeValue = payload.Ctrl.Transpose.randomize()
@@ -493,18 +495,18 @@ object SystolicArray2DUnitSpecial_Sim_ElementAdd extends SystolicArray2DUnitSpec
       // 计算参考结果
       val SumVal = aVal + bVal
       val shiftedResult = SumVal >> currentShift
-      
+
       // 每个元素都产生结果
       scoreboard_result.pushRef(shiftedResult)
       scoreboard_downStream.pushRef(downStream_Ref)
-      
+
       true
     }
 
     // 流控制
     StreamReadyRandomizer(dut.io.downStream, dut.clockDomain)
     StreamReadyRandomizer(dut.io.result, dut.clockDomain)
-    
+
     // 下游监控
     val downStream_DUT = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
     StreamMonitor(dut.io.downStream, dut.clockDomain) { payload =>
@@ -524,9 +526,9 @@ object SystolicArray2DUnitSpecial_Sim_ElementAdd extends SystolicArray2DUnitSpec
     }
 
     dut.clockDomain.forkStimulus(10)
-    
+
     dut.clockDomain.waitActiveEdgeWhere(
-      scoreboard_result.matches >= testLength 
+      scoreboard_result.matches >= testLength
     )
     println("TEST PASS".green)
     simSuccess()
@@ -539,31 +541,31 @@ object SystolicArray2DUnitSpecial_Sim_ElementMul extends SystolicArray2DUnitSpec
     val testLength = 10
     val scoreboard_result = ScoreboardInOrder[BigInt]
     val scoreboard_downStream = ScoreboardInOrder[SystolicArray2DUnit_StreamingBundle_Sim_TypeDef]
-    
+
     val maxShiftBits = 4
     var currentShift = 0
     var refCounter = 0 // 用于跟踪生成的参考数据数量
 
     StreamDriver(dut.io.upStream, dut.clockDomain) { payload =>
       val downStream_Ref = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
-      
+
       // 使用局部计数器代替scoreboard_downStream.refCount
     refCounter += 1
-    
+
     // 每10个元素重新随机化shift值
     if (refCounter % 10 == 0) {
       currentShift = scala.util.Random.nextInt(maxShiftBits + 1)
     }
-      
+
       // 生成随机值（包含负数和零）
-      val aVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0 
+      val aVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0
                 else if (scala.util.Random.nextDouble() < 0.2) -payload.A.fragment.randomizedBigInt()
                 else payload.A.fragment.randomizedBigInt()
-                
-      val bVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0 
+
+      val bVal:BigInt = if (scala.util.Random.nextDouble() < 0.1) 0
                 else if (scala.util.Random.nextDouble() < 0.2) -payload.B.fragment.randomizedBigInt()
                 else payload.B.fragment.randomizedBigInt()
-      
+
       val aFinal = payload.A.last.randomize()
       val bFinal = payload.B.last.randomize()
       val transposeValue = payload.Ctrl.Transpose.randomize()
@@ -587,18 +589,18 @@ object SystolicArray2DUnitSpecial_Sim_ElementMul extends SystolicArray2DUnitSpec
       // 计算参考结果
       val SumVal = aVal * bVal
       val shiftedResult = SumVal >> currentShift
-      
+
       // 每个元素都产生结果
       scoreboard_result.pushRef(shiftedResult)
       scoreboard_downStream.pushRef(downStream_Ref)
-      
+
       true
     }
 
     // 流控制
     StreamReadyRandomizer(dut.io.downStream, dut.clockDomain)
     StreamReadyRandomizer(dut.io.result, dut.clockDomain)
-    
+
     // 下游监控
     val downStream_DUT = new SystolicArray2DUnit_StreamingBundle_Sim_TypeDef()
     StreamMonitor(dut.io.downStream, dut.clockDomain) { payload =>
@@ -618,9 +620,9 @@ object SystolicArray2DUnitSpecial_Sim_ElementMul extends SystolicArray2DUnitSpec
     }
 
     dut.clockDomain.forkStimulus(10)
-    
+
     dut.clockDomain.waitActiveEdgeWhere(
-      scoreboard_result.matches >= testLength 
+      scoreboard_result.matches >= testLength
     )
     println("TEST PASS".green)
     simSuccess()

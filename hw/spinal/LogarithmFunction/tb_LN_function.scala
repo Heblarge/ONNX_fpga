@@ -148,9 +148,9 @@ class LN_function_sw(cfg: LN_function_cfg) {
   }
 }
 
-object sim_LN_function_test extends App {
+object tb_LN_function extends App {
 
-  new File("rtl/LogFunction/sim_LN_function_test_report").mkdir()
+  new File("rtl/LogFunction/tb_LN_function_report").mkdir()
   val flags = VCSFlags(
     compileFlags = List("-kdb", "-lca", "+notimingchecks"),
     elaborateFlags = List("-fgp", "-kdb", "-lca", "+rad", "+notimingchecks"),
@@ -163,7 +163,7 @@ object sim_LN_function_test extends App {
   )
 // 生成Verilog代码并配置仿真参数
   val report = SpinalConfig(
-    targetDirectory = "rtl/LogFunction/sim_LN_function_test_report",
+    targetDirectory = "rtl/LogFunction/tb_LN_function_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(LN_function(cfg))

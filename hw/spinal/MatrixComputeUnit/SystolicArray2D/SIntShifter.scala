@@ -53,9 +53,9 @@ import spinal.sim.VCSFlags
 import spinal.lib.sim._
 import spinal.core.sim._
 
-object sim_SIntShifter extends App {
+object tb_SIntShifter extends App {
   // 创建仿真报告目录
-  new File("rtl/SIntShifter/sim_SIntShifter_report").mkdir()
+  new File("rtl/SIntShifter/tb_SIntShifter_report").mkdir()
 
   // 定义VCS仿真相关的参数
   val flags = VCSFlags(
@@ -69,7 +69,7 @@ object sim_SIntShifter extends App {
 
   // 根据SIntShifter模块生成Verilog代码，并存放于指定目录
   val report = SpinalConfig(
-    targetDirectory = "rtl/SIntShifter/sim_SIntShifter_report",
+    targetDirectory = "rtl/SIntShifter/tb_SIntShifter_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(SIntShifter(inWidth, outWidth))
@@ -270,4 +270,3 @@ object MatrixMultiplySaturationTest {
     ewAdd.foreach(row => println(row.mkString(", ")))
   }
 }
-

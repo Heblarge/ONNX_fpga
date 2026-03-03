@@ -152,9 +152,9 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
 }
 
 
-object sim_EXP_function_test extends App {
+object tb_EXP_function extends App {
 
-  new File("rtl/ExponentialFunction/sim_EXP_function_test_report").mkdir()
+  new File("rtl/ExponentialFunction/tb_EXP_function_report").mkdir()
   val flags = VCSFlags(
     compileFlags = List("-kdb","-lca", "+notimingchecks"),
     elaborateFlags = List("-fgp", "-kdb", "-lca","+rad", "+notimingchecks"),
@@ -182,7 +182,7 @@ object sim_EXP_function_test extends App {
     x_max = 3
   )
   val report = SpinalConfig(
-      targetDirectory = "rtl/ExponentialFunction/sim_EXP_function_test_report",
+      targetDirectory = "rtl/ExponentialFunction/tb_EXP_function_report",
       oneFilePerComponent = true,
       defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
     ).generateVerilog(EXP_function(cfg))

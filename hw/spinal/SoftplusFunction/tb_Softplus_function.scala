@@ -134,13 +134,13 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
 }
 
 object SoftplusFunctionTest extends App {
-  new File("rtl/Softplus_function/sim_softplus_function_test_report").mkdir()
+  new File("rtl/Softplus_function/tb_softplus_function_report").mkdir()
   val cfg=Softplus_function_cfg(
     bit_int = 8,
     bit_frac = 12
   )
   val report = SpinalConfig(
-    targetDirectory = "rtl/Softplus_function/sim_softplus_function_test_report",
+    targetDirectory = "rtl/Softplus_function/tb_softplus_function_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(Softplus_function(cfg))

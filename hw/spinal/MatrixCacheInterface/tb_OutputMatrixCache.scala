@@ -7,9 +7,9 @@ import spinal.sim._
 import scala.collection.mutable
 import java.io.File
 
-object sim_OutputMatrixCache_test extends App {
+object tb_OutputMatrixCache extends App {
 
-  new File("rtl/OutputMatrixCache/sim_OutputMatrixCache_test_report").mkdirs()
+  new File("rtl/OutputMatrixCache/tb_OutputMatrixCache_report").mkdirs()
 
   val flags = VCSFlags(
     compileFlags = List("-kdb", "-lca", "+notimingchecks"),
@@ -21,7 +21,7 @@ object sim_OutputMatrixCache_test extends App {
   val dataWidth = 16
 
   val report = SpinalConfig(
-    targetDirectory = "rtl/OutputMatrixCache/sim_OutputMatrixCache_test_report",
+    targetDirectory = "rtl/OutputMatrixCache/tb_OutputMatrixCache_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(OutputMatrixCache(addrWidth, dataWidth))
@@ -197,4 +197,3 @@ object sim_OutputMatrixCache_test extends App {
     simSuccess()
   }
 }
-

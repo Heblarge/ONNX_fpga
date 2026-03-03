@@ -33,8 +33,8 @@ class TolerantScoreboard(tolerance: Double) extends ScoreboardInOrder[Double] {
 }
 
 
-object ActivationTest1 extends App {
-  new File("rtl/Activation/sim_Activation_test_report").mkdir()
+object tb_Activation extends App {
+  new File("rtl/Activation/tb_Activation_report").mkdir()
   val cfg=Activation_Config(
     Matx_Width        = 6,
     MatX_Width        = 6,
@@ -50,7 +50,7 @@ object ActivationTest1 extends App {
     SlicecntWidth     = 16
   )
   val report = SpinalConfig(
-    targetDirectory = "rtl/Activation/sim_Activation_test_report",
+    targetDirectory = "rtl/Activation/tb_Activation_report",
     oneFilePerComponent = true,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
   ).generateVerilog(Activation(cfg))
@@ -229,7 +229,6 @@ object ActivationTest1 extends App {
     StreamMonitor(dut.io.in_Mats, dut.clockDomain) { payload =>
     {}
     }
-
 
     dut.clockDomain.waitActiveEdgeWhere(scoreboard.matches == data_total_num * cfg.Matx_Width)
     simSuccess()
