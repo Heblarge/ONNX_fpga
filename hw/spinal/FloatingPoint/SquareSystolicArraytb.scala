@@ -1,112 +1,152 @@
 package FloatingPoint
+
+import Interface.MatrixOperation_TypeDef
 import spinal.core._
 import spinal.core.sim._
+import spinal.lib.sim.{StreamDriver, StreamMonitor, StreamReadyRandomizer}
+
+import java.lang.Float.floatToRawIntBits
+import scala.collection.mutable
 import scala.util.Random
-import FloatingPoint._
 
-object SystolicArraySim extends App {
-  // --- 1. 参数配置 ---
-  val N = 8                // 阵列规模 (可改为 16, 32 等)
-  val fpCfg = FpxxConfig.float16()
-  val accInt = 16 bits
-  val accFrac = 16 bits
-  
-  // 这里的延迟需与 FpxxPE 实例化时保持一致
-  val mulStages = 1
-  val f2iStages = 1
+object SquareSystolicArraySim extends App {
+  val matrixNum = 80
+  val size = 4
+  val cfg = SquareSystolicArray_Config(
+    in_Length_Max = size,
+    in_Length_Min = size,
+    in_MatA_row_num = size,
+    in_MatB_col_num = size,
+    fpConfig = FpxxConfig.float16(),
+    accIntBits = 16 bits,
+    accFracBits = 16 bits,
+    mulStages = 1,
+    f2iStages = 1,
+    Enable_Transpose_logic = true,
+    Enable_ElementWise_logic = true
+  )
 
-  SimConfig.withWave.compile(new SystolicArray(N, fpCfg, accInt, accFrac, mulStages, f2iStages)).doSim { dut =>
-    // --- 2. 环境初始化 ---
-    dut.clockDomain.forkStimulus(10)
-    dut.io.clear #= false
-    dut.io.dinA.foreach(_.valid #= false)
-    dut.io.dinB.foreach(_.valid #= false)
-    dut.clockDomain.waitSampling()
+  def floatToFpComponents(v: Float, fpCfg: FpxxConfig): (Boolean, Int, Int) = {
+    if (v == 0.0f) {
+      (false, 0, 0)
+    } else {
+      val bits = floatToRawIntBits(v)
+      val sign = ((bits >>> 31) & 0x1) != 0
+      val exp = (bits >>> 23) & 0xFF
+      val mant = bits & 0x7FFFFF
 
-    // 清空累加器
-    dut.io.clear #= true
-    dut.clockDomain.waitSampling()
-    dut.io.clear #= false
-
-    // --- 3. 随机数据生成与金本位计算 ---
-    val matA = Array.fill(N, N)(Random.nextFloat() * 10.0f - 5.0f) // 范围 -5 到 5
-    val matB = Array.fill(N, N)(Random.nextFloat() * 10.0f - 5.0f)
-    val golden = Array.fill(N, N)(0.0)
-
-    // CPU 计算参考结果
-    for (i <- 0 until N; j <- 0 until N; k <- 0 until N) {
-      golden(i)(j) += (matA(i)(k).toDouble * matB(k)(j).toDouble)
+      val rebias = (exp - 127 + fpCfg.bias).max(0).min((1 << fpCfg.exp_size) - 1)
+      val newMant = mant >> (23 - fpCfg.mant_size)
+      (sign, rebias, newMant)
     }
-
-    // --- 4. 自动化斜角驱动逻辑 ---
-    // 总输入跨度是 2N-1 个周期
-    // 整个仿真需运行足够长以覆盖：输入斜角 + 阵列穿透延迟 + PE内部延迟
-    val inputDuration = N + N - 1
-    val totalSimCycles = inputDuration + N + mulStages + f2iStages + 5
-
-    println(s"Starting $N x $N Matrix Multiplication...")
-
-    for (cycle <- 0 until totalSimCycles) {
-      for (i <- 0 until N) {
-        // 驱动 Matrix A (左侧第 i 行)
-        val aCol = cycle - i
-        if (aCol >= 0 && aCol < N) {
-          val (s, e, m) = floatToFpComponents(matA(i)(aCol), fpCfg)
-          dut.io.dinA(i).valid #= true
-          dut.io.dinA(i).payload.sign #= (s != 0)
-          dut.io.dinA(i).payload.exp  #= e
-          dut.io.dinA(i).payload.mant #= m
-        } else {
-          dut.io.dinA(i).valid #= false
-        }
-
-        // 驱动 Matrix B (上方第 i 列)
-        val bRow = cycle - i
-        if (bRow >= 0 && bRow < N) {
-          val (s, e, m) = floatToFpComponents(matB(bRow)(i), fpCfg)
-          dut.io.dinB(i).valid #= true
-          dut.io.dinB(i).payload.sign #= (s != 0)
-          dut.io.dinB(i).payload.exp  #= e
-          dut.io.dinB(i).payload.mant #= m
-        } else {
-          dut.io.dinB(i).valid #= false
-        }
-      }
-      dut.clockDomain.waitSampling()
-    }
-
-    // --- 5. 自动化校验 ---
-    var pass = true
-    val tolerance = 0.5 // 允许的误差（取决于定点数精度和浮点数动态范围）
-    
-    println("\n--- Comparing Hardware results with Golden Model ---")
-    for (r <- 0 until N) {
-      for (c <- 0 until N) {
-        val hwVal = dut.io.results(r)(c).toDouble
-        val swVal = golden(r)(c)
-        val diff = (hwVal - swVal).abs
-        
-        if (diff > tolerance) {
-          println(f"Error at [$r%d,$c%d]: HW=$hwVal%.4f, SW=$swVal%.4f (Diff=$diff%.4f)")
-          pass = false
-        }
-      }
-    }
-
-    if (pass) println("\n[TEST PASSED] All results are within tolerance!")
-    else println("\n[TEST FAILED] Significant deviations detected.")
   }
 
-  // --- 辅助转换函数 ---
-  def floatToFpComponents(v: Float, cfg: FpxxConfig): (BigInt, BigInt, BigInt) = {
-    import java.lang.Float._
-    val i = floatToRawIntBits(v)
-    val s = (i >> 31) & 0x1
-    val e = (i >> 23) & 0xFF
-    val m = i & 0x7FFFFF
-    val newExp = if (v == 0) 0 else (e - 127 + cfg.bias).max(0).min((1 << cfg.exp_size) - 1)
-    val newMant = m >> (23 - cfg.mant_size)
-    (BigInt(s), BigInt(newExp), BigInt(newMant))
+  def matMul(a: Array[Array[Double]], b: Array[Array[Double]]): Array[Array[Double]] = {
+    val n = a.length
+    val z = Array.ofDim[Double](n, n)
+    for (r <- 0 until n; c <- 0 until n) {
+      z(r)(c) = (0 until n).map(k => a(r)(k) * b(k)(c)).sum
+    }
+    z
+  }
+
+  def transpose(m: Array[Array[Double]]): Array[Array[Double]] = {
+    val n = m.length
+    val z = Array.ofDim[Double](n, n)
+    for (r <- 0 until n; c <- 0 until n) {
+      z(c)(r) = m(r)(c)
+    }
+    z
+  }
+
+  val rand = new Random(42)
+  val inAQueue = mutable.Queue[Array[Array[Float]]]()
+  val inBQueue = mutable.Queue[Array[Array[Float]]]()
+  val transposeQueue = mutable.Queue[Boolean]()
+  val refQueue = mutable.Queue[Array[Array[Double]]]()
+
+  for (_ <- 0 until matrixNum) {
+    val a = Array.fill(size, size)((rand.nextFloat() - 0.5f) * 2.0f)
+    val b = Array.fill(size, size)((rand.nextFloat() - 0.5f) * 2.0f)
+    val doTranspose = rand.nextBoolean()
+
+    val ref = matMul(a.map(_.map(_.toDouble)), b.map(_.map(_.toDouble)))
+    inAQueue.enqueue(a)
+    inBQueue.enqueue(b)
+    transposeQueue.enqueue(doTranspose)
+    refQueue.enqueue(if (doTranspose) transpose(ref) else ref)
+  }
+
+  SimConfig.withWave.compile(SquareSystolicArray(cfg)).doSim("square_systolic_stream") { dut =>
+    SimTimeout(300000)
+    dut.clockDomain.forkStimulus(10)
+
+    var sendingK = 0
+    var sendingA = inAQueue.dequeue()
+    var sendingB = inBQueue.dequeue()
+    var sendingTranspose = transposeQueue.dequeue()
+    var sentCases = 0
+
+    StreamDriver(dut.io.in_Mats, dut.clockDomain) { payload =>
+      if (sentCases >= matrixNum) {
+        false
+      } else {
+        payload.OpMode.post_Shift #= 0
+        payload.OpMode.MatrixOperation #= MatrixOperation_TypeDef.MatMul
+        payload.OpMode.do_PostTranspose #= sendingTranspose
+
+        for (r <- 0 until size) {
+          val (s, e, m) = floatToFpComponents(sendingA(r)(sendingK), cfg.fpConfig)
+          payload.A(r).data.sign #= s
+          payload.A(r).data.exp #= e
+          payload.A(r).data.mant #= m
+          payload.A(r).Final #= (sendingK == size - 1)
+        }
+
+        for (c <- 0 until size) {
+          val (s, e, m) = floatToFpComponents(sendingB(sendingK)(c), cfg.fpConfig)
+          payload.B(c).data.sign #= s
+          payload.B(c).data.exp #= e
+          payload.B(c).data.mant #= m
+          payload.B(c).Final #= (sendingK == size - 1)
+        }
+
+        if (sendingK == size - 1) {
+          sendingK = 0
+          sentCases += 1
+          if (sentCases < matrixNum) {
+            sendingA = inAQueue.dequeue()
+            sendingB = inBQueue.dequeue()
+            sendingTranspose = transposeQueue.dequeue()
+          }
+        } else {
+          sendingK += 1
+        }
+        true
+      }
+    }
+
+    StreamReadyRandomizer(dut.io.out_Mats, dut.clockDomain)
+    dut.io.out_Mats.ready #= true
+
+    var checked = 0
+    var maxAbsErr = 0.0
+    val tolerance = 2.5
+
+    StreamMonitor(dut.io.out_Mats, dut.clockDomain) { payload =>
+      val ref = refQueue.dequeue()
+      for (r <- 0 until size; c <- 0 until size) {
+        val hw = payload.Z(r)(c).toDouble
+        val sw = ref(r)(c)
+        val err = math.abs(hw - sw)
+        if (err > maxAbsErr) maxAbsErr = err
+        assert(err <= tolerance, f"Mismatch at ($r,$c): hw=$hw%.4f sw=$sw%.4f err=$err%.4f")
+      }
+      checked += 1
+    }
+
+    dut.clockDomain.waitSamplingWhere(checked == matrixNum)
+    println(f"TEST PASS, checked=$checked, maxAbsErr=$maxAbsErr%.4f")
+    simSuccess()
   }
 }
-

@@ -1,99 +1,188 @@
 package FloatingPoint
 
+import Interface.MatrixOperation_TypeDef
 import spinal.core._
 import spinal.lib._
 
-/**
- * SystolicArray 模块
- * size: 方阵的大小 (N x N)
- * fpxxCfg: 输入浮点数的配置 (如 Fp8 或 Fp16)
- * accIntBits/accFracBits: 定点累加器的整数和小数位宽
- */
-case class SystolicArray(
-    size: Int,
-    fpxxCfg: FpxxConfig,
-    accIntBits: BitCount,
-    accFracBits: BitCount,
+case class SquareSystolicArray_Config(
+    in_Length_Max: Int,
+    in_Length_Min: Int = 1,
+    in_MatA_row_num: Int = 4,
+    in_MatB_col_num: Int = 4,
+    fpConfig: FpxxConfig = FpxxConfig.float16(),
+    accIntBits: BitCount = 16 bits,
+    accFracBits: BitCount = 16 bits,
     mulStages: Int = 1,
-    f2iStages: Int = 1
-) extends Component {
+    f2iStages: Int = 1,
+    Enable_Transpose_logic: Boolean = true,
+    Enable_ElementWise_logic: Boolean = true
+) {
+  require(in_MatA_row_num == in_MatB_col_num, "SquareSystolicArray requires square array")
+  require(in_Length_Min > 0 && in_Length_Min <= in_Length_Max, "invalid in_Length_Min/in_Length_Max")
 
-  val io = new Bundle {
-    // 矩阵 A 从左侧输入 (size 路)
-    val dinA = Vec(slave Stream(Fpxx(fpxxCfg)), size)
-    // 矩阵 B 从上方输入 (size 路)
-    val dinB = Vec(slave Stream(Fpxx(fpxxCfg)), size)
+  val out_MatZ_row_num: Int = in_MatA_row_num
+  val out_MatZ_col_num: Int = in_MatB_col_num
+  val out_MatZ_element_Width: Int = accIntBits.value + accFracBits.value
+}
 
-    // 控制信号：清空所有 PE 内部的累加器
-    val clear = in Bool()
+case class Fpxx_withFinalMark(c: FpxxConfig) extends Bundle {
+  val data = Fpxx(c)
+  val Final = Bool()
+}
 
-    // 输出：所有 PE 的当前累加值 (定点数矩阵)
-    val results = out Vec(Vec(AFix.SQ(accIntBits, accFracBits), size), size)
+case class SquareSystolicArray_OpMode(cfg: SquareSystolicArray_Config) extends Bundle {
+  val post_Shift = SInt(log2Up(cfg.out_MatZ_element_Width + 1) + 1 bits)
+  val do_PostTranspose = cfg.Enable_Transpose_logic generate Bool()
+  val MatrixOperation = cfg.Enable_ElementWise_logic generate MatrixOperation_TypeDef()
+
+  def do_MatMul: Bool = cfg.Enable_ElementWise_logic match {
+    case true  => MatrixOperation === MatrixOperation_TypeDef.MatMul
+    case false => True
+  }
+}
+
+object init_SquareSystolicArray_OpMode {
+  def apply(cfg: SquareSystolicArray_Config): SquareSystolicArray_OpMode = {
+    val mode = SquareSystolicArray_OpMode(cfg)
+    mode.post_Shift := 0
+    if (cfg.Enable_Transpose_logic) {
+      mode.do_PostTranspose := False
+    }
+    if (cfg.Enable_ElementWise_logic) {
+      mode.MatrixOperation := MatrixOperation_TypeDef.MatMul
+    }
+    mode
+  }
+}
+
+case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Component {
+  class in_Mats_TypeDef(cfg: SquareSystolicArray_Config) extends Bundle {
+    val A = Vec.fill(cfg.in_MatA_row_num)(Fpxx_withFinalMark(cfg.fpConfig))
+    val B = Vec.fill(cfg.in_MatB_col_num)(Fpxx_withFinalMark(cfg.fpConfig))
+    val OpMode = SquareSystolicArray_OpMode(cfg)
   }
 
-  // 1. 实例化 PE 矩阵
-  // 注意：FpxxPE 内部的 mulStages 使用了 StageMask，这里简单转为常数处理
-  val peMatrix = Array.tabulate(size, size) { (r, c) =>
+  class out_Mats_TypeDef(cfg: SquareSystolicArray_Config) extends Bundle {
+    val Z = Vec.fill(cfg.out_MatZ_row_num)(Vec.fill(cfg.out_MatZ_col_num)(AFix.SQ(cfg.accIntBits, cfg.accFracBits)))
+  }
+
+  def in_Mats_Bundle(): in_Mats_TypeDef = new in_Mats_TypeDef(cfg)
+  def out_Mats_Bundle(): out_Mats_TypeDef = new out_Mats_TypeDef(cfg)
+
+  val io = new Bundle {
+    val in_Mats = slave(Stream(in_Mats_Bundle()))
+    val out_Mats = master(Stream(out_Mats_Bundle()))
+  }
+
+  val mode_reg = Reg(SquareSystolicArray_OpMode(cfg)) init init_SquareSystolicArray_OpMode(cfg)
+  val latched = Reg(Bool()) init False
+  when(io.in_Mats.fire && !latched) {
+    mode_reg := io.in_Mats.payload.OpMode
+    latched := True
+  }
+  when(io.in_Mats.fire && io.in_Mats.payload.A(0).Final) {
+    latched := False
+  }
+  val latched_mode = SquareSystolicArray_OpMode(cfg)
+  latched_mode := Mux(!latched, io.in_Mats.payload.OpMode, mode_reg)
+
+  val resultWaitCycles = cfg.in_MatA_row_num + cfg.in_MatB_col_num + cfg.mulStages + cfg.f2iStages + 4
+  val waitCounterWidth = log2Up(resultWaitCycles + 1)
+
+  val frameActive = Reg(Bool()) init False
+  val waitingResult = Reg(Bool()) init False
+  val waitCounter = Reg(UInt(waitCounterWidth bits)) init 0
+  val pendingResult = Reg(Bool()) init False
+
+  io.in_Mats.ready := !waitingResult && !pendingResult
+  io.out_Mats.valid := pendingResult
+
+  val inputFire = io.in_Mats.fire
+  val clearPulse = inputFire && !frameActive
+
+  when(inputFire && !frameActive) {
+    frameActive := True
+  }
+
+  when(inputFire && io.in_Mats.payload.A(0).Final) {
+    frameActive := False
+    waitingResult := True
+    waitCounter := U(resultWaitCycles)
+  }
+
+  when(waitingResult) {
+    when(waitCounter === 0) {
+      waitingResult := False
+      pendingResult := True
+    } otherwise {
+      waitCounter := waitCounter - 1
+    }
+  }
+
+  when(io.out_Mats.fire) {
+    pendingResult := False
+  }
+
+  val zeroFp = Fpxx(cfg.fpConfig)
+  zeroFp.sign := False
+  zeroFp.exp := 0
+  zeroFp.mant := 0
+
+  val peMatrix = Array.tabulate(cfg.in_MatA_row_num, cfg.in_MatB_col_num) { (r, c) =>
     val pe = new FpxxPE(
-      fpxxCfg     = fpxxCfg,
-      accIntBits  = accIntBits,
-      accFracBits = accFracBits,
-      mulStages   = mulStages,
-      f2iStages   = f2iStages
+      fpxxCfg = cfg.fpConfig,
+      accIntBits = cfg.accIntBits,
+      accFracBits = cfg.accFracBits,
+      mulStages = cfg.mulStages,
+      f2iStages = cfg.f2iStages
     )
     pe.setName(s"PE_${r}_${c}")
     pe
   }
 
-  // 2. 建立 PE 之间的互联逻辑
-  for (r <- 0 until size) {
-    for (c <- 0 until size) {
+  for (r <- 0 until cfg.in_MatA_row_num) {
+    for (c <- 0 until cfg.in_MatB_col_num) {
       val pe = peMatrix(r)(c)
-      pe.io.clear := io.clear
+      pe.io.clear := clearPulse
 
-      // --- 处理 A 数据流 (水平方向) ---
       if (c == 0) {
-        // 第一列：连接外部输入 io.dinA
-        pe.io.inSig.valid := io.dinA(r).valid
-        pe.io.inSig.a     := io.dinA(r).payload
-        io.dinA(r).ready  := True // 这里假设阵列总是 ready，可根据流控需求修改
+        pe.io.inSig.valid := inputFire
+        pe.io.inSig.payload.a := Mux(inputFire, io.in_Mats.payload.A(r).data, zeroFp)
       } else {
-        // 后续列：连接左侧 PE 传递过来的 A 数据，延迟一个周期
-        val leftPeA = peMatrix(r)(c - 1).io.inSig.a
-        val leftValid = peMatrix(r)(c - 1).io.inSig.valid
-        
-        pe.io.inSig.a     := RegNext(leftPeA)
-        pe.io.inSig.valid := RegNext(leftValid) init(False)
+        pe.io.inSig.valid := RegNext(peMatrix(r)(c - 1).io.inSig.valid) init False
+        pe.io.inSig.payload.a := RegNext(peMatrix(r)(c - 1).io.inSig.payload.a)
       }
 
-      // --- 处理 B 数据流 (垂直方向) ---
       if (r == 0) {
-        // 第一行：连接外部输入 io.dinB
-        pe.io.inSig.b     := io.dinB(c).payload
-        // valid 信号已在处理 A 时由 dinA 提供或逻辑关联
-        // 在标准脉动阵列中，A 和 B 共享 valid 或各自独立，这里为了严谨，我们对 B 也做同步
-        io.dinB(c).ready  := True
+        pe.io.inSig.payload.b := Mux(inputFire, io.in_Mats.payload.B(c).data, zeroFp)
       } else {
-        // 后续行：连接上方 PE 传递过来的 B 数据，延迟一个周期
-        val topPeB = peMatrix(r - 1)(c).io.inSig.b
-        pe.io.inSig.b     := RegNext(topPeB)
+        pe.io.inSig.payload.b := RegNext(peMatrix(r - 1)(c).io.inSig.payload.b)
       }
+    }
+  }
 
-      // --- 结果读出 ---
-      // 将 PE 内部的 acc 结果映射到顶层输出
-      io.results(r)(c) := pe.io.out.payload
+  for (r <- 0 until cfg.out_MatZ_row_num; c <- 0 until cfg.out_MatZ_col_num) {
+    io.out_Mats.payload.Z(r)(c) := peMatrix(r)(c).io.out.payload
+    if (cfg.Enable_Transpose_logic) {
+      when(latched_mode.do_PostTranspose) {
+        io.out_Mats.payload.Z(r)(c) := peMatrix(c)(r).io.out.payload
+      }
     }
   }
 }
 
-/**
- * 伴生对象用于简单测试生成
- */
-object SystolicArrayApp extends App {
-  SpinalVerilog(new SystolicArray(
-    size        = 4,
-    fpxxCfg     = FpxxConfig.float16(),
-    accIntBits  = 16 bits,
-    accFracBits = 16 bits
-  ))
+object SquareSystolicArrayApp extends App {
+  SpinalVerilog(
+    SquareSystolicArray(
+      SquareSystolicArray_Config(
+        in_Length_Max = 4,
+        in_MatA_row_num = 4,
+        in_MatB_col_num = 4,
+        fpConfig = FpxxConfig.float16(),
+        accIntBits = 16 bits,
+        accFracBits = 16 bits
+      )
+    )
+  )
 }
+
