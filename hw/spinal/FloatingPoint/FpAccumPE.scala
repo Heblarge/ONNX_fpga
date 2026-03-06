@@ -74,13 +74,12 @@ class FpxxPE(
   val acc = Reg(AFix.SQ(accIntBits, accFracBits))
   acc.init(0)
 
-  when(io.clear) {
-    acc.clearAll()
-  }
-
   val accFire = f2i.io.result.valid
 
-  when(accFire) {
+  when(io.clear) {
+    // Clear must dominate accumulation to avoid stale pipeline writes leaking across frames.
+    acc.clearAll()
+  } elsewhen(accFire) {
     acc := (acc + f2i.io.result.number).truncated
   }
 

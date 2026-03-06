@@ -63,7 +63,7 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
   }
 
   class out_Mats_TypeDef(cfg: SquareSystolicArray_Config) extends Bundle {
-    val Z = Vec.fill(cfg.out_MatZ_row_num)(Vec.fill(cfg.out_MatZ_col_num)(AFix.SQ(cfg.accIntBits, cfg.accFracBits)))
+    val Z = Vec.fill(cfg.out_MatZ_row_num)(Vec.fill(cfg.out_MatZ_col_num)(Fpxx(cfg.fpConfig)))
   }
 
   def in_Mats_Bundle(): in_Mats_TypeDef = new in_Mats_TypeDef(cfg)
@@ -86,36 +86,40 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
   val latched_mode = SquareSystolicArray_OpMode(cfg)
   latched_mode := Mux(!latched, io.in_Mats.payload.OpMode, mode_reg)
 
-  val resultWaitCycles = cfg.in_MatA_row_num + cfg.in_MatB_col_num + cfg.mulStages + cfg.f2iStages + 4
-  val waitCounterWidth = log2Up(resultWaitCycles + 1)
-
   val frameActive = Reg(Bool()) init False
   val waitingResult = Reg(Bool()) init False
-  val waitCounter = Reg(UInt(waitCounterWidth bits)) init 0
+  val waitingSawPeActivity = Reg(Bool()) init False
   val pendingResult = Reg(Bool()) init False
+  val outPayloadValid = Bool()
+  val anyPeOutValid = Bool()
+  val frameDoTranspose = cfg.Enable_Transpose_logic generate Reg(Bool()) init False
 
   io.in_Mats.ready := !waitingResult && !pendingResult
-  io.out_Mats.valid := pendingResult
+  io.out_Mats.valid := outPayloadValid
 
   val inputFire = io.in_Mats.fire
   val clearPulse = inputFire && !frameActive
 
   when(inputFire && !frameActive) {
     frameActive := True
+    if (cfg.Enable_Transpose_logic) {
+      frameDoTranspose := io.in_Mats.payload.OpMode.do_PostTranspose
+    }
   }
 
   when(inputFire && io.in_Mats.payload.A(0).Final) {
     frameActive := False
     waitingResult := True
-    waitCounter := U(resultWaitCycles)
+    waitingSawPeActivity := False
   }
 
   when(waitingResult) {
-    when(waitCounter === 0) {
+    when(anyPeOutValid) {
+      waitingSawPeActivity := True
+    } elsewhen(waitingSawPeActivity) {
+      // Once all PE accumulators stop updating, outputs are stable for this frame.
       waitingResult := False
       pendingResult := True
-    } otherwise {
-      waitCounter := waitCounter - 1
     }
   }
 
@@ -140,34 +144,80 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
     pe
   }
 
+  val aIngress = Array.tabulate(cfg.in_MatA_row_num) { r =>
+    var a = Mux(inputFire, io.in_Mats.payload.A(r).data, zeroFp)
+    for (_ <- 0 until r) {
+      a = RegNext(a)
+    }
+    a
+  }
+
+  val bIngress = Array.tabulate(cfg.in_MatB_col_num) { c =>
+    var b = Mux(inputFire, io.in_Mats.payload.B(c).data, zeroFp)
+    for (_ <- 0 until c) {
+      b = RegNext(b)
+    }
+    b
+  }
+
+  val validIngress = Array.tabulate(cfg.in_MatA_row_num) { r =>
+    var v = inputFire
+    for (_ <- 0 until r) {
+      v = RegNext(v) init False
+    }
+    v
+  }
+
   for (r <- 0 until cfg.in_MatA_row_num) {
     for (c <- 0 until cfg.in_MatB_col_num) {
       val pe = peMatrix(r)(c)
       pe.io.clear := clearPulse
 
       if (c == 0) {
-        pe.io.inSig.valid := inputFire
-        pe.io.inSig.payload.a := Mux(inputFire, io.in_Mats.payload.A(r).data, zeroFp)
+        pe.io.inSig.valid := validIngress(r)
+        pe.io.inSig.payload.a := aIngress(r)
       } else {
         pe.io.inSig.valid := RegNext(peMatrix(r)(c - 1).io.inSig.valid) init False
         pe.io.inSig.payload.a := RegNext(peMatrix(r)(c - 1).io.inSig.payload.a)
       }
 
       if (r == 0) {
-        pe.io.inSig.payload.b := Mux(inputFire, io.in_Mats.payload.B(c).data, zeroFp)
+        pe.io.inSig.payload.b := bIngress(c)
       } else {
         pe.io.inSig.payload.b := RegNext(peMatrix(r - 1)(c).io.inSig.payload.b)
       }
     }
   }
 
-  for (r <- 0 until cfg.out_MatZ_row_num; c <- 0 until cfg.out_MatZ_col_num) {
-    io.out_Mats.payload.Z(r)(c) := peMatrix(r)(c).io.out.payload
+  val selectedFix = Array.tabulate(cfg.out_MatZ_row_num, cfg.out_MatZ_col_num) { (r, c) =>
+    val zFix = AFix.SQ(cfg.accIntBits, cfg.accFracBits)
+    zFix := peMatrix(r)(c).io.out.payload
     if (cfg.Enable_Transpose_logic) {
-      when(latched_mode.do_PostTranspose) {
-        io.out_Mats.payload.Z(r)(c) := peMatrix(c)(r).io.out.payload
+      // Use per-frame latched transpose bit to avoid any cross-frame control skew.
+      when(frameDoTranspose) {
+        zFix := peMatrix(c)(r).io.out.payload
       }
     }
+    zFix
+  }
+
+  val outConverters = Array.tabulate(cfg.out_MatZ_row_num, cfg.out_MatZ_col_num) { (r, c) =>
+    val conv = new AFix2Fpxx(
+      intNrBits = cfg.accIntBits,
+      fracNrBits = cfg.accFracBits,
+      c = cfg.fpConfig,
+      pipeStages = 0
+    )
+    conv.io.op.valid := pendingResult
+    conv.io.op.payload.number := selectedFix(r)(c)
+    conv
+  }
+
+  outPayloadValid := pendingResult && outConverters(0)(0).io.result.valid
+  anyPeOutValid := peMatrix.flatten.map(_.io.out.valid).reduce(_ || _)
+
+  for (r <- 0 until cfg.out_MatZ_row_num; c <- 0 until cfg.out_MatZ_col_num) {
+    io.out_Mats.payload.Z(r)(c) := outConverters(r)(c).io.result.payload
   }
 }
 
@@ -185,4 +235,3 @@ object SquareSystolicArrayApp extends App {
     )
   )
 }
-

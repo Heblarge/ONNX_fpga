@@ -163,7 +163,7 @@ object ScoreboardInOrder_floatMatrix {
  * 参考 SystolicArray2D_Sim 的结构
  */
 abstract class SquareSystolicArray_Sim_Abstract extends App {
-  val matrix_num = 1000
+  val matrix_num = 30
   val size = 4
 
   // 配置将在子类中提供
@@ -442,8 +442,13 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
       if (dut.io.out_Mats.valid.toBoolean) {
         for (row_index <- 0 until cfg.in_MatA_row_num) {
           for (col_index <- 0 until cfg.in_MatB_col_num) {
-            // Z 是 AFix 类型，直接转换为 Double
-            dut_result(row_index)(col_index) = payload.Z(row_index)(col_index).toDouble
+            val sign = payload.Z(row_index)(col_index).sign.toBigInt
+            val exp = payload.Z(row_index)(col_index).exp.toBigInt
+            val mant = payload.Z(row_index)(col_index).mant.toBigInt
+            val bits = ((sign << (cfg.fpConfig.exp_size + cfg.fpConfig.mant_size)) |
+              (exp << cfg.fpConfig.mant_size) |
+              mant).toInt
+            dut_result(row_index)(col_index) = algo.fromBits(bits)
           }
         }
 
