@@ -261,8 +261,8 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
     fpConfig = FpxxConfig.float16(),
     accIntBits = 16 bits,
     accFracBits = 16 bits,
-    mulStages = 1,
-    f2iStages = 1,
+    mulStages = 0,
+    f2iStages = 0,
     Enable_Transpose_logic = true,
     Enable_ElementWise_logic = true
   )

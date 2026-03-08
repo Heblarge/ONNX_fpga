@@ -16,7 +16,7 @@ case class PerfResult(name: String, totalCycles: Long, totalOps: Long) {
 
 object CompareSquareVsSystolic2DPerf extends App {
   val size = if (args.length > 0) args(0).toInt else 4
-  val caseNum = if (args.length > 1) args(1).toInt else 30
+  val caseNum = if (args.length > 1) args(1).toInt else 1000
   val seed = if (args.length > 2) args(2).toInt else 20260306
   val periodNs = if (args.length > 3) args(3).toInt else 10
 
@@ -47,8 +47,8 @@ object CompareSquareVsSystolic2DPerf extends App {
     fpConfig = FpxxConfig.float16(),
     accIntBits = 16 bits,
     accFracBits = 16 bits,
-    mulStages = 1,
-    f2iStages = 1,
+    mulStages = 0,
+    f2iStages = 0,
     Enable_Transpose_logic = true,
     Enable_ElementWise_logic = true
   )

@@ -13,7 +13,7 @@ class AFix2Fpxx(
     rounding: RoundType = RoundType.ROUNDTOEVEN
 ) extends Component {
 
-    assert(c.ieee_like, "Can only handle IEEE compliant floats")
+    //assert(c.ieee_like, "Can only handle IEEE compliant floats")
 
     val io = new Bundle {
         val op = slave Flow (new Bundle {

@@ -77,8 +77,12 @@ class FpxxPE(
   val accFire = f2i.io.result.valid
 
   when(io.clear) {
-    // Clear must dominate accumulation to avoid stale pipeline writes leaking across frames.
-    acc.clearAll()
+    // On frame boundary clear, keep same-cycle first product when low-latency pipelines are used.
+    when(accFire) {
+      acc := f2i.io.result.number.truncated
+    } otherwise {
+      acc.clearAll()
+    }
   } elsewhen(accFire) {
     acc := (acc + f2i.io.result.number).truncated
   }

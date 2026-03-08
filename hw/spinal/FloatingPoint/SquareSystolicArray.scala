@@ -12,8 +12,8 @@ case class SquareSystolicArray_Config(
     fpConfig: FpxxConfig = FpxxConfig.float16(),
     accIntBits: BitCount = 16 bits,
     accFracBits: BitCount = 16 bits,
-    mulStages: Int = 1,
-    f2iStages: Int = 1,
+    mulStages: Int = 0,
+    f2iStages: Int = 0,
     Enable_Transpose_logic: Boolean = true,
     Enable_ElementWise_logic: Boolean = true
 ) {
@@ -88,10 +88,8 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
 
   val frameActive = Reg(Bool()) init False
   val waitingResult = Reg(Bool()) init False
-  val waitingSawPeActivity = Reg(Bool()) init False
   val pendingResult = Reg(Bool()) init False
   val outPayloadValid = Bool()
-  val anyPeOutValid = Bool()
   val frameDoTranspose = cfg.Enable_Transpose_logic generate Reg(Bool()) init False
 
   io.in_Mats.ready := !waitingResult && !pendingResult
@@ -110,17 +108,6 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
   when(inputFire && io.in_Mats.payload.A(0).Final) {
     frameActive := False
     waitingResult := True
-    waitingSawPeActivity := False
-  }
-
-  when(waitingResult) {
-    when(anyPeOutValid) {
-      waitingSawPeActivity := True
-    } elsewhen(waitingSawPeActivity) {
-      // Once all PE accumulators stop updating, outputs are stable for this frame.
-      waitingResult := False
-      pendingResult := True
-    }
   }
 
   when(io.out_Mats.fire) {
@@ -142,6 +129,32 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
     )
     pe.setName(s"PE_${r}_${c}")
     pe
+  }
+
+  // Count in-flight MAC operations per frame.
+  // Each accepted input beat contributes one MAC update to each PE.
+  val peCount = cfg.in_MatA_row_num * cfg.in_MatB_col_num
+  val pendingMacWidth = log2Up(cfg.in_Length_Max * peCount + 1)
+  val pendingMacs = Reg(UInt(pendingMacWidth bits)) init 0
+
+  val injectedMacs = UInt(pendingMacWidth bits)
+  injectedMacs := 0
+  when(inputFire) {
+    injectedMacs := peCount
+  }
+
+  val retiredMacs = UInt(pendingMacWidth bits)
+  retiredMacs := peMatrix.flatten
+    .map(_.io.out.valid.asUInt.resize(pendingMacWidth))
+    .reduce(_ + _)
+
+  val pendingMacsNext = UInt(pendingMacWidth bits)
+  pendingMacsNext := (pendingMacs + injectedMacs - retiredMacs).resized
+  pendingMacs := pendingMacsNext
+
+  when(waitingResult && pendingMacsNext === 0) {
+    waitingResult := False
+    pendingResult := True
   }
 
   val aIngress = Array.tabulate(cfg.in_MatA_row_num) { r =>
@@ -214,7 +227,6 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
   }
 
   outPayloadValid := pendingResult && outConverters(0)(0).io.result.valid
-  anyPeOutValid := peMatrix.flatten.map(_.io.out.valid).reduce(_ || _)
 
   for (r <- 0 until cfg.out_MatZ_row_num; c <- 0 until cfg.out_MatZ_col_num) {
     io.out_Mats.payload.Z(r)(c) := outConverters(r)(c).io.result.payload
