@@ -66,7 +66,7 @@ case class EXP_function_cfg(
 
   // 输入范围定义 - 基于测试实际范围
   val x_in_Min = -2048  //(float: -2048)
-  val x_in_Max = 5.36 - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算  float: 5.35546875
+  val x_in_Max = 6 - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算  float: 5.35546875
   def x_type = SInt(1+bit_int + bit_frac bits)
   def expx_int_bit = log2Up(Math.exp(x_max).ceil.toInt)
   def expx_bit = expx_int_bit + bit_frac
