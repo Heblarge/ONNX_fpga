@@ -268,7 +268,7 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
   )
 
   // 文件目录和仿真配置
-  val FileDir = "rtl/SquareSystolicArray/verilog"
+  val FileDir = "rtl/SquareSystolicArray"
   import java.io.File
   new File(FileDir).mkdirs()
 
@@ -280,10 +280,13 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
 
   val Spinalcfg = SpinalConfig(
     targetDirectory = FileDir,
-    oneFilePerComponent = true,
+    oneFilePerComponent = false,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
     bitVectorWidthMax = 20000
   )
+
+  // Emit RTL explicitly so verilog always lands in rtl/SquareSystolicArray.
+  Spinalcfg.generateVerilog(new SquareSystolicArray(cfg))
 
   val Sim_compiled = SimConfig
     .withVCS(flag)
