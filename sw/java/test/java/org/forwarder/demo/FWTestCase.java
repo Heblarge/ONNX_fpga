@@ -164,33 +164,34 @@ public abstract class FWTestCase extends TestCase {
                                 if (basePath != null && !basePath.isEmpty()) {
                                     File outputDir = new File(basePath, dataSubDirName);
                                     if(saveMode == SaveMode.ALL_INTERMEDIATE) {
-                                        saveAllTensorsAsBin(session, outputDir);
+                                        // saveAllTensorsAsBin(session, outputDir);
+                                        saveAllTensorsAsPb(session, outputDir);
                                     } else if (saveMode == SaveMode.FINAL_ONLY) {
                                         saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
                                     }
 
-                                    if (backendName.equals("HWAccelerated")) {
-                                        // 保存存储占用信息
-                                        try {
-                                            File statsFile = new File(outputDir, "hardware_stats.txt");
-                                            String report = HWAcceleratedCollector.getInstance().getReport();
-                                            FileUtils.writeStringToFile(statsFile, report, "UTF-8");
-                                            logger.info("Hardware stats saved to " + statsFile.getAbsolutePath());
-                                        } catch (Exception e) {
-                                            logger.warn("Failed to save hardware stats", e);
-                                        }
-
-                                        // 保存节点信息到json文件
-                                        try {
-                                            File traceFile = new File(outputDir, "hardware_trace_report.json");
-                                            String traceJson = HWAcceleratedTracer.getInstance().getReportAsJson();
-                                            FileUtils.writeStringToFile(traceFile, traceJson, "UTF-8");
-                                            logger.info("Hardware trace report saved to " + traceFile.getAbsolutePath());
-                                        } catch (Exception e) {
-                                            logger.warn("Failed to save hardware trace report", e);
-                                            throw new RuntimeException("Failed to save hardware trace report", e);
-                                        }
-                                    }
+//                                    if (backendName.equals("HWAccelerated")) {
+//                                        // 保存存储占用信息
+//                                        try {
+//                                            File statsFile = new File(outputDir, "hardware_stats.txt");
+//                                            String report = HWAcceleratedCollector.getInstance().getReport();
+//                                            FileUtils.writeStringToFile(statsFile, report, "UTF-8");
+//                                            logger.info("Hardware stats saved to " + statsFile.getAbsolutePath());
+//                                        } catch (Exception e) {
+//                                            logger.warn("Failed to save hardware stats", e);
+//                                        }
+//
+//                                        // 保存节点信息到json文件
+//                                        try {
+//                                            File traceFile = new File(outputDir, "hardware_trace_report.json");
+//                                            String traceJson = HWAcceleratedTracer.getInstance().getReportAsJson();
+//                                            FileUtils.writeStringToFile(traceFile, traceJson, "UTF-8");
+//                                            logger.info("Hardware trace report saved to " + traceFile.getAbsolutePath());
+//                                        } catch (Exception e) {
+//                                            logger.warn("Failed to save hardware trace report", e);
+//                                            throw new RuntimeException("Failed to save hardware trace report", e);
+//                                        }
+//                                    }
 
                                 }
                             }
@@ -235,6 +236,28 @@ public abstract class FWTestCase extends TestCase {
             Node producingNode = outputProducingNodeMap.get(name);
             if (producingNode != null && !"Constant".equals(producingNode.getOpType())) {
                 saveTensorAsBinary(name, (INDArray) entry.getValue(), outputDir);
+            }
+        }
+    }
+
+    private void saveAllTensorsAsPb(Session<?> session, File outputDir) throws IOException {
+        setupDirectory(outputDir);
+        Graph graph = session.getBackend().getModel().getGraph();
+
+        Map<String, Node> outputProducingNodeMap = new HashMap<>();
+        for (Node node : graph.getNodes()) {
+            for (String outputName : node.getOutputNames()) {
+                outputProducingNodeMap.put(outputName, node);
+            }
+        }
+
+        Map<String, ?> intermediateOutputs = session.getIntermediateOutputs();
+        for(Entry<String, ?> entry : intermediateOutputs.entrySet()) {
+            String name = entry.getKey();
+            Node producingNode = outputProducingNodeMap.get(name);
+
+            if (producingNode != null && !"Constant".equals(producingNode.getOpType())) {
+                saveTensorAsPb(name, (INDArray) entry.getValue(), outputDir);
             }
         }
     }
