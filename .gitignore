@@ -74,3 +74,8 @@ memory-bank/*
 #generated chart
 /*.png
 memory-bank/activeContext.md
+
+#prompt and memorybank
+prompt/
+report/
+benchmark_results/

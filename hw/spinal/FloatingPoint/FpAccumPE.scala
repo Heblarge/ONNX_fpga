@@ -13,6 +13,16 @@ class FpxxPE(
     mulStages   : StageMask = 1,
     f2iStages   : Int = 1
 ) extends Component {
+  private val mulCfg =
+    if (fpxxCfg == FpxxConfig.float16()) {
+      FpxxConfig.float16_mul()
+    } else if (fpxxCfg == FpxxConfig.float8_e5m2fnuz()) {
+      FpxxConfig.float8_e5m2mul()
+    } else if (fpxxCfg == FpxxConfig.float8_e4m3fnuz()) {
+      FpxxConfig.float8_e4m3mul()
+    } else {
+      throw new IllegalArgumentException(s"Unsupported FpxxPE input format: $fpxxCfg")
+    }
 
   // ------------------------------------------------------------
   // IO
@@ -35,9 +45,8 @@ class FpxxPE(
   // ------------------------------------------------------------
   val mul = new FpxxMulCompatible(
     FpxxMul.Options(
-      //更改cIn和cOut来决定浮点数的格式
-      cIn        = FpxxConfig.float16(),
-      cOut       = Some(FpxxConfig.float16_mul()),
+      cIn        = fpxxCfg,
+      cOut       = Some(mulCfg),
       pipeStages = mulStages
     )
   )
@@ -54,7 +63,7 @@ class FpxxPE(
   val f2i = new Fpxx2AFixCompatible(
     intNrBits  = accIntBits,
     fracNrBits = accFracBits,
-    c          = FpxxConfig.float16_mul(),//这个也要同步更改
+    c          = mulCfg,
     pipeStages = f2iStages,
     generateFlags = false
   )

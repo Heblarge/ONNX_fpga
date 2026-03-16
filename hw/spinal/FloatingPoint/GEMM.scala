@@ -4,71 +4,16 @@ import Interface.MatrixOperation_TypeDef
 import spinal.core._
 import spinal.lib._
 
-object SquareSystolicArray_Config {
-  val MaxMulStages = 2
-  val MaxF2iStages = 1
-  val MaxAf2fStages = 2
-}
-
-case class SquareSystolicArray_Config(
-    in_Length_Max: Int,
-    in_Length_Min: Int = 1,
-    in_MatA_row_num: Int = 4,
-    in_MatB_col_num: Int = 4,
-    fpConfig: FpxxConfig = FpxxConfig.float16(),
-    accIntBits: BitCount = 16 bits,
-    accFracBits: BitCount = 16 bits,
-    mulStages: Int = SquareSystolicArray_Config.MaxMulStages,
-    f2iStages: Int = SquareSystolicArray_Config.MaxF2iStages,
-    af2fStages: Int = SquareSystolicArray_Config.MaxAf2fStages,
-    Enable_Transpose_logic: Boolean = true,
-    Enable_ElementWise_logic: Boolean = true
-) {
-  require(in_MatA_row_num == in_MatB_col_num, "SquareSystolicArray requires square array")
-  require(in_Length_Min > 0 && in_Length_Min <= in_Length_Max, "invalid in_Length_Min/in_Length_Max")
-  require(mulStages >= 0 && mulStages <= SquareSystolicArray_Config.MaxMulStages, "invalid mulStages")
-  require(f2iStages >= 0 && f2iStages <= SquareSystolicArray_Config.MaxF2iStages, "invalid f2iStages")
-  require(af2fStages >= 0 && af2fStages <= SquareSystolicArray_Config.MaxAf2fStages, "invalid af2fStages")
-
-  val out_MatZ_row_num: Int = in_MatA_row_num
-  val out_MatZ_col_num: Int = in_MatB_col_num
-  val out_MatZ_element_Width: Int = accIntBits.value + accFracBits.value
-}
-
-case class Fpxx_withFinalMark(c: FpxxConfig) extends Bundle {
-  val data = Fpxx(c)
-  val Final = Bool()
-}
-
-case class SquareSystolicArray_OpMode(cfg: SquareSystolicArray_Config) extends Bundle {
-  val post_Shift = SInt(log2Up(cfg.out_MatZ_element_Width + 1) + 1 bits)
-  val do_PostTranspose = cfg.Enable_Transpose_logic generate Bool()
-  val MatrixOperation = cfg.Enable_ElementWise_logic generate MatrixOperation_TypeDef()
-
-  def do_MatMul: Bool = cfg.Enable_ElementWise_logic match {
-    case true  => MatrixOperation === MatrixOperation_TypeDef.MatMul
-    case false => True
-  }
-}
-
-object init_SquareSystolicArray_OpMode {
-  def apply(cfg: SquareSystolicArray_Config): SquareSystolicArray_OpMode = {
-    val mode = SquareSystolicArray_OpMode(cfg)
-    mode.post_Shift := 0
-    if (cfg.Enable_Transpose_logic) {
-      mode.do_PostTranspose := False
-    }
-    if (cfg.Enable_ElementWise_logic) {
-      mode.MatrixOperation := MatrixOperation_TypeDef.MatMul
-    }
-    mode
-  }
-}
-
-case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Component {
+/**
+  * GEMM = A * B + bias (bias is fixed-point, added per column).
+  * Based on SquareSystolicArray, but with an extra Bias vector input.
+  */
+case class GEMM(cfg: SquareSystolicArray_Config) extends Component {
   class in_Mats_TypeDef(cfg: SquareSystolicArray_Config) extends Bundle {
     val A = Vec.fill(cfg.in_MatA_row_num)(Fpxx_withFinalMark(cfg.fpConfig))
     val B = Vec.fill(cfg.in_MatB_col_num)(Fpxx_withFinalMark(cfg.fpConfig))
+    // bias is fixed-point, one value per output column
+    val Bias = Vec.fill(cfg.out_MatZ_col_num)(AFix.SQ(cfg.accIntBits, cfg.accFracBits))
     val OpMode = SquareSystolicArray_OpMode(cfg)
   }
 
@@ -100,10 +45,11 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
   val waitingResult = Reg(Bool()) init False
   val pendingResult = Reg(Bool()) init False
   val outPayloadValid = Bool()
-  val frameDoTranspose = cfg.Enable_Transpose_logic generate Reg(Bool())
-  if (cfg.Enable_Transpose_logic) {
-    frameDoTranspose init False
-  }
+  val frameDoTranspose = cfg.Enable_Transpose_logic generate Reg(Bool()) init False
+
+  // latch bias at frame start to align with the whole frame
+  val bias_reg = Reg(Vec.fill(cfg.out_MatZ_col_num)(AFix.SQ(cfg.accIntBits, cfg.accFracBits)))
+  bias_reg.foreach(_.init(0))
 
   io.in_Mats.ready := !waitingResult && !pendingResult
   io.out_Mats.valid := outPayloadValid
@@ -116,6 +62,7 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
     if (cfg.Enable_Transpose_logic) {
       frameDoTranspose := io.in_Mats.payload.OpMode.do_PostTranspose
     }
+    bias_reg := io.in_Mats.payload.Bias
   }
 
   when(inputFire && io.in_Mats.payload.A(0).Final) {
@@ -144,8 +91,6 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
     pe
   }
 
-  // Count in-flight MAC operations per frame.
-  // Each accepted input beat contributes one MAC update to each PE.
   val peCount = cfg.in_MatA_row_num * cfg.in_MatB_col_num
   val pendingMacWidth = log2Up(cfg.in_Length_Max * peCount + 1)
   val pendingMacs = Reg(UInt(pendingMacWidth bits)) init 0
@@ -219,12 +164,16 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
     val zFix = AFix.SQ(cfg.accIntBits, cfg.accFracBits)
     zFix := peMatrix(r)(c).io.out.payload
     if (cfg.Enable_Transpose_logic) {
-      // Use per-frame latched transpose bit to avoid any cross-frame control skew.
       when(frameDoTranspose) {
         zFix := peMatrix(c)(r).io.out.payload
       }
     }
-    zFix
+    val zWithBias = AFix.SQ(cfg.accIntBits, cfg.accFracBits)
+    zWithBias := zFix
+    when(latched_mode.do_MatMul) {
+      zWithBias := (zFix + bias_reg(c)).truncated
+    }
+    zWithBias
   }
 
   val outConverters = Array.tabulate(cfg.out_MatZ_row_num, cfg.out_MatZ_col_num) { (r, c) =>
@@ -246,17 +195,3 @@ case class SquareSystolicArray(cfg: SquareSystolicArray_Config) extends Componen
   }
 }
 
-object SquareSystolicArrayApp extends App {
-  SpinalVerilog(
-    SquareSystolicArray(
-      SquareSystolicArray_Config(
-        in_Length_Max = 4,
-        in_MatA_row_num = 4,
-        in_MatB_col_num = 4,
-        fpConfig = FpxxConfig.float16(),
-        accIntBits = 16 bits,
-        accFracBits = 16 bits
-      )
-    )
-  )
-}

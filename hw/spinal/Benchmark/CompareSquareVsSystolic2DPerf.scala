@@ -47,8 +47,9 @@ object CompareSquareVsSystolic2DPerf extends App {
     fpConfig = FpxxConfig.float16(),
     accIntBits = 16 bits,
     accFracBits = 16 bits,
-    mulStages = 0,
-    f2iStages = 0,
+    mulStages = SquareSystolicArray_Config.MaxMulStages,
+    f2iStages = SquareSystolicArray_Config.MaxF2iStages,
+    af2fStages = SquareSystolicArray_Config.MaxAf2fStages,
     Enable_Transpose_logic = true,
     Enable_ElementWise_logic = true
   )
