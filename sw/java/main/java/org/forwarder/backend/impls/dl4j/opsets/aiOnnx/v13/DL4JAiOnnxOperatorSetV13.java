@@ -26,9 +26,8 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public TransposeV13        getTransposeV13(){
         return new        DL4JTransposeV13();
     }
-    public NegV13              getNegV13(){
-        return new              DL4JNegV13();
-    }
+    public NegV13              getNegV13(){return new                DL4JNegV13();}
+    public NegSoftplusV13       getNegSoftplusV13(){return new       DL4JNegSoftplusV13();}
     public TileV13             getTileV13(){
         return new             DL4JTileV13();
     }
@@ -52,8 +51,17 @@ public class DL4JAiOnnxOperatorSetV13 extends DL4JAiOnnxOperatorSetV12 implement
     public AddV13              getAddV13(){
         return new              DL4JAddV13();
     }
+    public AddExpV13           getAddExpV13(){
+        return new           DL4JAddExpV13();
+    }
+    public AddLogV13           getAddLogV13(){
+        return new           DL4JAddLogV13();
+    }
     public SubV13              getSubV13(){
         return new              DL4JSubV13();
+    }
+    public SubExpV13           getSubExpV13(){
+        return new           DL4JSubExpV13();
     }
     public ExpV13              getExpV13(){
         return new              DL4JExpV13();

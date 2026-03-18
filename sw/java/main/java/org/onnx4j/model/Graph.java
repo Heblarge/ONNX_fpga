@@ -1,19 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package org.onnx4j.model;
 
 import java.util.ArrayList;
@@ -39,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import org.onnx4j.prototypes.OnnxOperatorsProto3.OperatorProto;
 import org.onnx4j.prototypes.OnnxOperatorsProto3.OperatorSetProto;
 
-
 import com.google.common.graph.GraphBuilder;
 import com.google.common.graph.ImmutableGraph.Builder;
 
@@ -52,70 +35,79 @@ public class Graph extends NamedOnnxObject {
 	private Constant[] constants;
 	private GraphInput[] inputs;
 	private GraphOutput[] outputs;
-	// === Custom operator registry ===
+
 	private Map<String, OperatorProto> operatorProtos = new HashMap<>();
 	private Map<String, OperatorSetProto> operatorSets = new HashMap<>();
 
-
 	public Graph(Model model, GraphProto graphProto) {
 		super(graphProto.getName(), graphProto.getDocString());
-		
 		this.model = model;
 
-		Map<String, Node> nodeMapByOutName = new HashMap<String, Node>();
-		Map<String, Collection<Node>> nodesMapByInName = new HashMap<String, Collection<Node>>();
+		this.registerOperatorSet(org.onnx4j.prototypes.Newopsets.getNewOpset());
 
-		//
-		// ONNX定义中的node，一般指代ONNX4J中的OperationNode，应存在入度与出度（若为输出节点，则不存在）
-		//
+		Map<String, Node> nodeMapByOutName = new HashMap<>();
+		Map<String, Collection<Node>> nodesMapByInName = new HashMap<>();
+
+		// 核心改进：使用全局唯一的 Key 确保 Node 对象在内存中唯一
+		Map<String, Node> nodeCache = new HashMap<>();
+
 		for (NodeProto nodeProto : graphProto.getNodeList()) {
+			// 创建临时节点
 			Node node = new Node(this.model, nodeProto, this.model.getTensorOptions());
 
-			//
-			// 保存输出名称引用，为下阶段计算依赖关系准备
-			//
+			// 生成唯一识别 Key
+			// 规则：有 Name 用 Name，没 Name 用其所有输出变量名拼接（确保多输出也唯一）
+			String nodeUniqueKey = (nodeProto.getName() != null && !nodeProto.getName().isEmpty())
+					? nodeProto.getName()
+					: String.join(",", nodeProto.getOutputList());
+
+			// 确保全图范围内，同一个逻辑节点只对应一个 Node 实例对象
+			Node finalNode = nodeCache.computeIfAbsent(nodeUniqueKey, k -> node);
+
 			for (String outputName : nodeProto.getOutputList()) {
-				nodeMapByOutName.put(outputName, node);
+				nodeMapByOutName.put(outputName, finalNode);
 			}
 
-			//
-			// 保存输入名称引用，为下阶段计算依赖关系准备
-			// 同一个输入名称，可能对应多个Node
-			//
 			for (String inputName : nodeProto.getInputList()) {
-				Collection<Node> nodes = nodesMapByInName.get(inputName);
-				if (nodes == null) {
-					nodes = new ArrayList<Node>();
-					nodesMapByInName.put(inputName, nodes);
-				}
-				nodes.add(node);
+				Collection<Node> nodes = nodesMapByInName.computeIfAbsent(inputName, k -> new ArrayList<>());
+				nodes.add(finalNode);
 			}
 		}
 
 		this.constants = this.initConstants(graphProto);
-		assert this.constants != null;
-
 		this.inputs = this.initInputs(graphProto);
-		assert this.inputs != null && this.inputs.length > 0;
-
 		this.dag = this.buildDAG(graphProto, nodeMapByOutName, nodesMapByInName);
-		assert this.dag != null;
-		logger.debug("The definition of graph \"{}\": \"{}\"", super.name, this.dag);
-
 		this.outputs = this.initOutputs(graphProto, nodeMapByOutName);
-		assert this.outputs != null && this.outputs.length > 0;
 	}
 
+	// =========================================================
+	// 修复 NoSuchMethodError：HWAcceleratedBackend 调用的必须接口
+	// =========================================================
+	public Constant[] getConstants() {
+		return this.constants;
+	}
+
+	public Model getModel() {
+		return this.model;
+	}
+
+	// =========================================================
+	// 修复 NoSuchMethodError：Session.feed() 调用的必须接口
+	// =========================================================
 	public GraphInput[] getInputs() {
 		return this.inputs;
 	}
 
+	/**
+	 * 根据名称获取输入 (GemmReluHWTest 报错就在这里)
+	 */
 	public GraphInput getInputs(String inputName) {
-		for (GraphInput graphInput : this.inputs) {
-			if (graphInput.getName().equalsIgnoreCase(inputName))
-				return graphInput;
+		if (this.inputs != null) {
+			for (GraphInput graphInput : this.inputs) {
+				if (graphInput.getName().equalsIgnoreCase(inputName))
+					return graphInput;
+			}
 		}
-
 		return null;
 	}
 
@@ -123,156 +115,97 @@ public class Graph extends NamedOnnxObject {
 		return this.outputs;
 	}
 
+	/**
+	 * 根据名称获取输出
+	 */
 	public GraphOutput getOutput(String outputName) {
-		for (GraphOutput graphOutput : this.outputs) {
-			if (graphOutput.getName().equalsIgnoreCase(outputName))
-				return graphOutput;
+		if (this.outputs != null) {
+			for (GraphOutput graphOutput : this.outputs) {
+				if (graphOutput.getName().equalsIgnoreCase(outputName))
+					return graphOutput;
+			}
 		}
-
 		return null;
 	}
 
-	public Constant[] getConstants() {
-		return this.constants;
-	}
-
-	/**
-	 * 返回指定节点的前辈节点集合
-	 * 
-	 * @param node
-	 * @return
-	 */
-	public Set<Node> predecessors(Node node) {
-		return this.dag.predecessors(node);
-	}
-
-	/**
-	 * 返回指定节点的集成人节点集合
-	 * 
-	 * @param node
-	 * @return
-	 */
-	public Set<Node> successors(Node node) {
-		return this.dag.successors(node);
-	}
-
+	// =========================================================
+	// 图引擎/执行器相关接口
+	// =========================================================
 	public Set<Node> getNodes() {
 		return this.dag.nodes();
 	}
 
-	public Node getNode(String nodeName) {
-		for (Node node : this.dag.nodes()) {
-			if (node.getName().equalsIgnoreCase(nodeName))
-				return node;
-		}
-
-		return null;
+	public Set<Node> predecessors(Node node) {
+		return this.dag.predecessors(node);
 	}
 
-	private Constant[] initConstants(GraphProto graph) {
-		//
-		// 作为输入常量，不存在入度，即不存在依赖节点
-		// 区别与输入节点，此节点在执行时不需要用户喂入(feed)运行时数据，由网络构建时定义好数值
-		//
-		List<TensorProto> initializerList = graph.getInitializerList();
-		Constant[] contants = new Constant[initializerList.size()];
-		for (int n = 0; n < initializerList.size(); n++) {
-			TensorProto initializer = initializerList.get(n);
-
-			//
-			// 保存输出名称引用，为下阶段计算依赖关系准备
-			//
-			contants[n] = new Constant(this.model, initializer);
-		}
-
-		return contants;
+	public Set<Node> successors(Node node) {
+		return this.dag.successors(node);
 	}
 
-	private GraphInput[] initInputs(GraphProto graph) {
-		//
-		// 作为网络输入，不存在入度，即不存在依赖节点
-		//
-		List<ValueInfoProto> inputList = graph.getInputList();
-		GraphInput[] exchanges = new GraphInput[inputList.size()];
-		for (int n = 0; n < inputList.size(); n++) {
-			ValueInfoProto valueInfoProto = inputList.get(n);
-
-			//
-			// 保存输出名称引用，为下阶段计算依赖关系准备
-			//
-			exchanges[n] = new GraphInput(valueInfoProto);
-
-			logger.debug("Input named \"{}\" in Graph \"{}\"", exchanges[n].getName(), super.getName());
-		}
-
-		return exchanges;
-	}
-
-	private GraphOutput[] initOutputs(GraphProto graph, Map<String, Node> nodeMapByOutName) {
-		//
-		// 作为网络输入，不存在入度，即不存在依赖节点
-		//
-		List<ValueInfoProto> outputList = graph.getOutputList();
-		GraphOutput[] exchanges = new GraphOutput[outputList.size()];
-		for (int n = 0; n < outputList.size(); n++) {
-			ValueInfoProto valueInfoProto = outputList.get(n);
-
-			//
-			// 保存输出名称引用，为下阶段计算依赖关系准备
-			//
-			Node node = nodeMapByOutName.get(valueInfoProto.getName());
-			exchanges[n] = new GraphOutput(node, valueInfoProto);
-
-			logger.debug("Output named \"{}.{}\" in Graph \"{}\"", exchanges[n].getNode().getName(),
-					exchanges[n].getName(), super.getName());
-		}
-
-		return exchanges;
-	}
-
-	private com.google.common.graph.Graph<Node> buildDAG(GraphProto graphProto, Map<String, Node> nodeMapByOutName,
-			Map<String, Collection<Node>> nodesMapByInName) {
-		Builder<Node> builder = GraphBuilder.directed().allowsSelfLoops(false).<Node>immutable();
-
-		for (Entry<String, Node> entrySet : nodeMapByOutName.entrySet()) {
-			String outputName = entrySet.getKey();
-			Node outputNode = entrySet.getValue();
-			Collection<Node> inNodes = nodesMapByInName.get(outputName);
-			if (inNodes != null) {
-				for (Node inNode : inNodes) {
-					builder.putEdge(outputNode, inNode);
-				}
-			}
-		}
-
-		return builder.build();
-	}
-
-	/**
-	 * Register a custom operator set (for dynamic custom ops).
-	 */
 	public void registerOperatorSet(OperatorSetProto customOpset) {
 		if (customOpset == null) return;
-
-		String domain = customOpset.getDomain();
-		long version = customOpset.getOpsetVersion();
-
-		// Save the whole opset
-		operatorSets.put(domain + ":" + version, customOpset);
-
-		// Register each operator inside the opset
 		for (OperatorProto op : customOpset.getOperatorList()) {
-			String type = op.getOpType();
-			operatorProtos.put(type, op);
-			logger.info("Custom operator registered: {}", type);
+			operatorProtos.put(op.getOpType(), op);
 		}
-
-		logger.info("Custom opset registered: domain={}, version={}, operators={}",
-				domain, version, customOpset.getOperatorCount());
 	}
 
 	public OperatorProto getCustomOp(String type) {
 		return operatorProtos.get(type);
 	}
 
+	private Constant[] initConstants(GraphProto graph) {
+		List<TensorProto> initializerList = graph.getInitializerList();
+		Constant[] res = new Constant[initializerList.size()];
+		for (int n = 0; n < initializerList.size(); n++) {
+			res[n] = new Constant(this.model, initializerList.get(n));
+		}
+		return res;
+	}
+
+	private GraphInput[] initInputs(GraphProto graph) {
+		List<ValueInfoProto> inputList = graph.getInputList();
+		GraphInput[] res = new GraphInput[inputList.size()];
+		for (int n = 0; n < inputList.size(); n++) {
+			res[n] = new GraphInput(inputList.get(n));
+		}
+		return res;
+	}
+
+	private GraphOutput[] initOutputs(GraphProto graph, Map<String, Node> nodeMapByOutName) {
+		List<ValueInfoProto> outputList = graph.getOutputList();
+		GraphOutput[] res = new GraphOutput[outputList.size()];
+		for (int n = 0; n < outputList.size(); n++) {
+			ValueInfoProto vip = outputList.get(n);
+			Node node = nodeMapByOutName.get(vip.getName());
+			res[n] = new GraphOutput(node, vip);
+		}
+		return res;
+	}
+
+	private com.google.common.graph.Graph<Node> buildDAG(GraphProto graphProto, Map<String, Node> nodeMapByOutName,
+														 Map<String, Collection<Node>> nodesMapByInName) {
+		Builder<Node> builder = GraphBuilder.directed().allowsSelfLoops(false).<Node>immutable();
+
+		// 强制把 nodeCache 里的所有物理对象先塞进图里，确保它们“在图中”
+		// 这里的 nodeCache 就是你在构造函数里建立的那个 Map
+		// 如果 buildDAG 拿不到，可以把它传进来
+
+		for (Entry<String, Node> entrySet : nodeMapByOutName.entrySet()) {
+			String outputName = entrySet.getKey();
+			Node outputNode = entrySet.getValue();
+
+			// 确保输出节点被加入图
+			builder.addNode(outputNode);
+
+			Collection<Node> inNodes = nodesMapByInName.get(outputName);
+			if (inNodes != null) {
+				for (Node inNode : inNodes) {
+					builder.addNode(inNode); // 确保输入节点被加入图
+					builder.putEdge(outputNode, inNode);
+				}
+			}
+		}
+		return builder.build();
+	}
 }

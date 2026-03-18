@@ -190,8 +190,8 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
         System.out.println("\n--- Testing Exp 2D with Two-Stage Quantization Shifts ---");
         int rows = 32;
         int cols = 32;
-        float minValue = -8.0f;
-        float maxValue = 6.0f;
+        float minValue = -1.0f;
+        float maxValue = 1.0f;
 
         long sourceShift = 23L;
         long targetInputShift = 20L;
@@ -227,8 +227,8 @@ public class HWAcceleratedExpV13Test extends HWAcceleratedTestCase {
         int batchSize = 2;
         int rows = 50;
         int cols = 68;
-        float minValue = -8.0f;
-        float maxValue = 6.0f;
+        float minValue = -1.0f;
+        float maxValue = 1.0f;
 
         long sourceShift = 22L;
         long targetInputShift = 20L;

@@ -29,6 +29,9 @@ public class HWAcceleratedOperatorSetV13 extends HWAcceleratedOperatorSetV12 imp
     public NegV13              getNegV13(){
         return new              HWAcceleratedNegV13();
     }
+    public NegSoftplusV13      getNegSoftplusV13(){
+        return new      HWAcceleratedNegSoftplusV13();
+    }
     public TileV13             getTileV13(){
         return new             HWAcceleratedTileV13();
     }
@@ -49,11 +52,16 @@ public class HWAcceleratedOperatorSetV13 extends HWAcceleratedOperatorSetV12 imp
     public AddV13              getAddV13(){
         return new              HWAcceleratedAddV13();
     }
+    public AddExpV13           getAddExpV13(){return new             HWAcceleratedAddExpV13();}
+    public AddLogV13           getAddLogV13(){return new             HWAcceleratedAddLogV13();}
     public WhereV13            getWhereV13(){
         return new            HWAcceleratedWhereV13();
     }
     public SubV13              getSubV13(){
         return new              HWAcceleratedSubV13();
+    }
+    public SubExpV13           getSubExpV13(){
+        return new              HWAcceleratedSubExpV13();
     }
     public ExpV13              getExpV13(){
         return new              HWAcceleratedExpV13();

@@ -217,6 +217,12 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         tilingInfo.status = isTiled ? "TILING" : "NO_TILING";
 
 
+        System.out.println(
+                "[DEBUG] node=" + nodeName +
+                        " shiftAmount=" + shiftAmount
+        );
+
+
         long[][] hardwareResult = new long[rowsA][colsB];
 
         int m_idx = 0;

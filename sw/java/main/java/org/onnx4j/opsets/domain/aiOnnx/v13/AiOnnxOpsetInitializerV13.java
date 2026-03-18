@@ -32,6 +32,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract NegV13 getNegV13();
 
+    public abstract NegSoftplusV13 getNegSoftplusV13();
+
     public abstract GemmV13 getGemmV13();
 
     public abstract GemmReluV13 getGemmReluV13();
@@ -40,7 +42,13 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
     public abstract AddV13 getAddV13();
 
+    public abstract AddExpV13 getAddExpV13();
+
+    public abstract AddLogV13 getAddLogV13();
+
     public abstract SubV13 getSubV13();
+
+    public abstract SubExpV13 getSubExpV13();
 
     public abstract ExpV13 getExpV13();
 
@@ -69,6 +77,8 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
         operators.put(NegV13.OP_TYPE, this.getNegV13());
 
+        operators.put(NegSoftplusV13.OP_TYPE, this.getNegSoftplusV13());
+
         operators.put(CastV13.OP_TYPE, this.getCastV13());
 
         operators.put(TransposeV13.OP_TYPE, this.getTransposeV13());
@@ -87,7 +97,13 @@ public interface AiOnnxOpsetInitializerV13 extends AiOnnxOpsetInitializerV12 {
 
         operators.put(AddV13.OP_TYPE, this.getAddV13());
 
+        operators.put(AddExpV13.OP_TYPE, this.getAddExpV13());
+
+        operators.put(AddLogV13.OP_TYPE, this.getAddLogV13());
+
         operators.put(SubV13.OP_TYPE, this.getSubV13());
+
+        operators.put(SubExpV13.OP_TYPE, this.getSubExpV13());
 
         operators.put(ExpV13.OP_TYPE, this.getExpV13());
 
