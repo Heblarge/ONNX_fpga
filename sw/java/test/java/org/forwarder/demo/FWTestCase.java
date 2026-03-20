@@ -106,8 +106,14 @@ public abstract class FWTestCase extends TestCase {
             SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
             InvocationTargetException, OperationNotSupportedException {
         // 从Resource获取模型文件地址
-        String absoluteModelPath = URLDecoder.decode(FWTestCase.class.getResource(modelPath).getFile(), "utf-8");
-        assertNotNull(absoluteModelPath);//判断非空
+        // String absoluteModelPath = URLDecoder.decode(FWTestCase.class.getResource(modelPath).getFile(), "utf-8");
+        //assertNotNull(absoluteModelPath);//判断非空
+
+        File modelFile = new File(modelPath);
+        if (!modelFile.exists()) {
+            throw new FileNotFoundException("找不到模型文件: " + modelFile.getAbsolutePath());
+        }
+        String absoluteModelPath = modelFile.getAbsolutePath();
 
         try {
             //尝试构建Forwarder，加载model
@@ -126,7 +132,8 @@ public abstract class FWTestCase extends TestCase {
             assert loadedModel!=null;
 
             // 使用并行流处理多个数据对，实现多核并行
-            tensorPairPaths.entrySet().parallelStream().forEach(tensorPairPath -> {
+            // tensorPairPaths.entrySet().parallelStream().forEach(tensorPairPath -> {
+            tensorPairPaths.entrySet().stream().forEach(tensorPairPath -> {
                 try {
                     List<Tensor> inputTensors = new ArrayList<>();
                     List<Tensor> expectedOutputTensors = new ArrayList<>();
@@ -165,9 +172,9 @@ public abstract class FWTestCase extends TestCase {
                                     File outputDir = new File(basePath, dataSubDirName);
                                     if(saveMode == SaveMode.ALL_INTERMEDIATE) {
                                         // saveAllTensorsAsBin(session, outputDir);
-                                        saveAllTensorsAsPb(session, outputDir);
+                                        saveAllTensorsAsPb(session, outputDir, outputMode);
                                     } else if (saveMode == SaveMode.FINAL_ONLY) {
-                                        saveFinalTensorsAsPb(session, outputNames, outputDir,outputMode);
+                                        saveFinalTensorsAsPb(session, outputNames, outputDir, outputMode);
                                     }
 
 //                                    if (backendName.equals("HWAccelerated")) {
@@ -240,7 +247,7 @@ public abstract class FWTestCase extends TestCase {
         }
     }
 
-    private void saveAllTensorsAsPb(Session<?> session, File outputDir) throws IOException {
+    private void saveAllTensorsAsPb(Session<?> session, File outputDir, OutputMode outputMode) throws IOException {
         setupDirectory(outputDir);
         Graph graph = session.getBackend().getModel().getGraph();
 
@@ -257,6 +264,22 @@ public abstract class FWTestCase extends TestCase {
             Node producingNode = outputProducingNodeMap.get(name);
 
             if (producingNode != null && !"Constant".equals(producingNode.getOpType())) {
+                INDArray tensorData = (INDArray) entry.getValue();
+                if (name.equals("pre_trans_fp")) {
+                    name = "pre_trans";
+                }
+                if (outputMode == OutputMode.Dequantize) {
+                    if (tensorData.dataType() != DataType.FLOAT) {
+                        tensorData = tensorData.castTo(DataType.FLOAT);
+                    }
+                    if (name.equals("pre_trans_fp")) {
+                        tensorData = tensorData.div(Math.pow(2, 24)); // 除以 2^24
+                    } else if (name.equals("rot")) {
+                        tensorData = tensorData.div(Math.pow(2, 22)); // 除以 2^22
+                    } else if (name.equals("trj")) {
+                        tensorData = tensorData.div(Math.pow(2, 25)); // 除以 2^25
+                    }
+                }
                 saveTensorAsPb(name, (INDArray) entry.getValue(), outputDir);
             }
         }
@@ -460,8 +483,15 @@ public abstract class FWTestCase extends TestCase {
     protected Tensor loadTensor(Model model, String inputName, String tensorProtoName)
             throws InvalidProtocolBufferException, IOException, NoSuchFieldException, SecurityException,
             IllegalArgumentException, IllegalAccessException {
-        String tensorProtoPath = URLDecoder.decode(this.getClass().getResource(tensorProtoName).getFile(), "utf-8");
-        assertNotNull(tensorProtoPath);
+//        String tensorProtoPath = URLDecoder.decode(this.getClass().getResource(tensorProtoName).getFile(), "utf-8");
+//        assertNotNull(tensorProtoPath);
+
+        File tensorFile = new File(tensorProtoName);
+        if (!tensorFile.exists()) {
+            throw new FileNotFoundException("找不到 Tensor 数据文件: " + tensorFile.getAbsolutePath());
+        }
+        String tensorProtoPath = tensorFile.getAbsolutePath();
+
         TensorProto tensorProto = TensorProto.parseFrom(FileUtils.readFileToByteArray(new File(tensorProtoPath)));
         model.getConfig().getTensorOptions();
         return TensorBuilder.builder(tensorProto, model.getConfig().getTensorOptions())
