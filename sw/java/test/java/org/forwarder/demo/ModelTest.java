@@ -147,25 +147,27 @@ public class ModelTest extends FWTestCase {
                 "HWAccelerated",
                 // 输出文件夹的位置
                 currentDir + "/datasets_results/FPGA_FM_final_layer");
-        //[12, 14, 27, 45, 60, 88, 99, 111,
-        // 128, 175, 189, 218, 234, 256, 299, 305,
-        // 333, 342, 389, 401, 444, 476, 490, 503,
-        // 512, 555, 581, 612, 633, 654, 672, 680]
-        for (int n = 680; n < 681; n++) {
+        int[] selectedIndices = {
+                12, 14, 27, 45, 60, 88, 99, 111,
+                128, 175, 189, 218, 234, 256, 299, 305,
+                333, 342, 389, 401, 444, 476, 490, 503,
+                512, 555, 581, 612, 633, 654, 672, 680
+        };
+        for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/input_seq_pc.pb",
-                    "/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_pre_trans.pb",
-                    "/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_rot.pb",
-                    "/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
                 List.of("seq_pc", "seq_pos"),       // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
                 new String[] {
@@ -191,25 +193,28 @@ public class ModelTest extends FWTestCase {
                 // 输出文件夹的位置
                 currentDir + "/datasets_results/FPGA_FM_OBJ_final_layer");
 
-        // [4, 7, 12, 19, 21, 28, 33, 34,
-        // 42, 50, 51, 56, 60, 64, 71, 75,
-        // 78, 82, 89, 93, 96, 101, 105, 108,
-        // 114, 117, 120, 122, 127, 129, 131, 133]
-        for (int n = 133; n < 134 ; n++) {
+        int[] selectedIndices = {
+                4, 7, 12, 19, 21, 28, 33, 34,
+                42, 50, 51, 56, 60, 64, 71, 75,
+                78, 82, 89, 93, 96, 101, 105, 108,
+                114, 117, 120, 122, 127, 129, 131, 133
+        };
+
+        for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/input_seq_pc.pb",
-                    "/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/output_pre_trans.pb",
-                    "/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/output_rot.pb",
-                    "/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion-OBJ/data" + n + "_0/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
                 List.of("seq_pc", "seq_pos"),       // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
                 new String[] {
@@ -235,25 +240,27 @@ public class ModelTest extends FWTestCase {
                 // 输出文件夹的位置
                 currentDir + "/datasets_results/FPGA_NM_final_layer");
 
-        // [14, 256, 388, 512, 604, 789, 901, 1024,
-        // 1150, 1280, 1405, 1555, 1780, 1999, 2048, 2222,
-        // 2500, 2750, 2999, 3141, 3333, 3500, 3780, 4004,
-        // 4096, 4250, 4500, 4678, 4800, 4950, 5010, 5042]
-        for (int n = 5042; n < 5043 ; n++) {
+        int[] selectedIndices = {14, 256, 388, 512, 604, 789, 901, 1024,
+                1150, 1280, 1405, 1555, 1780, 1999, 2048, 2222,
+                2500, 2750, 2999, 3141, 3333, 3500, 3780, 4004,
+                4096, 4250, 4500, 4678, 4800, 4950, 5010, 5042
+        };
+
+        for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/input_seq_pc.pb",
                     "/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/output_pre_trans.pb",
-                    "/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/output_rot.pb",
-                    "/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/NoiseMotion/data" + n + "_0/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
                 List.of("seq_pc", "seq_pos"),       // 假设两个输入名
                 List.of("pre_trans", "rot", "trj"), // 假设三个输出名
                 new String[] {
@@ -327,10 +334,16 @@ public class ModelTest extends FWTestCase {
                 "DL4J",
                 // 输出文件夹的位置
                 currentDir + "/datasets_results_all/Quantized_FM_all");
-        for (int n = 0; n < 693 ; n++) {
+        int[] selectedIndices = {
+                12, 14, 27, 45, 60, 88, 99, 111,
+                128, 175, 189, 218, 234, 256, 299, 305,
+                333, 342, 389, 401, 444, 476, 490, 503,
+                512, 555, 581, 612, 633, 654, 672, 680
+        };
+        for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/input_seq_pc.pb",
-                    "/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
                     currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/output_pre_trans.pb",
@@ -367,25 +380,28 @@ public class ModelTest extends FWTestCase {
                 "DL4J",
                 // 输出文件夹的位置
                 currentDir+ "/datasets_results/Quantized_FM_OBJ_final_layer");
-        // [4, 7, 12, 19, 21, 28, 33, 34,
-        // 42, 50, 51, 56, 60, 64, 71, 75,
-        // 78, 82, 89, 93, 96, 101, 105, 108,
-        // 114, 117, 120, 122, 127, 129, 131, 133]
-        for (int n = 133; n < 134 ; n++) {
+        int[] selectedIndices = {
+                4, 7, 12, 19, 21, 28, 33, 34,
+                42, 50, 51, 56, 60, 64, 71, 75,
+                78, 82, 89, 93, 96, 101, 105, 108,
+                114, 117, 120, 122, 127, 129, 131, 133
+        };
+
+        for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/input_seq_pc.pb",
-                    "/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/output_pre_trans.pb",
-                    "/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/output_rot.pb",
-                    "/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion-OBJ/data" + n + "_0/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_0306.onnx",
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_0306.onnx",
                 List.of("seq_pc", "seq_pos_fp"),       // 假设两个输入名
                 List.of("pre_trans_fp", "rot", "trj"), // 假设三个输出名
                 new String[] {
@@ -410,25 +426,29 @@ public class ModelTest extends FWTestCase {
                 "DL4J",
                 // 输出文件夹的位置
                 currentDir+ "/datasets_results/Quantized_NM_final_layer");
-        // [14, 256, 388, 512, 604, 789, 901, 1024,
-        // 1150, 1280, 1405, 1555, 1780, 1999, 2048, 2222,
-        // 2500, 2750, 2999, 3141, 3333, 3500, 3780, 4004,
-        // 4096, 4250, 4500, 4678, 4800, 4950, 5010, 5042]
-        for (int n = 5042; n < 5043 ; n++) {
+
+        int[] selectedIndices = {
+                14, 256, 388, 512, 604, 789, 901, 1024,
+                1150, 1280, 1405, 1555, 1780, 1999, 2048, 2222,
+                2500, 2750, 2999, 3141, 3333, 3500, 3780, 4004,
+                4096, 4250, 4500, 4678, 4800, 4950, 5010, 5042
+        };
+
+        for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/mnist/datasets/NoiseMotion/data" + n + "_0/input_seq_pc.pb",
-                    "/mnist/datasets/NoiseMotion/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/NoiseMotion/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/NoiseMotion/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/datasets/NoiseMotion/data" + n + "_0/output_pre_trans.pb",
-                    "/mnist/datasets/NoiseMotion/data" + n + "_0/output_rot.pb",
-                    "/mnist/datasets/NoiseMotion/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/NoiseMotion/data" + n + "_0/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/NoiseMotion/data" + n + "_0/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/NoiseMotion/data" + n + "_0/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_0306.onnx",
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_0306.onnx",
                 List.of("seq_pc", "seq_pos_fp"),       // 假设两个输入名
                 List.of("pre_trans_fp", "rot", "trj"), // 假设三个输出名
                 new String[] {
@@ -452,7 +472,7 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "DL4J",
                 // 输出文件夹的位置
-                currentDir+ "/datasets_results_all/Quantized_Sloper4D");
+                currentDir + "/datasets_results_all/Quantized_Sloper4D");
 
         int[] selectedIndices = {
                 1, 4, 7, 8, 12, 19, 23, 25, 29, 31, 34, 38, 41, 44, 47, 50,
@@ -462,19 +482,19 @@ public class ModelTest extends FWTestCase {
         };
         for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    "/mnist/datasets/Sloper4D/data" + n + "_0/input_seq_pc.pb",
-                    "/mnist/datasets/Sloper4D/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/Sloper4D/data" + n + "_0/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/Sloper4D/data" + n + "_0/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    "/mnist/datasets/Sloper4D/data" + n + "_0/output_pre_trans.pb",
-                    "/mnist/datasets/Sloper4D/data" + n + "_0/output_rot.pb",
-                    "/mnist/datasets/Sloper4D/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/Sloper4D/data" + n + "_0/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/Sloper4D/data" + n + "_0/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/Sloper4D/data" + n + "_0/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
         super.testModel(
                 tensorPairPaths,
-                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_Sloper4D.onnx",
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_OnnxRuntime_Sloper4D.onnx",
                 List.of("seq_pc", "seq_pos_fp"),       // 假设两个输入名
                 List.of("pre_trans_fp", "rot", "trj"), // 假设三个输出名
                 new String[] {
@@ -518,12 +538,28 @@ public class ModelTest extends FWTestCase {
             System.out.println("========== Start ==========");
             ModelTest runner = new ModelTest("ManualRunner");
 
+            // 需要跑哪个直接加上就行
+            // HWAccelerated
+            System.out.println(">> HW FreeMotion ");
+            runner.testModelWithOpsetV13_hw_FM();
+            System.out.println(">> HW FreeMotion-OBJ ");
+            runner.testModelWithOpsetV13_hw_FM_OBJ();
+            System.out.println(">> HW NoiseMotion ");
+            runner.testModelWithOpsetV13_hw_NM();
             System.out.println(">> HW Sloper4D ");
             runner.testModelWithOpsetV13_hw_S4D();
-            // 需要跑哪个直接加上就行
 
-//            System.out.println(">> DL4J Sloper4D ");
-//            runner.testModelWithOpsetV13_dl4j_quantized_S4D();
+            // DL4J
+            System.out.println(">> DL4J FreeMotion ");
+            runner.testModelWithOpsetV13_dl4j_quantized_FM();
+            System.out.println(">> DL4J FreeMotion-OBJ ");
+            runner.testModelWithOpsetV13_dl4j_quantized_FM_OBJ();
+            System.out.println(">> DL4J NoiseMotion ");
+            runner.testModelWithOpsetV13_dl4j_quantized_NM();
+            System.out.println(">> DL4J Sloper4D ");
+            runner.testModelWithOpsetV13_dl4j_quantized_S4D();
+
+
             System.out.println("========== Finished! ==========");
 
         } catch (Exception e) {
