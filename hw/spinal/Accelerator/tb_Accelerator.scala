@@ -33,7 +33,7 @@ object AcceleratorTb extends App {
     systolicArrayInstFifoDepth = 32,//越高越好,但帮助不大
     activationOutFifoDepth = 32,//能过reqirements就行
     slicedInstFifoDepth = 2,//能过reqirements就行
-    numCores = 1//越高越快，但超过2之后帮助不大
+    numCores = 1//越高越快
   )
   val path = s"simWorkspace/AcceleratorTb"
   import java.io.File

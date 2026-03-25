@@ -424,6 +424,8 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         }
       }
     }
+    // TIMING OPTIMIZATION: Keep combinatorial all_valid for write guard,
+    // use registered version only for status transition to break the long path
     val all_valid=Bool()
     all_valid:=True
     for(i<- 0 until cfg.in_MatA_row_num){
@@ -431,12 +433,14 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         all_valid.clearWhen(!this.data(i)(j).valid)
       }
     }
+    // Registered version breaks the combinatorial path from all_valid to Status to output mux
+    val all_valid_reg = RegNext(all_valid) init False
     val OpMode = Reg(OpMode_TypeDef(cfg)) init init_OpMode(cfg) // 操作模式 | Operation OpMode
     val ID = Reg(UInt(cfg.ID_Width bits))
     val Status = Reg(out_MatZ_buffer_Status()) init out_MatZ_buffer_Status.Idle
     when(this.Status===out_MatZ_buffer_Status.Matmul_Collecting
       ||this.Status===out_MatZ_buffer_Status.Element_Collecting){
-    when(all_valid){
+    when(all_valid_reg){
       this.Status:=out_MatZ_buffer_Status.Ready_to_Output
     }}
     def is_Valid:Bool={this.Status===out_MatZ_buffer_Status.Ready_to_Output}

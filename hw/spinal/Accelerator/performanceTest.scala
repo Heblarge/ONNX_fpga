@@ -20,7 +20,7 @@ import scala.util.control.NonFatal
 object AcceleratorPerfOnce extends App {
   // 统一模式：总是接收21个参数
   require(args.length == 20, s"AcceleratorPerfOnce: expect 20 args, got ${args.length}")
-  
+
   // 解析参数
   val testID                      = args(0).toInt
   val runID                       = args(1).toInt
@@ -69,7 +69,7 @@ object AcceleratorPerfOnce extends App {
 
     println(s"[Once] Testing configuration (Test ID: $testID), Run $runID, seed=$runSeed")
     println(s"[Once] Configuration: $currentCfg")
-    
+
     val path = s"simWorkspace/Accelerator_PerformanceTest_${testID}_Run${runID}"
     import java.io.File
     new File(path).mkdirs()
@@ -207,7 +207,7 @@ object AcceleratorPerfOnce extends App {
             endTime = cycleCount
             totalCycles   = endTime - startTime
             cyclesPerTest = totalCycles.toDouble / testNum
-            
+
             // 计算总浮点运算次数和 FLOPS/cycle
             totalOps = instSims.map { inst =>
               // M*K*N*2，其中 K=inst.input0Shape1，也是 inst.input1Shape0
@@ -276,7 +276,7 @@ object AcceleratorTb_PerformanceTest extends App {
     "systolicArrayInstFifoDepth"  -> List(16, 64),
     "activationOutFifoDepth"      -> List(32, 64),
     "slicedInstFifoDepth"         -> List(16, 64),
-    "numCores"                    -> List(1, 2, 4)
+    "numCores"                    -> List(1, 2, 4,8)
   )
 
   val defaultCfg = AcceleratorCfg(
