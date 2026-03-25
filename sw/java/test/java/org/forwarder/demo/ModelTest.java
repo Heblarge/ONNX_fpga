@@ -57,44 +57,44 @@ public class ModelTest extends FWTestCase {
         return new TestSuite(ModelTest.class);
     }
 
-//    public void testModelWithOpsetV13_hw() throws FileNotFoundException, NoSuchMethodException,
-//            SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
-//            InvocationTargetException, OperationNotSupportedException, IOException {
-//        Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
-//        Map<String, String> backendPaths = new HashMap<>();
-//        String currentDir = System.getProperty("user.dir");
-//        backendPaths.put(
-//                "HWAccelerated",
-//                // 输出文件夹的位置
-//                currentDir + "/java_hw_final_layer_outputs_2");
-//        for (int n = 10; n < 11; n++) {
-//            List<String> inputs = List.of(
-//                    "/mnist/int32_refpb/int32/data" + n + "/input_seq_pc.pb",
-//                    "/mnist/int32_refpb/int32/data" + n + "/input_seq_pos.pb"
-//            );
-//            List<String> outputs = List.of(
-//                    "/mnist/int32_refpb/int32/data" + n + "/output_pre_tran.pb",
-//                    "/mnist/int32_refpb/int32/data" + n + "/output_rot.pb",
-//                    "/mnist/int32_refpb/int32/data" + n + "/output_trj.pb"
-//            );
-//            tensorPairPaths.put(inputs, outputs);
-//        }
-//        super.testModel(
-//                tensorPairPaths,
-//                "/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
-//                List.of("seq_pc", "seq_pos"),       // 假设两个输入名
-//                List.of("pre_trans", "rot", "trj"), // 假设三个输出名
-//                new String[] {
-//                        //"DL4J"
-//                        //,
-//                        "HWAccelerated"
-//                },
-//                0.0001f,
-//                backendPaths,
-//                SaveMode.FINAL_ONLY,
-//                OutputMode.Dequantize
-//        );
-//    }
+    public void testModelWithOpsetV13_hw() throws FileNotFoundException, NoSuchMethodException,
+            SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
+            InvocationTargetException, OperationNotSupportedException, IOException {
+        Map<List<String>, List<String>> tensorPairPaths = new LinkedHashMap<>();
+        Map<String, String> backendPaths = new HashMap<>();
+        String currentDir = System.getProperty("user.dir");
+        backendPaths.put(
+                "HWAccelerated",
+                // 输出文件夹的位置
+                currentDir + "/java_hw_32bit");
+        for (int n = 8; n < 11; n++) {
+            List<String> inputs = List.of(
+                    currentDir + "/sw/java/test/resources/mnist/int32_refpb/int32/data" + n + "/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/int32_refpb/int32/data" + n + "/input_seq_pos.pb"
+            );
+            List<String> outputs = List.of(
+                    currentDir + "/sw/java/test/resources/mnist/int32_refpb/int32/data" + n + "/output_pre_tran.pb",
+                    currentDir + "/sw/java/test/resources/mnist/int32_refpb/int32/data" + n + "/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/int32_refpb/int32/data" + n + "/output_trj.pb"
+            );
+            tensorPairPaths.put(inputs, outputs);
+        }
+        super.testModel(
+                tensorPairPaths,
+                currentDir + "/sw/java/test/resources/mnist/onnx_graph/NEW_deploy_module2_Stacked_MinGRU_DB_conv_FPGA_INT24_FPGA.onnx",
+                List.of("seq_pc", "seq_pos"),       // 假设两个输入名
+                List.of("pre_trans", "rot", "trj"), // 假设三个输出名
+                new String[] {
+                        //"DL4J"
+                        //,
+                        "HWAccelerated"
+                },
+                0.0001f,
+                backendPaths,
+                SaveMode.FINAL_ONLY,
+                OutputMode.Dequantize
+        );
+    }
 //
 //    public void testModelWithOpsetV13_dl4j_quantized() throws FileNotFoundException, NoSuchMethodException,
 //            SecurityException, InstantiationException, IllegalAccessException, IllegalArgumentException,
@@ -146,7 +146,7 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "HWAccelerated",
                 // 输出文件夹的位置
-                currentDir + "/datasets_results/FPGA_FM_final_layer");
+                currentDir + "/datasets_results_3dim/FPGA_FreeMotion");
         int[] selectedIndices = {
                 12, 14, 27, 45, 60, 88, 99, 111,
                 128, 175, 189, 218, 234, 256, 299, 305,
@@ -155,13 +155,13 @@ public class ModelTest extends FWTestCase {
         };
         for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/input_seq_pc.pb",
-                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_2/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_2/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_pre_trans.pb",
-                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_rot.pb",
-                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_2/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_2/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/PickedDatasets_int/FreeMotion/data" + n + "_2/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
@@ -333,7 +333,7 @@ public class ModelTest extends FWTestCase {
         backendPaths.put(
                 "DL4J",
                 // 输出文件夹的位置
-                currentDir + "/datasets_results_all/Quantized_FM_all");
+                currentDir + "/datasets_results_3dim/Quantized_FreeMotion");
         int[] selectedIndices = {
                 12, 14, 27, 45, 60, 88, 99, 111,
                 128, 175, 189, 218, 234, 256, 299, 305,
@@ -342,13 +342,13 @@ public class ModelTest extends FWTestCase {
         };
         for (int n : selectedIndices) {
             List<String> inputs = List.of(
-                    currentDir + "/sw/java/test/resources/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/input_seq_pc.pb",
-                    currentDir + "/sw/java/test/resources/home/user/Workspace/livehps_1/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/input_seq_pos.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_2/input_seq_pc.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_2/input_seq_pos.pb"
             );
             List<String> outputs = List.of(
-                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/output_pre_trans.pb",
-                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/output_rot.pb",
-                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_0/output_trj.pb"
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_2/output_pre_trans.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_2/output_rot.pb",
+                    currentDir + "/sw/java/test/resources/mnist/datasets/FreeMotion/data" + n + "_2/output_trj.pb"
             );
             tensorPairPaths.put(inputs, outputs);
         }
@@ -540,24 +540,24 @@ public class ModelTest extends FWTestCase {
 
             // 需要跑哪个直接加上就行
             // HWAccelerated
-            System.out.println(">> HW FreeMotion ");
-            runner.testModelWithOpsetV13_hw_FM();
-            System.out.println(">> HW FreeMotion-OBJ ");
-            runner.testModelWithOpsetV13_hw_FM_OBJ();
-            System.out.println(">> HW NoiseMotion ");
-            runner.testModelWithOpsetV13_hw_NM();
-            System.out.println(">> HW Sloper4D ");
-            runner.testModelWithOpsetV13_hw_S4D();
+//            System.out.println(">> HW FreeMotion ");
+//            runner.testModelWithOpsetV13_hw_FM();
+//            System.out.println(">> HW FreeMotion-OBJ ");
+//            runner.testModelWithOpsetV13_hw_FM_OBJ();
+//            System.out.println(">> HW NoiseMotion ");
+//            runner.testModelWithOpsetV13_hw_NM();
+//            System.out.println(">> HW Sloper4D ");
+//            runner.testModelWithOpsetV13_hw_S4D();
 
             // DL4J
             System.out.println(">> DL4J FreeMotion ");
             runner.testModelWithOpsetV13_dl4j_quantized_FM();
-            System.out.println(">> DL4J FreeMotion-OBJ ");
-            runner.testModelWithOpsetV13_dl4j_quantized_FM_OBJ();
-            System.out.println(">> DL4J NoiseMotion ");
-            runner.testModelWithOpsetV13_dl4j_quantized_NM();
-            System.out.println(">> DL4J Sloper4D ");
-            runner.testModelWithOpsetV13_dl4j_quantized_S4D();
+//            System.out.println(">> DL4J FreeMotion-OBJ ");
+//            runner.testModelWithOpsetV13_dl4j_quantized_FM_OBJ();
+//            System.out.println(">> DL4J NoiseMotion ");
+//            runner.testModelWithOpsetV13_dl4j_quantized_NM();
+//            System.out.println(">> DL4J Sloper4D ");
+//            runner.testModelWithOpsetV13_dl4j_quantized_S4D();
 
 
             System.out.println("========== Finished! ==========");
