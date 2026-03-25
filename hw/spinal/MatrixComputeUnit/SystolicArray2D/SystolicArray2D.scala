@@ -151,10 +151,8 @@ case class OpMode_TypeDef(cfg: SystolicArray2D_Config) extends Bundle {
   }}
   def to_Ctrl:SystolicArray2DUnit_Control_TypeDef = {
     val Ctrl=SystolicArray2DUnit_Control_TypeDef(this.cfg.SystolicArray2DUnit_Cfg.outZ_Width)
-    Ctrl.Mode := MatrixOperation_TypeDef.MatMul
-    Ctrl.Shift:=this.post_Shift
-    Ctrl.Transpose := False
     if (cfg.Enable_ElementWise_logic){Ctrl.Mode:=this.MatrixOperation}
+    Ctrl.Shift:=this.post_Shift
     if(cfg.Enable_Transpose_logic){Ctrl.Transpose:=this.do_PostTranspose}
     Ctrl
   }
@@ -458,12 +456,9 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     Element_Unit2buffer_ptr.payload init (U(0))
     Element_Unit2buffer_ptr.valid init (False)
   }
-  val Element_col_ptr = enableElementWise generate
-                          Reg(UInt(log2Up(cfg.in_MatB_col_num) bits))
+  val Element_col_ptr = enableElementWise generate                        
+                          Reg(UInt(log2Up(cfg.in_MatB_col_num) bits)) init 0
                         //在element-wise模式下，代表了正在输出的反对角线的计算单元输出到缓冲区中的第几列
-  if(enableElementWise){
-    Element_col_ptr init 0
-  }
   
 
     // --- 指针管理逻辑 ---
@@ -488,10 +483,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     val request_Matmul_allocation = 
       ((ResultStreams(0)(0).valid&& 
         (ResultStreams(0)(0).payload.Ctrl.Mode === MatrixOperation_TypeDef.MatMul)))
-    val element_allocation_grant = enableElementWise generate RegInit(True)//当buffer片已经分配给Element_Unit2buffer_ptr，阻止新的request_Element_allocation生成
-    if(enableElementWise){
-      element_allocation_grant init (True)
-    }
+    val element_allocation_grant = enableElementWise generate RegInit(True) init (True)//当buffer片已经分配给Element_Unit2buffer_ptr，阻止新的request_Element_allocation生成
     val request_Element_allocation = enableElementWise generate (
       (element_allocation_grant && // 只有在获得“许可”时才申请
       (ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.Ctrl.Mode =/= MatrixOperation_TypeDef.MatMul)) && 
