@@ -13,12 +13,12 @@ import MatrixComputeUnit.SystolicArray2D.SIntShifter
 
 // 定义激活函数配置类
 case class Activation_Config(
-                              Matx_Width   : Int,                   // 输入矩阵宽度
-                              MatX_Width   : Int,                   // 输出矩阵宽度
-                              element_in_Width: Int,                // 输入元素位宽
-                              element_out_Width: Int,               // 输出元素位宽
-                              intermediate_width : Int = 32,        // 计算后移位前中间位宽
-                              max_indepth   : Int,                    // 最大缓存深度
+                              Matx_Width   : Int,                    // 输入矩阵宽度
+                              MatX_Width   : Int,                    // 输出矩阵宽度
+                              element_in_Width: Int,                 // 输入元素位宽
+                              element_out_Width: Int,                // 输出元素位宽
+                              intermediate_width : Int = 32,         // 计算后移位前中间位宽
+                              max_indepth   : Int,                   // 最大缓存深度
                               expCfg        : EXP_function_cfg,      // 指数函数配置
                               lnCfg         : LN_function_cfg,       // 对数函数配置
                               reluCfg       : ReLU_function_cfg,     // ReLU函数配置
@@ -196,7 +196,7 @@ case class Activation(cfg: Activation_Config) extends Component {
     Activation_TypeDef.Exp      -> FinalVec(cfg.expCfg.bit_int + 1 + 2),  // exp延迟 11 = 1 + bit_int + 2
     Activation_TypeDef.Log      -> FinalVec(cfg.lnCfg.bit_frac + 3 + 2),  // ln延迟
     Activation_TypeDef.Relu     -> FinalVec(4),   // relu延迟
-    Activation_TypeDef.Softplus -> FinalVec(2),   // softplus延迟
+    Activation_TypeDef.Softplus -> FinalVec(5),   // softplus延迟
     Activation_TypeDef.None     -> FinalVec(1)    // 无函数延迟
   )
 
