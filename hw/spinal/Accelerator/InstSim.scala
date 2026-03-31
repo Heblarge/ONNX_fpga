@@ -65,6 +65,22 @@ class InstSim(
       0,
       0
     )
+    // this(
+    //   InstSim.lastUID,
+    //   MatrixOperation_TypeDef.MatMul,
+    //   0,
+    //   false,
+    //   Activation_TypeDef.None,
+    //   0,
+    //   InstSim.lastInput0Address,
+    //   InstSim.lastInput1Address,
+    //   InstSim.lastOutputAddress,
+    //   4 * matSubRowNum,
+    //   4 * matSubRowNum,
+    //   4 * matSubRowNum,
+    //   0,
+    //   0
+    // )
 
     if (activationFunction == Activation_TypeDef.Log) {
       // activationFunction = Activation_TypeDef.Softplus
