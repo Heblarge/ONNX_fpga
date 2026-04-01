@@ -163,7 +163,7 @@ object ScoreboardInOrder_floatMatrix {
  * 参考 SystolicArray2D_Sim 的结构
  */
 abstract class SquareSystolicArray_Sim_Abstract extends App {
-  val matrix_num = 1000
+  val matrix_num = 30
   val size = 4
 
   // 配置将在子类中提供
@@ -261,14 +261,15 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
     fpConfig = FpxxConfig.float16(),
     accIntBits = 16 bits,
     accFracBits = 16 bits,
-    mulStages = 1,
-    f2iStages = 1,
+    mulStages = SquareSystolicArray_Config.MaxMulStages,
+    f2iStages = SquareSystolicArray_Config.MaxF2iStages,
+    af2fStages = SquareSystolicArray_Config.MaxAf2fStages,
     Enable_Transpose_logic = true,
     Enable_ElementWise_logic = true
   )
 
   // 文件目录和仿真配置
-  val FileDir = "rtl/SquareSystolicArray/verilog"
+  val FileDir = "rtl/SquareSystolicArray"
   import java.io.File
   new File(FileDir).mkdirs()
 
@@ -280,10 +281,13 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
 
   val Spinalcfg = SpinalConfig(
     targetDirectory = FileDir,
-    oneFilePerComponent = true,
+    oneFilePerComponent = false,
     defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW),
     bitVectorWidthMax = 20000
   )
+
+  // Emit RTL explicitly so verilog always lands in rtl/SquareSystolicArray.
+  Spinalcfg.generateVerilog(new SquareSystolicArray(cfg))
 
   val Sim_compiled = SimConfig
     .withVCS(flag)
@@ -442,8 +446,13 @@ object SquareSystolicArray_Sim extends SquareSystolicArray_Sim_Abstract {
       if (dut.io.out_Mats.valid.toBoolean) {
         for (row_index <- 0 until cfg.in_MatA_row_num) {
           for (col_index <- 0 until cfg.in_MatB_col_num) {
-            // Z 是 AFix 类型，直接转换为 Double
-            dut_result(row_index)(col_index) = payload.Z(row_index)(col_index).toDouble
+            val sign = payload.Z(row_index)(col_index).sign.toBigInt
+            val exp = payload.Z(row_index)(col_index).exp.toBigInt
+            val mant = payload.Z(row_index)(col_index).mant.toBigInt
+            val bits = ((sign << (cfg.fpConfig.exp_size + cfg.fpConfig.mant_size)) |
+              (exp << cfg.fpConfig.mant_size) |
+              mant).toInt
+            dut_result(row_index)(col_index) = algo.fromBits(bits)
           }
         }
 

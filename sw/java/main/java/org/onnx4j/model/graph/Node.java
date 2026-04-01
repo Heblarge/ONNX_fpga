@@ -52,7 +52,31 @@ public final class Node extends NamedOnnxObject {
 		}
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		org.onnx4j.model.graph.Node other = (org.onnx4j.model.graph.Node) o;
 
+		// 1. 优先使用 Node Name 比较（针对有名字的标准节点）
+		if (this.getName() != null && !this.getName().isEmpty() &&
+				other.getName() != null && !other.getName().isEmpty()) {
+			return java.util.Objects.equals(this.getName(), other.getName());
+		}
+
+		// 2. 如果 Node Name 为空（融合算子、大模型抠出的子图节点），则对比完整的输出变量列表
+		// 这是 ONNX 拓扑结构中最为严谨的判定方式，能完美处理多输出算子
+		return java.util.Arrays.equals(this.getOutputNames(), other.getOutputNames());
+	}
+
+	@Override
+	public int hashCode() {
+		if (this.getName() != null && !this.getName().isEmpty()) {
+			return java.util.Objects.hash(this.getName());
+		}
+		// 必须和 equals 保持一致
+		return java.util.Arrays.hashCode(this.getOutputNames());
+	}
 
 	public String[] getInputNames() {
 		return inputNames;

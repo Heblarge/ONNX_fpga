@@ -424,19 +424,78 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         }
       }
     }
-    val all_valid=Bool()
-    all_valid:=True
-    for(i<- 0 until cfg.in_MatA_row_num){
-      for(j<-0 until cfg.in_MatB_col_num){
-        all_valid.clearWhen(!this.data(i)(j).valid)
-      }
-    }
+    // 首先定义Status，以便其能在 all_valid_reg 逻辑中使用
+    val Status = Reg(out_MatZ_buffer_Status()) init out_MatZ_buffer_Status.Idle
     val OpMode = Reg(OpMode_TypeDef(cfg)) init init_OpMode(cfg) // 操作模式 | Operation OpMode
     val ID = Reg(UInt(cfg.ID_Width bits))
-    val Status = Reg(out_MatZ_buffer_Status()) init out_MatZ_buffer_Status.Idle
+
+    // 出于优化时序的考量，对buffer中的
+    // 与加法树的思想类似，使用多级寄存器来切断冗长的组合路径
+    // 按对角顺序排列 valid 值，以匹配实际数据到达的顺序
+    val total_valids = cfg.in_MatA_row_num * cfg.in_MatB_col_num
+    val all_valids_by_diagonal = Vec((0 until cfg.diag_num).flatMap { diag =>
+      (0 until cfg.in_MatA_row_num).flatMap { row =>
+        val col = diag - row
+        if (col >= 0 && col < cfg.in_MatB_col_num) {
+          Some(this.data(row)(col).valid)
+        } else {
+          None
+        }
+      }
+    })
+
+    // 四合一规约
+    def reduceBy4(input: Vec[Bool]): Vec[Bool] = {
+      val outputSize = (input.length + 3) / 4
+      Vec((0 until outputSize).map(i => {
+        val start = i * 4
+        val end = math.min(start + 4, input.length)
+        (start until end).map(j => input(j)).reduce(_ && _)
+      }))
+    }
+
+    // 动态计算所需的流水线阶段数量
+    def calcStages(n: Int): Int = if (n <= 1) 0 else 1 + calcStages((n + 3) / 4)
+    val num_stages = calcStages(total_valids)
+
+    // 检测缓冲区何时转为"Idle"状态（用于管道flush）
+    val was_idle = RegNext(this.Status === out_MatZ_buffer_Status.Idle) init True
+    val just_entered_idle = (this.Status === out_MatZ_buffer_Status.Idle) && !was_idle
+
+    // 动态构建流水线阶段
+    // 每个阶段：输入尺寸 -> 向上取整（输入尺寸除以 4 的结果）
+    var current_stage = all_valids_by_diagonal
+    val stage_regs = scala.collection.mutable.ArrayBuffer[Vec[Bool]]()
+
+    for (stage_idx <- 0 until num_stages) {
+      val stage_comb = reduceBy4(current_stage)
+      val stage_size = stage_comb.length
+      val stage_reg = Reg(Vec(Bool(), stage_size))
+      when(just_entered_idle) {
+        stage_reg.foreach(_ := False)
+      } otherwise {
+        stage_reg := stage_comb
+      }
+      stage_reg.foreach(_ init False)
+      stage_regs += stage_reg
+      current_stage = stage_reg
+    }
+
+    // 最后规约到1位
+    val all_valid_reg_next = if (current_stage.length > 1) current_stage.reduce(_ && _) else current_stage.head
+    val all_valid_reg = Reg(Bool()) init False
+    when(just_entered_idle) {
+      all_valid_reg := False
+    } otherwise {
+      all_valid_reg := all_valid_reg_next
+    }
+    // 最终产物all_valid
+    val all_valid = all_valids_by_diagonal.reduce(_ && _)
+
+    // State transition logic
     when(this.Status===out_MatZ_buffer_Status.Matmul_Collecting
       ||this.Status===out_MatZ_buffer_Status.Element_Collecting){
-    when(all_valid){
+    when(all_valid_reg){
       this.Status:=out_MatZ_buffer_Status.Ready_to_Output
     }}
     def is_Valid:Bool={this.Status===out_MatZ_buffer_Status.Ready_to_Output}

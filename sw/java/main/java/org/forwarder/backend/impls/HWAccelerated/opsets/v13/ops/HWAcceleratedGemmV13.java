@@ -49,7 +49,9 @@ public class HWAcceleratedGemmV13 extends HWAcceleratedQuantizedOperator impleme
                 targetOutputShift,
                 nodeName
         );
-
+        // 打印输出
+        System.out.println("[INFO] Node " + nodeName + " output:");
+        System.out.println(result);
         return new GeMMOutputV13<>(result);
     }
 

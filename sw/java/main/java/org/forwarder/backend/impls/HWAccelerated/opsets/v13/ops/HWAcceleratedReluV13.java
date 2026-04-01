@@ -102,6 +102,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
         long s_out = targetOutputShift;
 
         int preShiftAmount = (int) (s_in - s_hw);
+        //int preShiftAmount = 0;
 
         long[][] fixedPointInput = new long[rows][cols];
         for (int i = 0; i < rows; i++) {
@@ -112,6 +113,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
         }
 
         int postShiftAmount = (int) (s_hw - s_out);
+        //int postShiftAmount = 0;
 
         long[][] matrixB_zero = new long[rows][cols];
         long[][] hardwareResult = new long[rows][cols];
@@ -126,6 +128,16 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
         }
 
         int hwTileCap = (maxRowsPerTile / HW_DIM_MULTIPLE) * HW_DIM_MULTIPLE;
+
+        System.out.println(
+                "[DEBUG][ReLU] node=" + nodeName +
+                        " s_in=" + s_in +
+                        " s_hw=" + s_hw +
+                        " s_out=" + s_out +
+                        " preShift=" + preShiftAmount +
+                        " postShift=" + postShiftAmount
+        );
+
 
         for (int rowOffset = 0; rowOffset < rows; ) {
             int rowsRemaining = rows - rowOffset;
@@ -170,6 +182,24 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
         }
 
         INDArray fianlOutput =  Nd4j.create(output, new long[]{rows, cols}, x.dataType());
+
+        // ====== DEBUG 输出 ======
+        System.out.println("[DEBUG][ReLU OUTPUT] node=" + nodeName + " shape=" + java.util.Arrays.toString(fianlOutput.shape()));
+// 打印前 10x10 元素防止日志太长
+        int printRows = Math.min(10, (int) fianlOutput.shape()[0]);
+        int printCols = Math.min(10, (int) fianlOutput.shape()[1]);
+        for (int i = 0; i < printRows; i++) {
+            for (int j = 0; j < printCols; j++) {
+                System.out.print(fianlOutput.getLong(i, j) + "\t");
+            }
+            System.out.println();
+        }
+
+// 检查是否全 0
+        if (fianlOutput.sumNumber().longValue() == 0) {
+            System.out.println("==== WARNING: node " + nodeName + " output all 0 ====");
+        }
+// ======================
 
         return fianlOutput;
     }
