@@ -232,6 +232,7 @@ case class CollectorWrap(collectorCfg: CollectorCfg) extends Component {
   io.memoryWritePort.Wen     := collector.io.memoryWritePort.Wen
   // 显式驱动时钟信号到外部接口
   io.memoryWritePort.clk     := ClockDomain.current.readClockWire
+  io.memoryWritePort.rst     := ClockDomain.current.isResetActive
 
   collector.io.slicedInst <> io.slicedInst
   collector.io.matAfterActivations <> io.matAfterActivations

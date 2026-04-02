@@ -158,7 +158,7 @@ object MatrixCacheController_verilog {
       targetDirectory = "rtl/MatrixCacheController",
       oneFilePerComponent = false,
       defaultConfigForClockDomains = ClockDomainConfig(resetActiveLevel = LOW)
-    ).generateVerilog(MatrixCacheController(addrWidth=13,dataWidth=256))
+    ).generateVerilog(MatrixCacheController(addrWidth=15,dataWidth=256))
       .printPruned()
   }
 }

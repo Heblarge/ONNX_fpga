@@ -153,12 +153,14 @@ case class OutputMatrixCacheInterface(addrWidth: Int, dataWidth: Int) extends Co
   io.write_sdpram.Address := wrAddrInt
   io.write_sdpram.Data    := io.write.Data
   io.write_sdpram.clk     := io.write.clk
+  io.write_sdpram.rst     := io.write.rst
   io.write_sdpram.Wen     := io.write.Wen
 
 
   val rdAddrInt = (rdPtr.asBits ## io.read.Address.asBits).asUInt
   io.read_sdpram.Valid   := io.read.Valid
   io.read_sdpram.clk     := io.read.clk
+  io.read_sdpram.rst     := io.read.rst
   io.read_sdpram.Address := rdAddrInt
   io.read.Data := io.read_sdpram.Data
 
