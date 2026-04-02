@@ -28,11 +28,16 @@ case class AcceleratorCfg(
     systolicArrayInstFifoDepth: Int,
     activationOutFifoDepth: Int,
     slicedInstFifoDepth: Int,
-    numCores: Int
+    numCores: Int,
+    memElementWidth: Int = 32
 ) {
+  require(memElementWidth >= elementWidth, s"memElementWidth($memElementWidth) must >= elementWidth($elementWidth)")
+  require(memElementWidth % 8 == 0, s"memElementWidth($memElementWidth) must be multiple of 8")
   val SlicecntWidth = log2Up(round(ceil((pow(2, ShapeWidth) - 1) / systolicArraySideNum)))
   val ShiftWidth = log2Up(elementWidth + 1) + 1
   val dataWidth = systolicArraySideNum * elementWidth
+  val memElementBytes = memElementWidth / 8
+  val memWidth  = systolicArraySideNum * memElementWidth
   val fracWidth = elementWidth - intWidth
   val slicerCfg = SlicerCfg(
     UIDWidth = UIDWidth,
@@ -85,16 +90,17 @@ case class AcceleratorCfg(
     systolicArraySideNum = systolicArraySideNum,
     activationUnitNum = systolicArraySideNum,
     elementWidthZ = elementWidth,
-    numCores = numCores
+    numCores = numCores,
+    memElementWidth = memElementWidth
   )
 }
 
 case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
   val slicer = Slicer(acceleratorCfg.slicerCfg)
-  val sdpramA = Sdpram(addrWidth = acceleratorCfg.AddressWidth, dataWidth = acceleratorCfg.dataWidth)
-  val sdpramB = Sdpram(addrWidth = acceleratorCfg.AddressWidth, dataWidth = acceleratorCfg.dataWidth)
+  val sdpramA = Sdpram(addrWidth = acceleratorCfg.AddressWidth, dataWidth = acceleratorCfg.memWidth)
+  val sdpramB = Sdpram(addrWidth = acceleratorCfg.AddressWidth, dataWidth = acceleratorCfg.memWidth)
   val collector = Collector(acceleratorCfg.collectorCfg)
-  val sdpramZ = Sdpram(acceleratorCfg.AddressWidth, acceleratorCfg.dataWidth)
+  val sdpramZ = Sdpram(acceleratorCfg.AddressWidth, acceleratorCfg.memWidth)
 
   val io = new Bundle {
     val inst = slave Stream slicer.InstType
@@ -102,8 +108,26 @@ case class Accelerator(acceleratorCfg: AcceleratorCfg) extends Component {
 
   slicer.io.inst <> io.inst
   slicer.io.slicedInst <> collector.io.slicedInst
-  slicer.io.memoryReadPortA <> sdpramA.io.read
-  slicer.io.memoryReadPortB <> sdpramB.io.read
+
+  // 桥接mem读端口：Slicer 字索引 → 字节地址 → Sdpram，数据 memElementWidth 对齐 → elementWidth 紧凑格式
+  val byteOffset = log2Up(acceleratorCfg.memWidth / 8)
+  Seq(
+    (slicer.io.memoryReadPortA, sdpramA.io.read),
+    (slicer.io.memoryReadPortB, sdpramB.io.read)
+  ).foreach { case (slicerPort, sdpramPort) =>
+    sdpramPort.clk := slicerPort.clk
+    sdpramPort.rst := slicerPort.rst
+    sdpramPort.Valid := slicerPort.Valid
+    // Slicer 输出字索引，左移转换为字节地址
+    sdpramPort.Address := (slicerPort.Address << byteOffset).resized
+    // Cat(Seq) 中第一个元素在 LSB，所以用 0 until N 遍历
+    slicerPort.Data := Cat(
+      (0 until acceleratorCfg.systolicArraySideNum).map(i =>
+        sdpramPort.Data(i * acceleratorCfg.memElementWidth, acceleratorCfg.elementWidth bits)
+      )
+    )
+  }
+
   sdpramA.noWrite()
   sdpramB.noWrite()
 

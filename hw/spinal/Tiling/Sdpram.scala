@@ -29,9 +29,12 @@ case class Sdpram(addrWidth: Int, dataWidth: Int) extends Component {
     io.write.Data := 0
   }
 
-  val mem = Mem(Bits(dataWidth bits), 1 << addrWidth)
-  io.read.Data := mem.readSync(io.read.Address, io.read.Valid)
-  mem.write(io.write.Address, io.write.Data, io.write.Valid)
+  // 字节地址 → 字索引：右移 byteOffset 位
+  val byteOffset = log2Up(dataWidth / 8)
+  val wordAddrWidth = addrWidth - byteOffset
+  val mem = Mem(Bits(dataWidth bits), 1 << wordAddrWidth)
+  io.read.Data := mem.readSync((io.read.Address >> byteOffset).resized, io.read.Valid)
+  mem.write((io.write.Address >> byteOffset).resized, io.write.Data, io.write.Valid)
 }
 
 //class Sdpram_BlackBox(addrWidth: Int, dataWidth: Int) extends BlackBox {

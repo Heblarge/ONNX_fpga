@@ -14,9 +14,12 @@ import spinal.lib._
  * - 内部以双倍深度的 SDPRAM 实现 ping-pong 映射
  * **************************************************************************** */
 case class OutputMatrixCache(addrWidth: Int, dataWidth: Int) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
-    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
     val switch = in Bool()
     val dmaIntr= in Bool()
     val status = out Bool()
@@ -51,17 +54,20 @@ case class OutputMatrixCache(addrWidth: Int, dataWidth: Int) extends Component {
  * - 内部以双倍深度的 SDPRAM 实现 ping-pong 映射
  * **************************************************************************** */
 case class OutputMatrixCacheController(addrWidth: Int, dataWidth: Int) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
-    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
     val switch = in Bool()
     val dmaIntr= in Bool()
     val status = out Bool()
     val intr   = out Bool()
     val intrClear = in Bool()
     val full   = out Bool()
-    val memRead   = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
-    val memWrite  = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+    val memRead   = master(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
+    val memWrite  = master(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
   }
 
   val visibleDepth  = 1 << addrWidth
@@ -95,17 +101,20 @@ case class OutputMatrixCacheController(addrWidth: Int, dataWidth: Int) extends C
  *   - 内部：read_sdpram / write_sdpram（地址位宽 +1，MSB 为 bank 位）
  * **************************************************************************** */
 case class OutputMatrixCacheInterface(addrWidth: Int, dataWidth: Int) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
-    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
     val switch = in  Bool()
     val dmaIntr= in  Bool()
     val status = out Bool()
     val intr   = out Bool()
     val intrClear = in Bool()
     val full   = out Bool()
-    val read_sdpram  = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
-    val write_sdpram = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+    val read_sdpram  = master(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
+    val write_sdpram = master(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
   }
 
   val wrPtr = Reg(UInt(1 bits)) init(0)
@@ -181,11 +190,12 @@ case class OutputMatrixCacheInterface(addrWidth: Int, dataWidth: Int) extends Co
  *   - 读在 io.read.Valid 时触发，同步读（1 拍延迟）
  * **************************************************************************** */
 case class SdpramModel(dataWidth: Int, depth: Int, addrWidth: Int = -1) extends Component {
-  // 地址宽度在 elaboration 阶段计算（软件层面）
-  val effAddrWidth = if (addrWidth < 0) log2Up(depth) else addrWidth
-  if ((1 << effAddrWidth) < depth) {
-    SpinalError(s"[SdpramModel] Not enough address width: depth=$depth, addrWidth=$effAddrWidth, 2^addrWidth=${1 << effAddrWidth}")
-  }
+  // 与真实 Sdpram 行为一致：端口使用字节地址，内部 >> byteOffset 转为字索引
+  val byteOffset = log2Up(dataWidth / 8)
+  val wordAddrWidth = log2Up(depth)
+  val byteAddrWidth = wordAddrWidth + byteOffset
+  // effAddrWidth 表示端口的字节地址位宽
+  val effAddrWidth = if (addrWidth < 0) byteAddrWidth else addrWidth
 
   def MemoryReadPortType  = MemoryReadPort_TypeDef(AddressWidth = effAddrWidth, DataWidth = dataWidth)
   def MemoryWritePortType = MemoryWritePort_TypeDef(AddressWidth = effAddrWidth, DataWidth = dataWidth)
@@ -197,14 +207,15 @@ case class SdpramModel(dataWidth: Int, depth: Int, addrWidth: Int = -1) extends 
 
   val mem = Mem(Bits(dataWidth bits), wordCount = depth)
 
+  // 字节地址 → 字索引：右移 byteOffset 位（与真实 Sdpram 一致）
   mem.write(
-    address = io.write.Address,
+    address = (io.write.Address >> byteOffset).resized,
     data    = io.write.Data,
     enable  = io.write.Valid
   )
 
   io.read.Data := mem.readSync(
-    address = io.read.Address,
+    address = (io.read.Address >> byteOffset).resized,
     enable  = io.read.Valid
   )
 

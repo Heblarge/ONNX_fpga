@@ -30,8 +30,10 @@ case class CollectorCfg(
     systolicArraySideNum: Int,
     activationUnitNum: Int,
     elementWidthZ: Int,
-    numCores: Int
+    numCores: Int,
+    memElementWidth: Int = 32
 ) {
+  val memElementBytes = memElementWidth / 8
   require(
     systolicArraySideNum * systolicArraySideNum % activationUnitNum == 0,
     "activationUnitNum mismatch systolicArraySideNum"
@@ -49,10 +51,10 @@ case class CollectorCfg(
  */
 case class Collector(collectorCfg: CollectorCfg) extends Component {
 
-  // 假设外部存储每个数据占用 32位
-  val bytesPerVector = collectorCfg.systolicArraySideNum * 4
-  // 输出端口数据位宽 (32-bit 对齐)
-  val outputDataWidth = collectorCfg.systolicArraySideNum * 32
+  // 外部存储每个数据占用 memElementWidth 位
+  val bytesPerVector = collectorCfg.systolicArraySideNum * collectorCfg.memElementBytes
+  // 输出端口数据位宽 (memElementWidth 对齐)
+  val outputDataWidth = collectorCfg.systolicArraySideNum * collectorCfg.memElementWidth
   // 字节掩码位宽
   val byteMaskWidth = outputDataWidth / 8
 
@@ -149,8 +151,12 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
 
   val rowOffset = Mux(slicedInstReg.doTranspose, matBColSliceCnt, matARowSliceCnt) * U(collectorCfg.systolicArraySideNum)
   val colOffset = Mux(slicedInstReg.doTranspose, matARowSliceCnt, matBColSliceCnt)
-  val offsetIdxZ = ((rowOffset + matZSubWriteRowCnt) * slicedInstReg.outputShape(1) / U(collectorCfg.systolicArraySideNum)).resized + colOffset
-  io.memoryWritePort.Address := slicedInstReg.outputAddress + (offsetIdxZ * U(bytesPerVector)).resized
+  // 字索引
+  val wordIndex = slicedInstReg.outputAddress + ((rowOffset + matZSubWriteRowCnt) * slicedInstReg.outputShape(1) /
+      U(collectorCfg.systolicArraySideNum)).resized + colOffset
+  // 转换为字节地址
+  val byteOffsetZ = log2Up(outputDataWidth / 8)
+  io.memoryWritePort.Address := (wordIndex << byteOffsetZ).resized
 
   val matZsub2D = Vec(Vec(SInt(collectorCfg.elementWidthZ bits), collectorCfg.systolicArraySideNum), collectorCfg.systolicArraySideNum)
   for (r <- 0 until collectorCfg.systolicArraySideNum) {
@@ -163,10 +169,10 @@ case class Collector(collectorCfg: CollectorCfg) extends Component {
     }
   }
   val currentRowData = matZsub2D(matZSubWriteRowCnt)
-  val outputDataVec = Vec(Bits(32 bits), collectorCfg.systolicArraySideNum)
+  val outputDataVec = Vec(Bits(collectorCfg.memElementWidth bits), collectorCfg.systolicArraySideNum)
   for (i <- 0 until collectorCfg.systolicArraySideNum) {
-    // 符号扩展到 32位
-    outputDataVec(i) := currentRowData(i).resize(32 bits).asBits
+    // 符号扩展到 memElementWidth 位
+    outputDataVec(i) := currentRowData(i).resize(collectorCfg.memElementWidth bits).asBits
   }
   io.memoryWritePort.Data := outputDataVec.asBits
   io.memoryWritePort.Wen := B(byteMaskWidth bits, default -> io.memoryWritePort.Valid)
@@ -216,7 +222,7 @@ case class CollectorWrap(collectorCfg: CollectorCfg) extends Component {
 
   // 定义与 Collector 内部一致的端口类型
   def MemoryWritePortType =
-    MemoryWritePort_TypeDef(AddressWidth = collectorCfg.AddressWidth, DataWidth = collectorCfg.systolicArraySideNum * 32)
+    MemoryWritePort_TypeDef(AddressWidth = collectorCfg.AddressWidth, DataWidth = collectorCfg.systolicArraySideNum * collectorCfg.memElementWidth)
 
   val io = new Bundle {
     val slicedInst = slave Stream collector.SlicedInstType

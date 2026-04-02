@@ -116,21 +116,26 @@ package object Util {
                       baseAddr: Int,
                       sideNum: Int,
                       shape0: Int,
-                      shape1: Int
+                      shape1: Int,
+                      memElementWidth: Int = 32
                     ): Array[Array[Int]] = {
-    val bytesPerVector = sideNum * 4
+    val memElementBytes = memElementWidth / 8
+    val elemMask = (BigInt(1) << memElementWidth) - 1
+    val signBit = BigInt(1) << (memElementWidth - 1)
+    val signExtendMask = (BigInt(-1) >> memElementWidth) << memElementWidth
     val numBlocksX = shape1 / sideNum
     val totalVectors = shape0 * numBlocksX
+    // 直接用字索引访问 Mem API（绕过硬件端口的字节寻址转换）
     val rawMem = Array.tabulate(totalVectors) { i =>
-      mem.getBigInt(baseAddr + i * bytesPerVector)
+      mem.getBigInt(baseAddr + i)
     }
     Array.tabulate(shape0, shape1) { (i, j) =>
-      val vectorIdx = i * numBlocksX + (j / sideNum) // 确定在哪一个向量
-      val elemIdx = j % sideNum                      // 确定向量中的哪一段
+      val vectorIdx = i * numBlocksX + (j / sideNum)
+      val elemIdx = j % sideNum
       val vectorVal = rawMem(vectorIdx)
-      val elemBits = (vectorVal >> (elemIdx * 32)) & BigInt("FFFFFFFF", 16)
-      if ((elemBits & 0x80000000L) != 0) {
-        (elemBits | BigInt("FFFFFFFF00000000", 16)).toInt
+      val elemBits = (vectorVal >> (elemIdx * memElementWidth)) & elemMask
+      if ((elemBits & signBit) != 0) {
+        (elemBits | signExtendMask).toInt
       } else {
         elemBits.toInt
       }
@@ -238,7 +243,7 @@ package object Util {
   }
 
   case class Cnt(cntMax: UInt, clearCond: Bool, incCond: Bool) extends ImplicitArea[UInt] {
-    val cnt = Reg(UInt(cntMax.getWidth bits))
+    val cnt = Reg(UInt(cntMax.getWidth bits)) init(0)
     val willOverflowIfInc = cnt === cntMax
     val willOverflow = incCond && willOverflowIfInc
     val value = cnt

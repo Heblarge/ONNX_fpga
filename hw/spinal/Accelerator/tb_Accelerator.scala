@@ -33,7 +33,8 @@ object AcceleratorTb extends App {
     systolicArrayInstFifoDepth = 32,//越高越好,但帮助不大
     activationOutFifoDepth = 32,//能过reqirements就行
     slicedInstFifoDepth = 2,//能过reqirements就行
-    numCores = 1//越高越快
+    numCores = 1,//越高越快
+    memElementWidth = 32
   )
   val path = s"simWorkspace/AcceleratorTb"
   import java.io.File
@@ -85,6 +86,8 @@ object AcceleratorTb extends App {
   val matAs = ArrayBuffer[Array[Array[Int]]]()
   val matBs = ArrayBuffer[Array[Array[Int]]]()
   val matZs = ArrayBuffer[Array[Array[Int]]]()
+  // 设置 InstSim 的 memElementBytes，与加速器配置联动
+  InstSim.memElementBytes = acceleratorCfg.memElementBytes
   for (i <- 0 until testNum) {
     val instSim = InstSim(random, acceleratorCfg.systolicArraySideNum)
     instSims += instSim
@@ -121,7 +124,8 @@ object AcceleratorTb extends App {
       true,
       matAs,
       acceleratorCfg.systolicArraySideNum,
-      acceleratorCfg.elementWidth
+      acceleratorCfg.elementWidth,
+      acceleratorCfg.memElementWidth
     )
     InstSim.memSetInstSims(
       dut.sdpramB.mem,
@@ -129,7 +133,8 @@ object AcceleratorTb extends App {
       false,
       matBs,
       acceleratorCfg.systolicArraySideNum,
-      acceleratorCfg.elementWidth
+      acceleratorCfg.elementWidth,
+      acceleratorCfg.memElementWidth
     )
 
     var m = 0
@@ -157,7 +162,7 @@ object AcceleratorTb extends App {
           dut.sdpramZ.mem,
           instSim.outputAddress,
           acceleratorCfg.systolicArraySideNum,
-          acceleratorCfg.elementWidth,
+          acceleratorCfg.memElementWidth,
           instSim.outputShape0,
           instSim.outputShape1
         )

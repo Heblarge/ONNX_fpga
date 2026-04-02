@@ -16,9 +16,12 @@ import spinal.core.sim.SimDataPimper
  *   - 内部通过生命周期计数器控制 bank 的释放
  * **************************************************************************** */
 case class InputMatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
-    val read       = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val write      = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val read       = slave(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val write      = slave(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
     val switch     = in Bool()      // 读主机完成当前 bank 读取后触发（一次“消费”）
     val dmaIntr    = in Bool()      // 写端 DMA 完成当前 bank 写入后触发（写 bank 填满）
     val lifeCfg    = in UInt(lifeWidth bits) // 配置“下一块写入矩阵”的生命周期（可被读的次数）
@@ -50,17 +53,20 @@ case class InputMatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16)
 
 
 case class InputMatrixCacheController(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
-    val read       = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val write      = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
+    val read       = slave(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val write      = slave(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
     val switch     = in Bool()      // 读主机完成当前 bank 读取后触发（一次“消费”）
     val dmaIntr    = in Bool()      // 写端 DMA 完成当前 bank 写入后触发（写 bank 填满）
     val lifeCfg    = in UInt(lifeWidth bits) // 配置“下一块写入矩阵”的生命周期（可被读的次数）
     val status     = out Bool()     // 是否存在可写 bank（任意 bank 空闲）
     val empty      = out Bool()     // 两个 bank 均为空（无可读数据）
 
-    val memRead       = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
-    val memWrite      = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+    val memRead       = master(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
+    val memWrite      = master(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
   }
 
   // 实例化接口核心
@@ -102,16 +108,23 @@ case class InputMatrixCacheController(addrWidth: Int, dataWidth: Int, lifeWidth:
  *   - status = 存在空闲 bank；empty = 两个 bank 均为空；
  * **************************************************************************** */
 case class InputMatrixCacheInterface(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  // addrWidth 为字地址位宽（每 bank 的字容量 = 1 << addrWidth）
+  // 对外接口统一使用字节地址，与真实 Sdpram 部署一致
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
-    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = addrWidth, DataWidth = dataWidth))
-    val switch = in  Bool()   // 读主机一次“消费”动作（等价于读完当前矩阵一次）
+    val read   = slave(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val write  = slave(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth, DataWidth = dataWidth))
+    val switch = in  Bool()   // 读主机一次"消费"动作（等价于读完当前矩阵一次）
     val dmaIntr= in  Bool()   // DMA 完成一次写入
     val lifeCfg= in  UInt(lifeWidth bits) // 配置下一次写入矩阵的生命周期
     val status = out Bool()   // 有空闲 bank 可写
     val empty  = out Bool()   // 无可读 bank
-    val read_sdpram  = master(MemoryReadPort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
-    val write_sdpram = master(MemoryWritePort_TypeDef(AddressWidth = addrWidth + 1, DataWidth = dataWidth))
+    // 内部 SDPRAM 端口：字节地址 + 1 bit bank 选择
+    // SdpramModel 内部会 >> byteOffset 转为字索引
+    val read_sdpram  = master(MemoryReadPort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
+    val write_sdpram = master(MemoryWritePort_TypeDef(AddressWidth = byteAddrWidth + 1, DataWidth = dataWidth))
   }
 
   // 当前写 / 读 bank 指针
@@ -155,7 +168,8 @@ case class InputMatrixCacheInterface(addrWidth: Int, dataWidth: Int, lifeWidth: 
     }
   }
 
-  // 地址映射：扩展地址高位为 bank 号，保持对外地址空间不变
+  // 地址映射：bank 选择位拼接字节地址
+  // SdpramModel 内部会执行 >> byteOffset 将字节地址转为字索引
   val wrAddrInt = (wrPtr(0).asBits ## io.write.Address.asBits).asUInt
   val rdAddrInt = (rdPtr(0).asBits ## io.read.Address.asBits).asUInt
 

@@ -100,7 +100,7 @@ case class FPGACfg(
   )
 }
 
-case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
+case class WrapForFPGA(fpgaCfg: FPGACfg, externalClkCore: ClockDomain = null) extends Component {
   val slicer = SlicerWrap(fpgaCfg.slicerCfg)
   val collector = CollectorWrap(fpgaCfg.collectorCfg)
 
@@ -144,16 +144,31 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
   io.readSwitch := slicer.io.instFinish
   io.writeSwitch := collector.io.instFinish
   
-  // 直接暴露 memory port
-  io.memPortA <> slicer.io.memoryReadPortA
-  io.memPortB <> slicer.io.memoryReadPortB
+  // Slicer 输出的是字地址（word index），转换为字节地址暴露给外部
+  // MatrixCache / 外部 BRAM 均按字节地址索引（与真实 Sdpram 部署一致）
+  val memByteOffset = log2Up(fpgaCfg.systolicArraySideNum * 32 / 8)
+
+  io.memPortA.clk     := slicer.io.memoryReadPortA.clk
+  io.memPortA.rst     := slicer.io.memoryReadPortA.rst
+  io.memPortA.Valid   := slicer.io.memoryReadPortA.Valid
+  io.memPortA.Address := (slicer.io.memoryReadPortA.Address << memByteOffset).resized
+  slicer.io.memoryReadPortA.Data := io.memPortA.Data
+
+  io.memPortB.clk     := slicer.io.memoryReadPortB.clk
+  io.memPortB.rst     := slicer.io.memoryReadPortB.rst
+  io.memPortB.Valid   := slicer.io.memoryReadPortB.Valid
+  io.memPortB.Address := (slicer.io.memoryReadPortB.Address << memByteOffset).resized
+  slicer.io.memoryReadPortB.Data := io.memPortB.Data
+
+  // Collector 已输出字节地址，直接暴露
   io.memPortZ <> collector.io.memoryWritePort
   
-  // 定义外部核心时钟域
-  val clkCore = ClockDomain.external("SystolicArray2D_CC_core")
+  // 定义外部核心时钟域（可从外部传入，或在本组件自行创建）
+  val clkCore = if (externalClkCore != null) externalClkCore
+                else ClockDomain.external("SystolicArray2D_CC_core")
   
   // 连接 Systolic Array 和 Activation 模块
-  slicer.io.matAfterSlicers.zip(collector.io.matAfterActivations).foreach { 
+  val systolicArray2DWrappers = slicer.io.matAfterSlicers.zip(collector.io.matAfterActivations).map { 
     case (matAfterSlicer, matAfterActivation) =>
       val systolicArray2DWrapper = SystolicArray2D_Wrapper(
         cfg = fpgaCfg.systolicArray2DWrapCfg,
@@ -166,7 +181,10 @@ case class WrapForFPGA(fpgaCfg: FPGACfg) extends Component {
       systolicArray2DWrapper.io.in_Mats_with_Core_Instruction <> matAfterSlicer
       systolicArray2DWrapper.io.out_Mats_with_Core_Instruction <> activation.io.in_Mats
       matAfterActivation <> activation.io.out_Mats
+      (systolicArray2DWrapper, activation)
   }
+  val systolicArrayWrappers = systolicArray2DWrappers.map(_._1)
+  val activations = systolicArray2DWrappers.map(_._2)
 }
 
 

@@ -39,6 +39,9 @@ import spinal.lib.bus.amba4.axilite._
  *
  * **************************************************************************** */
 case class MatrixCacheController(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
     // === 1. AXI4-Lite Config & Status Interface ===
     val axi = slave(AxiLite4(addressWidth = 8, dataWidth = 32))
@@ -47,30 +50,30 @@ case class MatrixCacheController(addrWidth: Int, dataWidth: Int, lifeWidth: Int 
     val globalIntr = out Bool()
 
     // === 3. Cache A (Input) ===
-    val readA     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    val writeA    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val readA     = slave(MemoryReadPort_TypeDef(byteAddrWidth, dataWidth))
+    val writeA    = slave(MemoryWritePort_TypeDef(byteAddrWidth, dataWidth))
     val switchA   = in Bool()
     val dmaDoneA  = in Bool()
 
     // === 4. Cache B (Input) ===
-    val readB     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    val writeB    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val readB     = slave(MemoryReadPort_TypeDef(byteAddrWidth, dataWidth))
+    val writeB    = slave(MemoryWritePort_TypeDef(byteAddrWidth, dataWidth))
     val switchB   = in Bool()
     val dmaDoneB  = in Bool()
 
     // === 5. Cache C (Output) ===
-    val readC     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    val writeC    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val readC     = slave(MemoryReadPort_TypeDef(byteAddrWidth, dataWidth))
+    val writeC    = slave(MemoryWritePort_TypeDef(byteAddrWidth, dataWidth))
     val switchC   = in Bool()
     val dmaDoneC  = in Bool()
 
-    // === Ports Connecting to BRAMs ===
-    val memA_read     = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
-    val memA_write    = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
-    val memB_read     = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
-    val memB_write    = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
-    val memC_read     = master(MemoryReadPort_TypeDef(addrWidth + 1, dataWidth))
-    val memC_write    = master(MemoryWritePort_TypeDef(addrWidth + 1, dataWidth))
+    // === Ports Connecting to BRAMs (byte addr + bank bit) ===
+    val memA_read     = master(MemoryReadPort_TypeDef(byteAddrWidth + 1, dataWidth))
+    val memA_write    = master(MemoryWritePort_TypeDef(byteAddrWidth + 1, dataWidth))
+    val memB_read     = master(MemoryReadPort_TypeDef(byteAddrWidth + 1, dataWidth))
+    val memB_write    = master(MemoryWritePort_TypeDef(byteAddrWidth + 1, dataWidth))
+    val memC_read     = master(MemoryReadPort_TypeDef(byteAddrWidth + 1, dataWidth))
+    val memC_write    = master(MemoryWritePort_TypeDef(byteAddrWidth + 1, dataWidth))
   }
 
   // =============================
@@ -165,6 +168,9 @@ object MatrixCacheController_verilog {
 
 
 case class MatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) extends Component {
+  val byteOffset = log2Up(dataWidth / 8)
+  val byteAddrWidth = addrWidth + byteOffset
+
   val io = new Bundle {
     // === 1. AXI4-Lite Config & Status Interface ===
     val axi = slave(AxiLite4(addressWidth = 8, dataWidth = 32))
@@ -173,20 +179,20 @@ case class MatrixCache(addrWidth: Int, dataWidth: Int, lifeWidth: Int = 16) exte
     val globalIntr = out Bool()
 
     // === 3. Cache A (Input) ===
-    val readA     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    val writeA    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val readA     = slave(MemoryReadPort_TypeDef(byteAddrWidth, dataWidth))
+    val writeA    = slave(MemoryWritePort_TypeDef(byteAddrWidth, dataWidth))
     val switchA   = in Bool()
     val dmaDoneA  = in Bool()
 
     // === 4. Cache B (Input) ===
-    val readB     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    val writeB    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val readB     = slave(MemoryReadPort_TypeDef(byteAddrWidth, dataWidth))
+    val writeB    = slave(MemoryWritePort_TypeDef(byteAddrWidth, dataWidth))
     val switchB   = in Bool()
     val dmaDoneB  = in Bool()
 
     // === 5. Cache C (Output) ===
-    val readC     = slave(MemoryReadPort_TypeDef(addrWidth, dataWidth))
-    val writeC    = slave(MemoryWritePort_TypeDef(addrWidth, dataWidth))
+    val readC     = slave(MemoryReadPort_TypeDef(byteAddrWidth, dataWidth))
+    val writeC    = slave(MemoryWritePort_TypeDef(byteAddrWidth, dataWidth))
     val switchC   = in Bool()
     val dmaDoneC  = in Bool()
   }
