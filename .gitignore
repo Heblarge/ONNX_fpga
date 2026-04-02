@@ -64,6 +64,11 @@ java_hw_each_layer_outputs/*
 java_dl4j_each_layer_outputs/*
 java_dl4j_final_layer_outputs/*
 onnx_debug_py/java_hw_final_layer_outputs/*
+datasets_results/*
+datasets_results_all_layer/*
 
 vfastLog/*
 project/*
+datasets_results_Sloper4D.zip
+tb_EXP_function_absolute_error.png
+tb_EXP_function_absolute_error.png
