@@ -272,6 +272,7 @@ case class SlicerWrap(slicerCfg: SlicerCfg) extends Component {
   io.memoryReadPortA.Valid := slicer.io.memoryReadPortA.Valid
   io.memoryReadPortA.Address := slicer.io.memoryReadPortA.Address
   io.memoryReadPortA.clk := ClockDomain.current.readClockWire
+  io.memoryReadPortA.rst := ClockDomain.current.readResetWire
 
   val bLanes32 = io.memoryReadPortB.Data.subdivideIn(32 bits)
   val bLanesN = Vec(Bits(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
@@ -283,6 +284,7 @@ case class SlicerWrap(slicerCfg: SlicerCfg) extends Component {
   io.memoryReadPortB.Valid := slicer.io.memoryReadPortB.Valid
   io.memoryReadPortB.Address := slicer.io.memoryReadPortB.Address
   io.memoryReadPortB.clk := ClockDomain.current.readClockWire
+  io.memoryReadPortB.rst := ClockDomain.current.readResetWire
 
   slicer.io.inst.payload.assignFromInst(io.inst.payload)
   slicer.io.inst.valid <> io.inst.valid
