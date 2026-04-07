@@ -63,7 +63,9 @@ verdiLog/
 java_hw_each_layer_outputs/*
 java_dl4j_each_layer_outputs/*
 java_dl4j_final_layer_outputs/*
-onnx_debug_py/java_hw_final_layer_outputs/*
+onnx_debug_py/*
+datasets_results/*
+datasets_results_all_layer/*
 
 vfastLog/*
 project/*
@@ -79,3 +81,16 @@ memory-bank/activeContext.md
 prompt/
 report/
 benchmark_results/
+
+datasets_results_Sloper4D.zip
+tb_EXP_function_absolute_error.png
+tb_EXP_function_absolute_error.png
+tb_EXP_function_absolute_error.png
+
+bin_values.txt
+pb_values.txt
+error_details.txt
+tb_LN_function_absolute_error.png
+tb_LN_function_comparison.png
+tb_LN_function_relative_error.png
+

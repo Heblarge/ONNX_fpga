@@ -18,8 +18,8 @@ case class Softplus_function_cfg(
   def softplusx_Type = SInt(bit_all bits) // 最终输出位宽
 
   // 添加输入范围定义
-  val x_in_Min = t_range._1.toDouble
-  val x_in_Max = t_range._2.toDouble - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算
+  val x_in_Min = -256                                // (-256.0, 239.722412109375)
+  val x_in_Max = 256 - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算
 }
 
 case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
@@ -84,12 +84,35 @@ case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
   val xm  = rem >> K3
   val xl  = rem - (xm << K3)
 
+  val xh_reg = RegNext(xh)
+  val xm_reg = RegNext(xm)
+  val xl_reg = RegNext(xl)
+
   // 查表阶段
-  val P_raw = P_table((xh.resize(K1 bits) ## xm.resize(K2 bits)).asUInt)
-  val N_raw = N_table((xh.resize(K1 bits) ## xl.resize(K3 bits)).asUInt)
+  val P_raw = RegNext(P_table((xh_reg.resize(K1 bits) ## xm_reg.resize(K2 bits)).asUInt))
+  val N_raw = RegNext(N_table((xh_reg.resize(K1 bits) ## xl_reg.resize(K3 bits)).asUInt))
 
-  val sum = P_raw + N_raw
+  val sum = RegNext(P_raw + N_raw)
 
-  io.softplusx.payload := RegNext(sum) init 0
-  io.softplusx.valid := RegNext(io.x.valid) init False
+  val validVec = Vec(Reg(Bool()) init False, 5)
+  validVec.reduceLeft((a, b) => {b := a;b})
+  validVec(0) := io.x.valid
+  val xVec = Vec(Reg(x_Type) init 0, 3)
+  xVec.reduceLeft((a, b) => {b := a;b})
+  xVec(0) := io.x.payload
+
+  val lowerBound = S(t_range._1 << bit_frac, bit_all bits)
+  val upperBound = S(t_range._2 << bit_frac, bit_all bits)
+  val final_val = SInt(bit_all bits)
+
+  when(xVec(2) < lowerBound) {
+    final_val := 0
+  } elsewhen (xVec(2) > upperBound) {
+    final_val := xVec(2)
+  } otherwise {
+    final_val := sum
+  }
+
+  io.softplusx.payload := RegNext(final_val) init 0
+  io.softplusx.valid := validVec(3) init False
 }

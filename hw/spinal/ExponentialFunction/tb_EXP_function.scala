@@ -179,7 +179,7 @@ object tb_EXP_function extends App {
   val cfg = EXP_function_cfg(
     bit_int = 16,
     bit_frac = 16,
-    x_max = 3
+    x_max = 6
   )
   val report = SpinalConfig(
       targetDirectory = "rtl/ExponentialFunction/tb_EXP_function_report",
@@ -201,7 +201,7 @@ object tb_EXP_function extends App {
 
   val random = new scala.util.Random
   val start = -3 * Math.pow(2, cfg.bit_frac).toInt
-  val end =  2 * Math.pow(2, cfg.bit_frac).toInt
+  val end =  (5.36 * Math.pow(2, cfg.bit_frac)).toInt
   val step = (end - start) / 499 // 199 steps to get 200 points
 
   val x_iter = (start to end by step).map(_.toInt).iterator
