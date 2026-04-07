@@ -73,3 +73,10 @@ datasets_results_Sloper4D.zip
 tb_EXP_function_absolute_error.png
 tb_EXP_function_absolute_error.png
 tb_EXP_function_absolute_error.png
+
+bin_values.txt
+pb_values.txt
+error_details.txt
+tb_LN_function_absolute_error.png
+tb_LN_function_comparison.png
+tb_LN_function_relative_error.png
