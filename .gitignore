@@ -94,3 +94,6 @@ tb_LN_function_absolute_error.png
 tb_LN_function_comparison.png
 tb_LN_function_relative_error.png
 
+#python scripts
+sw/python/
+sw/scala/test/resources/

@@ -77,7 +77,15 @@ case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
   val P_table = generatePTable()
   val N_table = generateNTable()
 
-  // 计算索引
+  // 渐近边界定点常量: t_max << bit_frac 和 t_min << bit_frac
+  val tMaxFixed = S(t_range._2 << bit_frac, bit_all bits)
+  val tMinFixed = S(t_range._1 << bit_frac, bit_all bits)
+
+  // 渐近判断: softplus(x) ≈ x when x >> 0, softplus(x) ≈ 0 when x << 0
+  val isAboveRange = io.x.payload >= tMaxFixed
+  val isBelowRange = io.x.payload <= tMinFixed
+
+  // 计算索引 (LUT path)
   val idx = (((io.x.payload) - S(t_range._1 << bit_frac, bit_all bits)) * scale_inv) >> bit_frac
   val xh  = idx >> (K2 + K3)
   val rem = idx - (xh << (K2 + K3))
@@ -115,4 +123,18 @@ case class Softplus_function(cfg: Softplus_function_cfg) extends Component {
 
   io.softplusx.payload := RegNext(final_val) init 0
   io.softplusx.valid := validVec(3) init False
+
+  
+  // 输出选择: 超上界→y=x, 超下界→y=0, 范围内→LUT结果
+  // val result = SInt(bit_all bits)
+  // when(isAboveRange) {
+  //   result := io.x.payload
+  // }.elsewhen(isBelowRange) {
+  //   result := S(0, bit_all bits)
+  // }.otherwise {
+  //   result := sum
+  // }
+
+  // io.softplusx.payload := RegNext(result) init 0
+  // io.softplusx.valid := RegNext(io.x.valid) init False
 }

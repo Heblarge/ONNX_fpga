@@ -77,12 +77,18 @@
 
 地址宽度：8 位（256 字节寄存器空间），数据宽度：32 位。
 
+寄存器偏移由 `StrideDmaConfig.REG_*` 常量定义，支持 32/64 位 DDR 地址自动适配。
+当 `ddrAddrWidth > 32` 时，`MAT_BASE` 在 32 位 AXI-Lite 总线上自动跨越多个 word，
+后续寄存器偏移相应后移。
+
+#### ddrAddrWidth = 32（默认，向后兼容）
+
 | 偏移 | 名称 | 读/写 | 默认值 | 说明 |
 |------|------|-------|--------|------|
 | 0x00 | CTRL | R/W | 0x0 | 控制寄存器 |
 | 0x04 | STATUS | R | 0x0 | 状态寄存器 |
 | 0x08 | INTR_CLR | W | - | 中断清除 |
-| 0x0C | MAT_BASE | R/W | 0x0 | 大矩阵 DDR 基地址 |
+| 0x0C | MAT_BASE | R/W | 0x0 | 大矩阵 DDR 基地址（32 位，占 1 word） |
 | 0x10 | LOCAL_BASE | R/W | 0x0 | BRAM 本地基地址 |
 | 0x14 | MAT_COLS | R/W | 0x0 | 矩阵总列数（列 = beat 数） |
 | 0x18 | MAT_ROWS | R/W | 0x0 | 矩阵总行数 |
@@ -92,6 +98,28 @@
 | 0x28 | TILE_ROW_POS | R/W | 0x0 | 当前 tile 行起始位置 |
 | 0x2C | ACTUAL_COLS | R | 0x0 | 实际传输宽度（硬件计算，只读） |
 | 0x30 | ACTUAL_ROWS | R | 0x0 | 实际传输高度（硬件计算，只读） |
+
+#### ddrAddrWidth = 64（64 位地址扩展）
+
+| 偏移 | 名称 | 读/写 | 默认值 | 说明 |
+|------|------|-------|--------|------|
+| 0x00 | CTRL | R/W | 0x0 | 控制寄存器 |
+| 0x04 | STATUS | R | 0x0 | 状态寄存器 |
+| 0x08 | INTR_CLR | W | - | 中断清除 |
+| 0x0C | MAT_BASE_LO | R/W | 0x0 | DDR 基地址低 32 位 |
+| 0x10 | MAT_BASE_HI | R/W | 0x0 | DDR 基地址高 32 位 |
+| 0x14 | LOCAL_BASE | R/W | 0x0 | BRAM 本地基地址 |
+| 0x18 | MAT_COLS | R/W | 0x0 | 矩阵总列数（列 = beat 数） |
+| 0x1C | MAT_ROWS | R/W | 0x0 | 矩阵总行数 |
+| 0x20 | TILE_COLS | R/W | 0x0 | 分块标称宽度（beat 数） |
+| 0x24 | TILE_ROWS | R/W | 0x0 | 分块标称高度 |
+| 0x28 | TILE_COL_POS | R/W | 0x0 | 当前 tile 列起始位置（beat 数） |
+| 0x2C | TILE_ROW_POS | R/W | 0x0 | 当前 tile 行起始位置 |
+| 0x30 | ACTUAL_COLS | R | 0x0 | 实际传输宽度（硬件计算，只读） |
+| 0x34 | ACTUAL_ROWS | R | 0x0 | 实际传输高度（硬件计算，只读） |
+
+> **注意**：在 Scala/SpinalHDL 代码中，寄存器偏移统一使用 `StrideDmaConfig.REG_*` 常量获取，
+> 无需关心具体数值。硬件生成时自动根据 `ddrAddrWidth` 选择正确的偏移。
 
 ### 3.2 CTRL 寄存器 (0x00) 位域
 
@@ -189,14 +217,27 @@ BRAM 地址 (words):
 ```scala
 import DMA._
 
-val dmaCfg = StrideDmaConfig(
+// 32 位地址（默认，支持 4 GB）
+val dmaCfg32 = StrideDmaConfig(
   ddrAddrWidth   = 32,       // DDR 地址宽度
   localAddrWidth = 20,       // BRAM 地址宽度 (1 MB)
   dataWidth      = 256,      // 数据总线宽度
   maxBurstLen    = 256       // AXI4 最大 burst
 )
 
-val dma = StrideDma(dmaCfg)
+// 64 位地址（支持 >4 GB，如 HBM/大容量 DDR）
+val dmaCfg64 = StrideDmaConfig(
+  ddrAddrWidth   = 64,       // 64 位地址
+  localAddrWidth = 20,
+  dataWidth      = 256,
+  maxBurstLen    = 256
+)
+
+// 获取寄存器偏移（自动适配地址位宽）
+println(s"REG_MAT_BASE   = 0x${dmaCfg64.REG_MAT_BASE.toHexString}")
+println(s"REG_LOCAL_BASE = 0x${dmaCfg64.REG_LOCAL_BASE.toHexString}")
+
+val dma = StrideDma(dmaCfg64)  // 或 dmaCfg32
 ```
 
 ### 5.2 系统级连接（SpinalHDL 示例）
@@ -258,6 +299,8 @@ processor.io.irq(0) := dma.io.intr
 
 ### 6.1 寄存器地址定义 (C/C++)
 
+#### 32 位地址模式（默认）
+
 ```c
 #include <stdint.h>
 
@@ -293,14 +336,55 @@ processor.io.irq(0) := dma.io.intr
 #define REG_RD(addr)       (*(volatile uint32_t *)(addr))
 ```
 
+#### 64 位地址模式（ddrAddrWidth=64）
+
+```c
+// 64 位模式下 MAT_BASE 占 2 个 word，后续寄存器偏移 +4
+#define DMA_BASE           0x40000000
+
+#define DMA_CTRL           (DMA_BASE + 0x00)
+#define DMA_STATUS         (DMA_BASE + 0x04)
+#define DMA_INTR_CLR       (DMA_BASE + 0x08)
+#define DMA_MAT_BASE_LO    (DMA_BASE + 0x0C)  // 基地址低 32 位
+#define DMA_MAT_BASE_HI    (DMA_BASE + 0x10)  // 基地址高 32 位
+#define DMA_LOCAL_BASE     (DMA_BASE + 0x14)
+#define DMA_MAT_COLS       (DMA_BASE + 0x18)
+#define DMA_MAT_ROWS       (DMA_BASE + 0x1C)
+#define DMA_TILE_COLS      (DMA_BASE + 0x20)
+#define DMA_TILE_ROWS      (DMA_BASE + 0x24)
+#define DMA_TILE_COL_POS   (DMA_BASE + 0x28)
+#define DMA_TILE_ROW_POS   (DMA_BASE + 0x2C)
+#define DMA_ACTUAL_COLS    (DMA_BASE + 0x30)   // 只读
+#define DMA_ACTUAL_ROWS    (DMA_BASE + 0x34)   // 只读
+
+// 设置 64 位矩阵基地址
+void dma_set_mat_base_64(uint64_t addr) {
+    REG_WR(DMA_MAT_BASE_LO, (uint32_t)(addr & 0xFFFFFFFF));
+    REG_WR(DMA_MAT_BASE_HI, (uint32_t)(addr >> 32));
+}
+```
+
 ### 6.2 基本 API 函数
 
 ```c
 // 一次性设置矩阵参数（切换矩阵时调用）
+// 32 位地址版本
 void dma_setup_matrix(uint32_t mat_base, uint32_t local_base,
                       uint16_t mat_cols, uint16_t mat_rows,
                       uint16_t tile_cols, uint16_t tile_rows) {
     REG_WR(DMA_MAT_BASE,   mat_base);
+    REG_WR(DMA_LOCAL_BASE,  local_base);
+    REG_WR(DMA_MAT_COLS,   mat_cols);
+    REG_WR(DMA_MAT_ROWS,   mat_rows);
+    REG_WR(DMA_TILE_COLS,  tile_cols);
+    REG_WR(DMA_TILE_ROWS,  tile_rows);
+}
+
+// 64 位地址版本
+void dma_setup_matrix_64(uint64_t mat_base, uint32_t local_base,
+                         uint16_t mat_cols, uint16_t mat_rows,
+                         uint16_t tile_cols, uint16_t tile_rows) {
+    dma_set_mat_base_64(mat_base);
     REG_WR(DMA_LOCAL_BASE,  local_base);
     REG_WR(DMA_MAT_COLS,   mat_cols);
     REG_WR(DMA_MAT_ROWS,   mat_rows);
@@ -542,7 +626,7 @@ maxBeatsPerBurst = min(maxBurstLen, 4096 / 32) = min(256, 128) = 128 beats
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `ddrAddrWidth` | 32 | DDR 地址宽度（位），32 位支持 4 GB |
+| `ddrAddrWidth` | 32 | DDR 地址宽度（位），32 位支持 4 GB，设为 64 支持 >4 GB |
 | `localAddrWidth` | 20 | BRAM 地址宽度（位），20 位 = 1 MB |
 | `dataWidth` | 256 | 数据总线宽度（位），与 DDR 控制器匹配 |
 | `maxBurstLen` | 256 | AXI4 最大突发长度 |

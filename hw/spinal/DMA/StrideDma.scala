@@ -16,20 +16,23 @@ import spinal.lib.fsm._
 //   - 内置 4KB AXI 突发边界分割
 //   - 支持双向：DDR → Local（提取分块）和 Local → DDR（拼合分块）
 //
-// 寄存器映射 (AXI4-Lite):
-//   0x00: CTRL        [0]=start (W1S), [1]=direction (0=DDR→Local, 1=Local→DDR)
-//   0x04: STATUS      [0]=busy, [1]=done/intr
-//   0x08: INTR_CLR    [0]=write 1 to clear
-//   0x0C: MAT_BASE    大矩阵 DDR 基地址
-//   0x10: LOCAL_BASE   BRAM 基地址
-//   0x14: MAT_COLS    矩阵总列数 (beats)
-//   0x18: MAT_ROWS    矩阵总行数
-//   0x1C: TILE_COLS   分块标称宽度 (beats)
-//   0x20: TILE_ROWS   分块标称高度
-//   0x24: TILE_COL_POS 当前分块列起始位置 (beats)
-//   0x28: TILE_ROW_POS 当前分块行起始位置
-//   0x2C: ACTUAL_COLS  (只读) 实际传输宽度 = min(tileCols, matCols - tileColPos)
-//   0x30: ACTUAL_ROWS  (只读) 实际传输高度 = min(tileRows, matRows - tileRowPos)
+// 寄存器映射 (AXI4-Lite)，偏移地址见 StrideDmaConfig.REG_* 常量:
+//   REG_CTRL        [0]=start (W1S), [1]=direction (0=DDR→Local, 1=Local→DDR)
+//   REG_STATUS      [0]=busy, [1]=done/intr
+//   REG_INTR_CLR    [0]=write 1 to clear
+//   REG_MAT_BASE    大矩阵 DDR 基地址 (ddrAddrWidth>32 时占多个 word)
+//   REG_LOCAL_BASE   BRAM 基地址
+//   REG_MAT_COLS    矩阵总列数 (beats)
+//   REG_MAT_ROWS    矩阵总行数
+//   REG_TILE_COLS   分块标称宽度 (beats)
+//   REG_TILE_ROWS   分块标称高度
+//   REG_TILE_COL_POS 当前分块列起始位置 (beats)
+//   REG_TILE_ROW_POS 当前分块行起始位置
+//   REG_ACTUAL_COLS  (只读) 实际传输宽度 = min(tileCols, matCols - tileColPos)
+//   REG_ACTUAL_ROWS  (只读) 实际传输高度 = min(tileRows, matRows - tileRowPos)
+//
+// 注意: 当 ddrAddrWidth=32 时偏移与旧版兼容 (0x00,0x04,...,0x30)。
+//       当 ddrAddrWidth=64 时 MAT_BASE 占 2 个 word，后续寄存器自动偏移 +4。
 //
 // 硬件在 start 时自动计算：
 //   ddrAddr  = matBase + tileRowPos * matCols * bytesPerBeat + tileColPos * bytesPerBeat
@@ -47,6 +50,23 @@ case class StrideDmaConfig(
   val bytesPerBeat: Int = dataWidth / 8
   // 4KB AXI 边界限制：单次突发最大 beats = min(maxBurstLen, 4096 / bytesPerBeat)
   val maxBeatsPerBurst: Int = scala.math.min(maxBurstLen, 4096 / bytesPerBeat)
+
+  // 寄存器偏移（自动适配 DDR 地址位宽 >32 位的情况）
+  // matBase 寄存器在 32 位 AXI-Lite 总线上占用 ceil(ddrAddrWidth/32) 个 word
+  private val addrRegBytes: Int = ((ddrAddrWidth + 31) / 32) * 4
+  val REG_CTRL:         Int = 0x00
+  val REG_STATUS:       Int = 0x04
+  val REG_INTR_CLR:     Int = 0x08
+  val REG_MAT_BASE:     Int = 0x0C
+  val REG_LOCAL_BASE:   Int = REG_MAT_BASE + addrRegBytes
+  val REG_MAT_COLS:     Int = REG_LOCAL_BASE + 0x04
+  val REG_MAT_ROWS:     Int = REG_MAT_COLS + 0x04
+  val REG_TILE_COLS:    Int = REG_MAT_ROWS + 0x04
+  val REG_TILE_ROWS:    Int = REG_TILE_COLS + 0x04
+  val REG_TILE_COL_POS: Int = REG_TILE_ROWS + 0x04
+  val REG_TILE_ROW_POS: Int = REG_TILE_COL_POS + 0x04
+  val REG_ACTUAL_COLS:  Int = REG_TILE_ROW_POS + 0x04
+  val REG_ACTUAL_ROWS:  Int = REG_ACTUAL_COLS + 0x04
 }
 
 case class StrideDma(cfg: StrideDmaConfig) extends Component {
@@ -111,21 +131,31 @@ case class StrideDma(cfg: StrideDmaConfig) extends Component {
   val actualCols = Reg(UInt(16 bits)) init 0
   val actualRows = Reg(UInt(16 bits)) init 0
 
-  busCtrl.setOnSet(startPulse, address = 0x00, bitOffset = 0)
-  busCtrl.readAndWrite(direction,  address = 0x00, bitOffset = 1)
-  busCtrl.read(busy,    address = 0x04, bitOffset = 0)
-  busCtrl.read(intrReg, address = 0x04, bitOffset = 1)
-  busCtrl.setOnSet(intrClear, address = 0x08, bitOffset = 0)
-  busCtrl.readAndWrite(matBase,    address = 0x0C)
-  busCtrl.readAndWrite(localBase,  address = 0x10)
-  busCtrl.readAndWrite(matCols,    address = 0x14)
-  busCtrl.readAndWrite(matRows,    address = 0x18)
-  busCtrl.readAndWrite(tileCols,   address = 0x1C)
-  busCtrl.readAndWrite(tileRows,   address = 0x20)
-  busCtrl.readAndWrite(tileColPos, address = 0x24)
-  busCtrl.readAndWrite(tileRowPos, address = 0x28)
-  busCtrl.read(actualCols, address = 0x2C)
-  busCtrl.read(actualRows, address = 0x30)
+  busCtrl.setOnSet(startPulse, address = cfg.REG_CTRL, bitOffset = 0)
+  busCtrl.readAndWrite(direction,  address = cfg.REG_CTRL, bitOffset = 1)
+  busCtrl.read(busy,    address = cfg.REG_STATUS, bitOffset = 0)
+  busCtrl.read(intrReg, address = cfg.REG_STATUS, bitOffset = 1)
+  busCtrl.setOnSet(intrClear, address = cfg.REG_INTR_CLR, bitOffset = 0)
+
+  // matBase 可能 >32 位，需拆分映射到多个 32-bit word
+  if (cfg.ddrAddrWidth <= 32) {
+    busCtrl.readAndWrite(matBase, address = cfg.REG_MAT_BASE)
+  } else {
+    // 低 32 位
+    busCtrl.readAndWrite(matBase(31 downto 0), address = cfg.REG_MAT_BASE)
+    // 高位
+    busCtrl.readAndWrite(matBase(cfg.ddrAddrWidth - 1 downto 32), address = cfg.REG_MAT_BASE + 4)
+  }
+
+  busCtrl.readAndWrite(localBase,  address = cfg.REG_LOCAL_BASE)
+  busCtrl.readAndWrite(matCols,    address = cfg.REG_MAT_COLS)
+  busCtrl.readAndWrite(matRows,    address = cfg.REG_MAT_ROWS)
+  busCtrl.readAndWrite(tileCols,   address = cfg.REG_TILE_COLS)
+  busCtrl.readAndWrite(tileRows,   address = cfg.REG_TILE_ROWS)
+  busCtrl.readAndWrite(tileColPos, address = cfg.REG_TILE_COL_POS)
+  busCtrl.readAndWrite(tileRowPos, address = cfg.REG_TILE_ROW_POS)
+  busCtrl.read(actualCols, address = cfg.REG_ACTUAL_COLS)
+  busCtrl.read(actualRows, address = cfg.REG_ACTUAL_ROWS)
 
   when(intrClear) { intrReg := False }
   io.intr := intrReg

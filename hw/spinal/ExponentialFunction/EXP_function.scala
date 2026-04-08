@@ -64,9 +64,11 @@ case class EXP_function_cfg(
   val rotate = bit_int// nof loop for CORDIC computation
   //如果rotate = bit_int则整数和小数部分的计算会同时完成
 
-  // 输入范围定义 - 基于测试实际范围
-  val x_in_Min = -2048  //(float: -2048)
-  val x_in_Max = 6 - (1 * Math.pow(2, -bit_frac))  // 动态根据bit_frac计算  float: 5.35546875
+  // 输入范围定义 - 匹配硬件实际能力
+  // 负方向：exp_int_neg_table 覆盖 bit_int 位，安全范围到 -(2^bit_int - 1)
+  // 正方向：exp_int_pos_table 覆盖 log2Up(x_max) 位，安全范围到 x_max
+  val x_in_Min = -(Math.pow(2, bit_int) - 1)  // 硬件支持的完整负范围
+  val x_in_Max = x_max.toDouble - Math.pow(2, -bit_frac)  // 硬件支持的完整正范围
   def x_type = SInt(1+bit_int + bit_frac bits)
   def expx_int_bit = log2Up(Math.exp(x_max).ceil.toInt)
   def expx_bit = expx_int_bit + bit_frac
@@ -105,9 +107,9 @@ case class EXP_function(cfg : EXP_function_cfg) extends Component {
   val poweroftwo = (1 until( rotate+1)).map(i => U(((1/pow2(i))*pow2(bit_frac)).toInt,bit_frac bits))
   val expx_int = Vec(Reg(expx_type) init 0,size =bit_int+1)//结果整数部分
   val expx_frac = Vec(Reg(expx_type) init 0,size = rotate+1)//结果小数部分
-  val exp_frac = (1 until(rotate+1)).map(i => U(Math.round(Math.exp(1/pow2(i))*pow2(bit_frac)).toInt,expx_bit bits))
-  val exp_int_pos = (0 until log2Up(x_max)).map(i => U(Math.round(Math.exp(pow2(i))*pow2(bit_frac)).toInt,expx_bit bits))
-  val exp_int_neg = (0 until bit_int).map(i => U(Math.round(Math.exp(-pow2(i))*pow2(bit_frac)).toInt,expx_bit bits))
+  val exp_frac = (1 until(rotate+1)).map(i => U(BigInt(Math.round(Math.exp(1/pow2(i))*pow2(bit_frac))),expx_bit bits))
+  val exp_int_pos = (0 until log2Up(x_max)).map(i => U(BigInt(Math.round(Math.exp(pow2(i))*pow2(bit_frac))),expx_bit bits))
+  val exp_int_neg = (0 until bit_int).map(i => U(BigInt(Math.round(Math.exp(-pow2(i))*pow2(bit_frac))),expx_bit bits))
   val expx_final  = Reg(expx_type) init 0
 
   //give control signals and first x
@@ -159,7 +161,30 @@ for (i <- 0 until rotate){
     }
   }
 
-  expx_final := (expx_frac.last * expx_int.last).floor(bit_frac).sat(expx_int_bit)
+  // Asymptotic boundary detection: exp(x) → 0 for very negative x, saturate for x > x_max
+  val xMinFixed = S(BigInt(-((1L << bit_int) - 1)) << bit_frac, (1 + bit_int + bit_frac) bits)
+  val xMaxFixed = S(BigInt(x_max.toLong << bit_frac) - 1, (1 + bit_int + bit_frac) bits)
+
+  val isUnderflow = io.x.payload < xMinFixed
+  val isOverflow  = io.x.payload > xMaxFixed
+
+  // Pipeline bypass flags to align with expx_frac.last / expx_int.last (rotate+1 stages)
+  val underflowPipe = Vec(Reg(Bool()) init False, rotate + 1)
+  underflowPipe(0) := isUnderflow && io.x.valid
+  underflowPipe.reduceLeft((a, b) => { b := a; b })
+
+  val overflowPipe = Vec(Reg(Bool()) init False, rotate + 1)
+  overflowPipe(0) := isOverflow && io.x.valid
+  overflowPipe.reduceLeft((a, b) => { b := a; b })
+
+  // Output with asymptotic bypass
+  when(underflowPipe.last) {
+    expx_final := 0
+  }.elsewhen(overflowPipe.last) {
+    expx_final := U((BigInt(1) << expx_bit) - 1, expx_bit bits)
+  }.otherwise {
+    expx_final := (expx_frac.last * expx_int.last).floor(bit_frac).sat(expx_int_bit)
+  }
 
   io.expx_valid_p1 := validVec(rotate)
   io.expx_valid_p2 := validVec(rotate-1)

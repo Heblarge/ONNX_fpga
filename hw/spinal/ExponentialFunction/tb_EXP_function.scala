@@ -48,16 +48,15 @@ class EXP_function_sw(cfg: EXP_function_cfg) {
   private def getBit(n: Long, k: Int): Boolean = (n & (1L << k)) != 0
 
   def compute(x: Int): Long = {
-    // 输入范围检查断言
     val scale_factor = 1 << bit_frac
-    val min_fixed = Math.round(x_in_Min * scale_factor).toInt
-    val max_fixed = Math.round(x_in_Max * scale_factor).toInt
-    val x_float = x.toDouble / scale_factor
-    assert(x >= min_fixed && x <= max_fixed,
-      s"EXP_function_sw.compute(x:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
-      s"Input: fixed-point x=$x (float: $x_float), " +
-      s"float range: [$x_in_Min, $x_in_Max], " +
-      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
+    val tMinFixed = -(((1L << bit_int) - 1) << bit_frac)
+    val tMaxFixed = (x_max.toLong << bit_frac) - 1
+    val maxOutput = (1L << expx_bit) - 1
+
+    // Asymptotic handling: matches hardware bypass logic
+    // exp(x) → 0 for very negative x, saturate for x > x_max
+    if (x < tMinFixed) return 0L
+    if (x > tMaxFixed) return maxOutput
 
     // ------------------------------------
     // 初始值设置 (与硬件一致)
@@ -200,9 +199,9 @@ object tb_EXP_function extends App {
 
 
   val random = new scala.util.Random
-  val start = -3 * Math.pow(2, cfg.bit_frac).toInt
-  val end =  (5.36 * Math.pow(2, cfg.bit_frac)).toInt
-  val step = (end - start) / 499 // 199 steps to get 200 points
+  val start = -5 * Math.pow(2, cfg.bit_frac).toInt
+  val end =  6 * Math.pow(2, cfg.bit_frac).toInt
+  val step = (end - start) / 499 // 499 steps to get 500 points
 
   val x_iter = (start to end by step).map(_.toInt).iterator
   def expx(x: Int): Int = {Math.round(Math.exp(x.toDouble / Math.pow(2,cfg.bit_frac))*Math.pow(2,cfg.bit_frac)).toInt}
@@ -293,6 +292,7 @@ object tb_EXP_function extends App {
 
 
 // —— 绘制对比图 ——
+  try {
   val fCompare = Figure()
   val pCompare = fCompare.subplot(0)
   pCompare += plot(sorted_x_values_double, sorted_ref_values_double, style = '.', name = "Reference")
@@ -310,9 +310,6 @@ object tb_EXP_function extends App {
   pAbs.title = "Absolute Error(x 1e-4) (exp(x))"
   pAbs.xlabel = "x"
   pAbs.ylabel = "|Reference - Output|(x 1e-4)"
-//  val minYA = sorted_abserror_values_double.min
-//  val maxYA = sorted_abserror_values_double.max
-//  pAbs.ylim(minYA, maxYA)
   fAbs.saveas("tb_EXP_function_absolute_error.png")
 
   // —— 相对误差（百分比） ——
@@ -322,9 +319,11 @@ object tb_EXP_function extends App {
   pRel.title = "Relative Error(x 1e-2) (%) (exp(x))"
   pRel.xlabel = "x"
   pRel.ylabel = "Error(x 1e-2) (%)"
-//  val minYR = sorted_relerror_values_double.min
-//  val maxYR = sorted_relerror_values_double.max
-//  pRel.ylim(minYR, maxYR)
   fRel.saveas("tb_EXP_function_relative_error.png")
-
+  } catch {
+    case _: java.awt.HeadlessException =>
+      println("[INFO] Skipping plots (headless environment)")
+    case e: java.awt.AWTError =>
+      println(s"[INFO] Skipping plots (no display): ${e.getMessage}")
+  }
 }

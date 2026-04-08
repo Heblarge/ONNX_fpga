@@ -260,12 +260,18 @@ class InstSim(
   def transposeSim(mat: Array[Array[Int]]) = if (doTranspose) mat.transpose else mat
 
   def systolicArraySim(matA: Array[Array[BigInt]], matB: Array[Array[BigInt]], elementWidth: Int) = {
+    // Simulate Slicer: hardware negates shiftLeft_A/B before SIntShifter,
+    // so positive field = left shift. matElementwiseShift positive = right shift,
+    // hence negate the field value.
+    val slicedA = if (shiftLeft_A != 0) matElementwiseShift(matA, -shiftLeft_A, elementWidth) else matA
+    val slicedB = if (shiftLeft_B != 0) matElementwiseShift(matB, -shiftLeft_B, elementWidth) else matB
     val matZ = matrixOperation match {
-      case MatrixOperation_TypeDef.MatMul     => matMul(matA, matB)
-      case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(matA, matB)
-      case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(matA, matB)
-      case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(matA, matB)
+      case MatrixOperation_TypeDef.MatMul     => matMul(slicedA, slicedB)
+      case MatrixOperation_TypeDef.ElementAdd => matElementwiseAdd(slicedA, slicedB)
+      case MatrixOperation_TypeDef.ElementMul => matElementwiseMul(slicedA, slicedB)
+      case MatrixOperation_TypeDef.ElementMax => matElementwiseMax(slicedA, slicedB)
     }
+    // Saturate to elementWidth bits, matching hardware SIntShifter(outWidth=elementWidth)
     transposeSim(matElementwiseShift(matZ, shiftLeft_AfterMatrixOperation, elementWidth))
   }
 
@@ -277,6 +283,7 @@ class InstSim(
       case Activation_TypeDef.Softplus => matElementwiseSoftplus(matZ, cfg)
       case Activation_TypeDef.None     => matZ
     }
+    // Saturate to elementWidth bits, matching hardware SIntShifter(outWidth=elementWidth)
     matElementwiseShift(matZ2, shiftLeft_AfterActivation, cfg.elementWidth)
   }
 

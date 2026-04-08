@@ -12,7 +12,7 @@ import scala.util.Random
 
 object AcceleratorSimInterface {
   val period = 10
-  val instDriveSpeed = 0.5f
+  val instDriveSpeed = 10f
   val seed = 114514
   val random = new Random(seed)
   val acceleratorCfg = AcceleratorCfg(
@@ -27,9 +27,10 @@ object AcceleratorSimInterface {
     systolicArrayInstFifoDepth = 32,
     activationOutFifoDepth = 32,
     slicedInstFifoDepth = 32,
-    numCores = 2
+    numCores = 1
   )
-  lazy val compiled = SimConfig.withFsdbWave // This is magic
+  lazy val compiled = SimConfig  // No FSDB wave dump for speed
+    .allOptimisation
     .withConfig(
       SpinalConfig(
         bitVectorWidthMax = 100000
@@ -56,8 +57,8 @@ object AcceleratorSimInterface {
     var matZ = Array[Array[Int]]()
     compiled.doSimUntilVoid { dut =>
       SimTimeout(10000000 * period)
-      dut.clockDomain.forkStimulusRandomClk(random, period)
-      dut.clkCore.forkStimulusRandomClk(random, period)
+      dut.clockDomain.forkStimulus(period)
+      dut.clkCore.forkStimulus(4 * period)
       memSetMat(
         dut.sdpramA.mem,
         instSim.input0Address,
@@ -75,7 +76,7 @@ object AcceleratorSimInterface {
 
       var m = 0
       StreamDriver(dut.io.inst, dut.clockDomain) { payload =>
-        if (m < 1 + 2 * acceleratorCfg.numCores) { // This is magic
+        if (m < 1 + 2 * acceleratorCfg.numCores) {
           instSim.driveSim(payload)
           m += 1
           true

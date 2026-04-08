@@ -12,6 +12,10 @@ val tensorflowVersion = "1.15.0" // 你可以根据需要调整版本号
 lazy val Onnx_SpinalHDL = (project in file("."))
   .settings(
     Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
+    Compile / unmanagedSourceDirectories += baseDirectory.value / "sw" / "scala" / "main" / "scala",
+    Test / unmanagedSourceDirectories += baseDirectory.value / "sw" / "scala" / "test" / "scala",
+    Compile / unmanagedResourceDirectories += baseDirectory.value / "sw" / "scala" / "main" / "resources",
+    Test / unmanagedResourceDirectories += baseDirectory.value / "sw" / "scala" / "test" / "resources",
     scalacOptions ++= Seq("-language:postfixOps"),
     //scalacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
     libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin,"com.github.spinalhdl" %% "spinalhdl-sim" % spinalVersion),

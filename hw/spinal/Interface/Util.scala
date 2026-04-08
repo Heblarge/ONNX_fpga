@@ -43,10 +43,28 @@ package object Util {
 
   def matElementwiseOp[T, U: ClassTag](mat: Array[Array[T]], op: T => U): Array[Array[U]] = mat.map(_.map(op))
 
+  /** Round-to-nearest right shift for BigInt: add half-LSB before truncating. */
+  def roundShiftRight(x: BigInt, shift: Int): BigInt = {
+    if (shift <= 0) x << -shift
+    else {
+      val half = BigInt(1) << (shift - 1)
+      (x + half) >> shift
+    }
+  }
+
+  /** Round-to-nearest right shift for Long: add half-LSB before truncating. */
+  def roundShiftRight(x: Long, shift: Int): Long = {
+    if (shift <= 0) x << -shift
+    else {
+      val half = 1L << (shift - 1)
+      (x + half) >> shift
+    }
+  }
+
   def matElementwiseShift(mat: Array[Array[BigInt]], shiftAmount: Int, satBits: Int) = matElementwiseOp(
     mat,
     (x: BigInt) => {
-      // require(satBits > 0 && satBits <= 32, "satBits unsupported".red)
+      // Plain arithmetic right shift to match hardware SIntShifter (truncate toward -inf)
       val y =
         if (shiftAmount > 0) x >> shiftAmount
         else x << -shiftAmount
@@ -61,7 +79,7 @@ package object Util {
   )
 
   def fixOp(fracWidth: Int, op: Double => Double) = (x: BigInt) =>
-    BigInt((op(x.toDouble / pow(2, fracWidth)) * pow(2, fracWidth)).toInt)
+    BigInt((op(x.toDouble / pow(2, fracWidth)) * pow(2, fracWidth)).toLong)
 
   def matElementwiseExp(mat: Array[Array[BigInt]], cfg: AcceleratorCfg) = {
     val EXP_sw = new EXP_function_sw(cfg.activationCfg.expCfg)

@@ -13,8 +13,9 @@ case class LN_function_cfg(
 
   val rotate = bit_frac // CORDIC 算法的迭代次数等于小数部分的位数
   val using_compensation_iters = true // 启用补偿迭代，针对特定迭代点（j=4和j=13）减少误差
-  val x_in_Min=0.2
-  val x_in_Max=6.0-(1* Math.pow(2, -bit_frac))
+  // 输入范围定义 - 匹配硬件实际能力（Normalizer可处理完整UInt范围）
+  val x_in_Min = Math.pow(2, -bit_frac)  // 最小可表示正数
+  val x_in_Max = Math.pow(2, bit_int) - Math.pow(2, -bit_frac)  // 最大可表示正数
 
   // 定义输入数据类型：无符号整数，总位数为整数部分 + 小数部分
   def x_type = UInt(bit_int + bit_frac bits)
@@ -247,8 +248,22 @@ case class LN_function(cfg: LN_function_cfg) extends Component {
     }
   }
 
+  // Asymptotic guard: ln(0) = -∞ → output minimum SInt value
+  // Detect x=0 at normalizer output (0 << anything = 0)
+  val isZeroInput = normalizer.io.valid_out && (normalizer.io.x_out === 0)
+  // Pipeline through CORDIC iterations to align with z_n.last
+  val isZeroPipe = Vec(Reg(Bool()) init False, rotate + 1)
+  isZeroPipe(0) := isZeroInput
+  isZeroPipe.reduceLeft((a, b) => { b := a; b })
+
   // 最终结果计算：z_n * 2 + k * ln(2)（定点数缩放）
-  val ln_x = ((z_n.last << 1) + iteration_k.last * ((Math.log(2) * Math.pow(2, bit_frac)).toInt)).resize(ln_bit bits)
+  val ln_x_normal = ((z_n.last << 1) + iteration_k.last * ((Math.log(2) * Math.pow(2, bit_frac)).toInt)).resize(ln_bit bits)
+  val ln_x = SInt(ln_bit bits)
+  when(isZeroPipe.last) {
+    ln_x := S(-(BigInt(1) << (ln_bit - 1)), ln_bit bits)  // most negative SInt
+  }.otherwise {
+    ln_x := ln_x_normal
+  }
 
   // 输出结果和有效信号
   io.lnx.valid := RegNext(iteration_valid.last)

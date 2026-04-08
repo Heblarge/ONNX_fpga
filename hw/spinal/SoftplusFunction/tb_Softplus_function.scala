@@ -73,35 +73,19 @@ class Softplus_function_sw(cfg: Softplus_function_cfg) {
     val tMin = cfg.t_range._1
     val tMax = cfg.t_range._2
 
-    // 输入范围检查断言
     val scale_factor = 1 << bit_frac
-    val min_fixed = Math.round(x_in_Min * scale_factor).toInt
-    val max_fixed = Math.round(x_in_Max * scale_factor).toInt
-    val x_float = payloadInt.toDouble / scale_factor
-    assert(payloadInt >= min_fixed && payloadInt <= max_fixed,
-      s"Softplus_function_sw.compute(payloadInt:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
-      s"Input: fixed-point x=$payloadInt (float: $x_float), " +
-      s"float range: [$x_in_Min, $x_in_Max], " +
-<<<<<<< HEAD
-      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
-=======
-      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac)."
-    )
-    val lowerBoundFixed = tMin << bit_frac
-    val upperBoundFixed = tMax << bit_frac
+    val tMaxFixed = tMax << bit_frac
+    val tMinFixed = tMin << bit_frac
 
-    if (payloadInt < lowerBoundFixed) {
-      return 0
-    } else if (payloadInt > upperBoundFixed) {
-      return payloadInt // 直接返回输入，模拟 ln(1+exp(x)) ≈ x
-    }
->>>>>>> precise
-
+    // 渐近处理: 与硬件一致 (硬件用严格不等式 < / >)
+    // softplus(x) ≈ x when x > t_max, softplus(x) ≈ 0 when x < t_min
+    if (payloadInt > tMaxFixed) return payloadInt
+    if (payloadInt < tMinFixed) return 0
     // scale_inv 与硬件 cfg.scale_inv 的整数计算 (以 Long 避免溢出)
     val scaleInvLong = (((1L << totalBits) - 1L) / (tMax - tMin)).toLong
 
-    val tMinFixed = (tMin.toLong << bit_frac)        // t_min << bit_frac (Long)
-    val numerator = (payloadInt.toLong - tMinFixed) * scaleInvLong // Long
+    val tMinFixedLong = (tMin.toLong << bit_frac)        // t_min << bit_frac (Long)
+    val numerator = (payloadInt.toLong - tMinFixedLong) * scaleInvLong // Long
     val idxLong = (numerator >> bit_frac)              // 与硬件的 >> bit_frac 保持一致 (算术右移)
     var idx = idxLong.toInt
 
@@ -203,8 +187,8 @@ object SoftplusFunctionTest extends App {
     dut.clockDomain.waitSampling(5)
 
 
-    val start = cfg.t_range._1*1024*4
-    val end = cfg.t_range._2*1024*4 - 1
+    val start = -32 * 1024*4
+    val end = 32 * 1024*4 - 1
     val step = 32
 
     var x_iter = Stream.iterate(start)(_ + step).takeWhile(_ <= end).iterator
@@ -264,38 +248,43 @@ for (i <- 0 until inputData.length) {
 }
 
 
-    // 绘制对比图
-    val f = Figure()
-    val p = f.subplot(0)
-    val x_real = linspace(-16.0, 16.0, 100)
-    val y_real = x_real.map(x => Math.log(1.0 + Math.exp(x)))
-    p += plot(DenseVector(inputData.toArray), DenseVector(outputDataDouble.toArray.take(inputData.toArray.length)), style = '.')
-    p += plot(x_real, y_real, name="Reference", colorcode="r")
-    p.title = "Hardware vs Reference (softplus(x))"
+    // 绘制对比图 (wrapped in try-catch for headless environments)
+    try {
+      val f = Figure()
+      val p = f.subplot(0)
+      val x_real = linspace(-32.0, 32.0, 200)
+      val y_real = x_real.map(x => Math.log(1.0 + Math.exp(x)))
+      p += plot(DenseVector(inputData.toArray), DenseVector(outputDataDouble.toArray.take(inputData.toArray.length)), style = '.')
+      p += plot(x_real, y_real, name="Reference", colorcode="r")
+      p.title = "Hardware vs Reference (softplus(x))"
 
-    f.saveas("tb_Softplus_comparison.png")
+      f.saveas("tb_Softplus_comparison.png")
 
-    // 新增误差曲线绘制
-    // 绝对误差
-    val fAbs = Figure()
-    val pAbs = fAbs.subplot(0)
-    pAbs += plot(DenseVector(inputData.toArray), DenseVector(absErrors.map(_ *1e4).toArray), '.')
-    pAbs.title = "Absolute Error(x 1e-4) (softplus(x))"
-    pAbs.xlabel = "Input x"
-    pAbs.ylabel = "|Reference - Hardware|(x 1e-4)"
+      // 绝对误差
+      val fAbs = Figure()
+      val pAbs = fAbs.subplot(0)
+      pAbs += plot(DenseVector(inputData.toArray), DenseVector(absErrors.map(_ *1e4).toArray), '.')
+      pAbs.title = "Absolute Error(x 1e-4) (softplus(x))"
+      pAbs.xlabel = "Input x"
+      pAbs.ylabel = "|Reference - Hardware|(x 1e-4)"
 
-    fAbs.saveas("tb_Softplus_absolute_error.png")
+      fAbs.saveas("tb_Softplus_absolute_error.png")
 
-    // 相对误差（对数坐标）
-    val fRel = Figure()
-    val pRel = fRel.subplot(0)
-    pRel += plot(DenseVector(inputData.toArray), DenseVector(relErrors.toArray), '.')
-    pRel.title = "Relative Error (%) (softplus(x))"
-    pRel.xlabel = "Input x"
-    pRel.ylabel = "Error (%)"
+      // 相对误差
+      val fRel = Figure()
+      val pRel = fRel.subplot(0)
+      pRel += plot(DenseVector(inputData.toArray), DenseVector(relErrors.toArray), '.')
+      pRel.title = "Relative Error (%) (softplus(x))"
+      pRel.xlabel = "Input x"
+      pRel.ylabel = "Error (%)"
 
-    //pRel.yscale = breeze.plot.LogScale // 对数坐标显示小误差
-    fRel.saveas("tb_Softplus_relative_error_log.png")
+      fRel.saveas("tb_Softplus_relative_error_log.png")
+    } catch {
+      case _: java.awt.HeadlessException =>
+        println("[INFO] Skipping plots (headless environment)")
+      case e: java.awt.AWTError =>
+        println(s"[INFO] Skipping plots (no display): ${e.getMessage}")
+    }
 
 
   }

@@ -83,16 +83,15 @@ class LN_function_sw(cfg: LN_function_cfg) {
 
   // CORDIC核心计算
   def compute(x: Int): Long = {
-    // 输入范围检查断言
     val scale_factor = 1 << bit_frac
-    val min_fixed = Math.round(x_in_Min * scale_factor).toInt
-    val max_fixed = Math.round(x_in_Max * scale_factor).toInt
-    val x_float = x.toDouble / scale_factor
-    assert(x >= min_fixed && x <= max_fixed,
-      s"LN_function_sw.compute(x:Int):\n(x>=cfg.x_in_Min)&&(x<=cfg.x_in_Max) assert failed. " +
-      s"Input: fixed-point x=$x (float: $x_float), " +
-      s"float range: [$x_in_Min, $x_in_Max], " +
-      s"fixed-point range: [$min_fixed, $max_fixed] (bit_frac=$bit_frac).")
+
+    // Asymptotic handling: matches hardware behavior
+    // Hardware uses UInt input, so x=0 → normalizer produces very negative output
+    // For x <= 0 (signed), return most negative representable value
+    if (x <= 0) {
+      val lnBit = bit_int + bit_frac  // ln output bit width (roughly)
+      return -(1L << (lnBit - 1))     // most negative SInt value
+    }
 
     // 规范化输入（与硬件一致）
     val (x_norm, k) = normalize(x)
@@ -188,13 +187,8 @@ object tb_LN_function extends App {
 // 初始化随机数生成器
   val random = new scala.util.Random
   random.setSeed(1233)
-<<<<<<< HEAD
   // 使用生成的Q12值作为输入数据源，完全覆盖配置定义的范围
   val x_iter = generateQ12Values(cfg, skipZero = true).iterator
-=======
-  // 使用生成的Q12值作为输入数据源
-  val x_iter = generateQ12Values(intRange = (cfg.x_in_Min.toInt, cfg.x_in_Max.toInt), fracBits = cfg.bit_frac, skipZero = true).iterator
->>>>>>> precise
   // 固定点输入的浮点输出计算函数
   def lnx_fixIn_fix_out(x: Int): Int = {
     Math.floor(Math.log(x.toDouble / Math.pow(2, cfg.bit_frac)) * Math.pow(2, cfg.bit_frac)).toInt
