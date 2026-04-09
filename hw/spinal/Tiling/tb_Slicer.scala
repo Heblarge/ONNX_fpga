@@ -140,7 +140,8 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum,
           slicerCfg.systolicArraySideNum
         ).transpose
-        matASub = matASub.map(row => row.map(elem => elem << instSim.shiftLeft_A))
+        matASub=matElementwiseShift(matASub.map(_.map(BigInt(_))), -instSim.shiftLeft_A, slicerCfg.elementWidthA).map(_.map(_.toInt))
+        // matASub = matASub.map(row => row.map(elem => elem << instSim.shiftLeft_A))
         var matBSub = matGetSub(
           matB,
           if (isMatMul) k * slicerCfg.systolicArraySideNum else i * slicerCfg.systolicArraySideNum,
@@ -149,7 +150,8 @@ object SlicerTb extends App {
           slicerCfg.systolicArraySideNum
         )
         if (!isMatMul) matBSub = matRotateCw(matBSub)
-        matBSub = matBSub.map(row =>row.map(elem => elem << instSim.shiftLeft_B))
+        matBSub=matElementwiseShift(matBSub.map(_.map(BigInt(_))), -instSim.shiftLeft_B, slicerCfg.elementWidthB).map(_.map(_.toInt))
+        // matBSub = matBSub.map(row =>row.map(elem => elem << instSim.shiftLeft_B))
         matASub.zip(matBSub).foreach(testRefs3 += _)
       }
       testRefs2 += testRefs3

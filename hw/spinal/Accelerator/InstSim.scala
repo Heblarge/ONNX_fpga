@@ -105,20 +105,6 @@ class InstSim(
   computeShape()
 
   def this(random: Random, matSubRowNum: Int) = {
-    // this(
-    //   InstSim.lastUID + random.nextInt(10),
-    //   random.nextSpinalEnum(MatrixOperation_TypeDef),
-    //   random.between(-2, 3),
-    //   random.nextBoolean(),
-    //   random.nextSpinalEnum(Activation_TypeDef),
-    //   random.between(-2, 3),
-    //   InstSim.lastInput0Address + random.nextInt(10),
-    //   InstSim.lastInput1Address + random.nextInt(10),
-    //   InstSim.lastOutputAddress + random.nextInt(10),
-    //   random.between(1, 10) * matSubRowNum,
-    //   random.between(1, 10) * matSubRowNum,
-    //   random.between(1, 10) * matSubRowNum
-    // )
     this(
       InstSim.lastUID + random.nextInt(10),
       random.nextSpinalEnum(MatrixOperation_TypeDef),
@@ -133,8 +119,8 @@ class InstSim(
       random.between(1, 10) * matSubRowNum,
       random.between(1, 10) * matSubRowNum,
       random.between(1, 10) * matSubRowNum,
-      0,
-      0
+      random.between(-2, 3),
+      random.between(-2, 3)
     )
     // this(
     //   InstSim.lastUID,
