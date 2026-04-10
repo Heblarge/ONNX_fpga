@@ -23,7 +23,7 @@ case class SystolicArray2D_Config(
 
                                  )
 {
-  
+
   // Z=A*B
   // 根据矩阵乘法，输出的行数就是A的行数，输出的列数就是B的列数
   val out_MatZ_row_num = in_MatA_row_num // 输出的Z矩阵的行数
@@ -62,7 +62,7 @@ case class SystolicArray2D_Config(
   SpinalInfo("out_MatZ_buffer_num=" + out_MatZ_buffer_num)
 
   // 如果要求启用转置逻辑，需要检查脉动阵列是否被配置为方阵
-  
+
   if (Enable_Transpose_logic) {
     //换而言之，也就是检查矩阵A的行数是否等于矩阵B的列数
     if (in_MatA_row_num != in_MatB_col_num) {
@@ -121,8 +121,8 @@ case class SInt_withFinalMark(element_Width: Int) extends Bundle {
   * Operation OpMode_TypeDef bundle, supports transpose, matmul, element-wise mul/add/max, and result shift.
   */
 case class OpMode_TypeDef(cfg: SystolicArray2D_Config) extends Bundle {
-  
-  
+
+
   val post_Shift = SInt(log2Up(cfg.out_MatZ_element_Width + 1) + 1 bits)//结果的截断位置
   //另外
   //如果Enable_Transpose_logic，则生成以下信号：
@@ -161,7 +161,7 @@ case class OpMode_TypeDef(cfg: SystolicArray2D_Config) extends Bundle {
     this.post_Shift:=that.Shift
     if(cfg.Enable_Transpose_logic){this.do_PostTranspose:=that.Transpose}
   }
-  
+
 }
 
 /**
@@ -177,7 +177,7 @@ object init_OpMode {
     if(cfg.Enable_Transpose_logic)
     {OpMode.do_PostTranspose := False}
     //如果Enable_ElementWise_logic，则初始化
-    if(cfg.Enable_ElementWise_logic) 
+    if(cfg.Enable_ElementWise_logic)
     {
     OpMode.MatrixOperation:= MatrixOperation_TypeDef.MatMul
   }
@@ -193,7 +193,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     */
   val enableTranspose = cfg.Enable_Transpose_logic // 转置功能使能 | Enable transpose
   val enableElementWise = cfg.Enable_ElementWise_logic // 元素级运算使能 | Enable element-wise operations
-  
+
   /**
     * Bundle defining the input matrices and operation OpMode for the systolic array.
     *
@@ -215,7 +215,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
       */
     val OpMode = OpMode_TypeDef(cfg)//操作模式
     def Ctrl:SystolicArray2DUnit_Control_TypeDef = this.OpMode.to_Ctrl
-    
+
   }
 
   def in_Mats_Bundle():in_Mats_TypeDef={new in_Mats_TypeDef(cfg)}
@@ -252,7 +252,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   val generate_next_ID=Reg(Bool()) init True
   val gray_counter = GrayCounter(cfg.ID_Width,
   enable=io.in_Mats.fire&&io.in_Mats.payload.A(0).Final)
-  
+
   val interconnects = Vec.fill(cfg.in_MatA_row_num + cfg.in_MatB_col_num)(Stream(interconnect_TypeDef(cfg)))
   // 第0级：输入直接连接到第一个interconnect
   interconnects(0) << io.in_Mats.map{payload=>
@@ -267,25 +267,25 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   def getComputeUnitIndices(stage: Int): Array[(Int, Int)] = {
     val rowStart = math.max(0, stage - cfg.in_MatB_col_num + 1)
     val rowEnd = math.min(cfg.in_MatA_row_num - 1, stage)
-  
+
     (rowStart to rowEnd)
       .map(row => (row, stage - row))
       .filter { case (_, col) => col >= 0 && col < cfg.in_MatB_col_num }
       .toArray
   }
-  
+
   def getPassthroughIndices(stage: Int): (Array[Int], Array[Int]) = {
     // 获取当前stage使用的计算单元
     val computeUnits = getComputeUnitIndices(stage)
-    
+
     // 提取使用的行和列
     val usedRows = computeUnits.map(_._1).toSet
     val usedCols = computeUnits.map(_._2).toSet
-    
+
     // 计算未使用的行和列
     val unusedRows = (0 until cfg.in_MatA_row_num).filterNot(usedRows.contains)
     val unusedCols = (0 until cfg.in_MatB_col_num).filterNot(usedCols.contains)
-    
+
     (unusedRows.toArray, unusedCols.toArray)
   }
   // 主循环：为每一级流水线创建计算逻辑和interconnect
@@ -311,7 +311,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   println(s"  Passthrough A: ${passthroughAIndices.mkString(", ")}")
   println(s"  Passthrough B: ${passthroughBIndices.mkString(", ")}")
     val validPairs_Count = computeUnitIndices.length
-    val passthroughA_Count = passthroughAIndices.length 
+    val passthroughA_Count = passthroughAIndices.length
     val passthroughB_Count= passthroughBIndices.length
     // 当前级的总信号数量
     val totalSignals = validPairs_Count+passthroughA_Count+passthroughB_Count
@@ -341,6 +341,8 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         computeUnits(row)(col).upStream<<upStream(i)
         computeUnits(row)(col).downStream>>downStream(i)
         computeUnits(row)(col).result>>ResultStreams(row)(col)
+        // 【方案1】MAX_FANOUT 约束：引导 Vivado 综合时自动复制源寄存器以降低扇出
+        ResultStreams(row)(col).payload.Z.addAttribute("MAX_FANOUT", "32")
       }
       val joined_downstreams=if(validPairs_Count>1)StreamJoin(downStream)else downStream(0)
 
@@ -356,7 +358,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         }
         if(passthroughA_Count > 1) StreamJoin(passthroughA_Stream) else passthroughA_Stream(0).toEvent()
       } else null
-      // 处理直通的列数据  
+      // 处理直通的列数据
       val joined_passthroughB_Stream = if(passthroughB_Count > 0) {
         for (i <- 0 until passthroughB_Count) {
           val col = passthroughBIndices(i)
@@ -375,7 +377,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
       ).filter(_ != null)
       val joined_All=Stream(interconnect_TypeDef(cfg))
       joined_All.arbitrationFrom(
-        if (activeStreams.size > 1) StreamJoin(activeStreams) 
+        if (activeStreams.size > 1) StreamJoin(activeStreams)
         else activeStreams.head)
       for (i <- 0 until validPairs_Count) {
         val (row, col) = computeUnitIndices(i)
@@ -429,68 +431,34 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     val OpMode = Reg(OpMode_TypeDef(cfg)) init init_OpMode(cfg) // 操作模式 | Operation OpMode
     val ID = Reg(UInt(cfg.ID_Width bits))
 
-    // 出于优化时序的考量，对buffer中的
-    // 与加法树的思想类似，使用多级寄存器来切断冗长的组合路径
-    // 按对角顺序排列 valid 值，以匹配实际数据到达的顺序
-    val total_valids = cfg.in_MatA_row_num * cfg.in_MatB_col_num
-    val all_valids_by_diagonal = Vec((0 until cfg.diag_num).flatMap { diag =>
-      (0 until cfg.in_MatA_row_num).flatMap { row =>
-        val col = diag - row
-        if (col >= 0 && col < cfg.in_MatB_col_num) {
-          Some(this.data(row)(col).valid)
-        } else {
-          None
-        }
-      }
-    })
+    // 出于优化时序的考量，利用脉动阵列按对角线顺序吐出结果的特性，
+    // 增量式地规约 valid 信号：每条对角线数据到达时，将其 diag_valid 与已累积的
+    // 寄存器做 AND。这样在最后一条对角线到达时，只需 1 级组合逻辑即可得出结果。
+    // 对比旧方案（N×N 位树形规约，calcStages 级流水线）：
+    //   - 组合深度：从 4-input AND × 多级 降低为 ≤min(N,M)-input AND + 1 个与门
+    //   - 寄存器延迟：从 calcStages(N×N) 拍 降低为 1 拍（链与数据到达同步推进）
+    //   - 寄存器数量：从 ~N×N/3 个 降低为 diag_num 个
 
-    // 四合一规约
-    def reduceBy4(input: Vec[Bool]): Vec[Bool] = {
-      val outputSize = (input.length + 3) / 4
-      Vec((0 until outputSize).map(i => {
-        val start = i * 4
-        val end = math.min(start + 4, input.length)
-        (start until end).map(j => input(j)).reduce(_ && _)
-      }))
-    }
-
-    // 动态计算所需的流水线阶段数量
-    def calcStages(n: Int): Int = if (n <= 1) 0 else 1 + calcStages((n + 3) / 4)
-    val num_stages = calcStages(total_valids)
-
-    // 检测缓冲区何时转为"Idle"状态（用于管道flush）
+    // 检测缓冲区何时转为"Idle"状态（用于累积链复位）
     val was_idle = RegNext(this.Status === out_MatZ_buffer_Status.Idle) init True
     val just_entered_idle = (this.Status === out_MatZ_buffer_Status.Idle) && !was_idle
 
-    // 动态构建流水线阶段
-    // 每个阶段：输入尺寸 -> 向上取整（输入尺寸除以 4 的结果）
-    var current_stage = all_valids_by_diagonal
-    val stage_regs = scala.collection.mutable.ArrayBuffer[Vec[Bool]]()
+    // 增量对角线 valid 累积链
+    // diag_done_accum(i) = 第 0..i 条对角线的数据是否已全部写入
+    // 每级组合深度 = diag_valid(i) 的扇入（≤min(N,M) 位 AND）+ 1 个与门
+    val diag_done_accum = Vec.fill(cfg.diag_num)(Reg(Bool()) init False)
 
-    for (stage_idx <- 0 until num_stages) {
-      val stage_comb = reduceBy4(current_stage)
-      val stage_size = stage_comb.length
-      val stage_reg = Reg(Vec(Bool(), stage_size))
-      when(just_entered_idle) {
-        stage_reg.foreach(_ := False)
-      } otherwise {
-        stage_reg := stage_comb
-      }
-      stage_reg.foreach(_ init False)
-      stage_regs += stage_reg
-      current_stage = stage_reg
-    }
-
-    // 最后规约到1位
-    val all_valid_reg_next = if (current_stage.length > 1) current_stage.reduce(_ && _) else current_stage.head
-    val all_valid_reg = Reg(Bool()) init False
     when(just_entered_idle) {
-      all_valid_reg := False
+      diag_done_accum.foreach(_ := False)
     } otherwise {
-      all_valid_reg := all_valid_reg_next
+      diag_done_accum(0) := diag_valid(0)
+      for (i <- 1 until cfg.diag_num) {
+        diag_done_accum(i) := diag_done_accum(i - 1) && diag_valid(i)
+      }
     }
-    // 最终产物all_valid
-    val all_valid = all_valids_by_diagonal.reduce(_ && _)
+
+    // all_valid_reg：最后一条对角线累积完成即表示全部 valid
+    def all_valid_reg: Bool = diag_done_accum.last
 
     // State transition logic
     when(this.Status===out_MatZ_buffer_Status.Matmul_Collecting
@@ -503,22 +471,36 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   }
   val buffer_array = Vec.fill(cfg.out_MatZ_buffer_num)(out_MatZ_buffer(cfg))
 
-  val Matmul_Unit2buffer_ptr = Vec.fill(cfg.diag_num - 1)((Reg(Flow(UInt(log2Up(cfg.out_MatZ_buffer_num) bits)))))//在Matmul模式下，Matmul_Unit2buffer_ptr(i)代表行号+列号=i所对应的计算单元分配到的缓冲区指针
+  // ========== 方案3: One-hot pointer encoding ==========
+  // binary → one-hot 编码转换: 减少指针解码逻辑的组合深度
+  def binaryToOneHot(binary: UInt, width: Int): UInt = {
+    val result = UInt(width bits)
+    result := 0
+    for (i <- 0 until width) {
+      when(binary === i) { result(i) := True }
+    }
+    result
+  }
+
+  val Matmul_Unit2buffer_ptr = Vec.fill(cfg.diag_num - 1)((Reg(Flow(UInt(cfg.out_MatZ_buffer_num bits)))))//在Matmul模式下，one-hot编码的缓冲区指针
   for (i <- 0 until cfg.diag_num-1 ) {
     Matmul_Unit2buffer_ptr(i).payload init (U(0))
     Matmul_Unit2buffer_ptr(i).valid init (False)
   }
-  val Element_Unit2buffer_ptr = enableElementWise generate 
-                                (Reg(Flow(UInt(log2Up(cfg.out_MatZ_buffer_num) bits)))
-                                )//在element-wise模式，代表了正在输出的反对角线上的计算单元输出到的缓冲区指针
+  val Element_Unit2buffer_ptr = enableElementWise generate
+                                (Reg(Flow(UInt(cfg.out_MatZ_buffer_num bits)))
+                                )//在element-wise模式，one-hot编码的缓冲区指针
   if(enableElementWise){
     Element_Unit2buffer_ptr.payload init (U(0))
     Element_Unit2buffer_ptr.valid init (False)
   }
-  val Element_col_ptr = enableElementWise generate                        
+  val Element_col_ptr = enableElementWise generate
                           Reg(UInt(log2Up(cfg.in_MatB_col_num) bits)) init 0
                         //在element-wise模式下，代表了正在输出的反对角线的计算单元输出到缓冲区中的第几列
-  
+  val element_collecting_done = enableElementWise generate
+                          RegInit(False)
+                        //element-wise模式下，当最后一列写入完成时置位，用于替代all_valid组合逻辑作为写入守卫（优化时序）
+
 
     // --- 指针管理逻辑 ---
     //新buffer片分配机制
@@ -539,57 +521,77 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         }
     }
     //matmul模式下输入指针系统
-    val request_Matmul_allocation = 
-      ((ResultStreams(0)(0).valid&& 
+    val request_Matmul_allocation =
+      ((ResultStreams(0)(0).valid&&
         (ResultStreams(0)(0).payload.Ctrl.Mode === MatrixOperation_TypeDef.MatMul)))
     val element_allocation_grant = enableElementWise generate RegInit(True) init (True)//当buffer片已经分配给Element_Unit2buffer_ptr，阻止新的request_Element_allocation生成
     val request_Element_allocation = enableElementWise generate (
       (element_allocation_grant && // 只有在获得“许可”时才申请
-      (ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.Ctrl.Mode =/= MatrixOperation_TypeDef.MatMul)) && 
+      (ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.Ctrl.Mode =/= MatrixOperation_TypeDef.MatMul)) &&
       (ResultStreams(0)(cfg.in_MatB_col_num - 1).valid)
       )
 
     // 分配逻辑
     when(request_Matmul_allocation) {
-      when(idle_buffer_found&&Matmul_Unit2buffer_ptr(0).valid===False) 
-      {// 找到空闲缓冲区，进行分配
-            Matmul_Unit2buffer_ptr(0).payload := next_idle_buffer_ptr
+      when(idle_buffer_found&&Matmul_Unit2buffer_ptr(0).valid===False)
+      {// 找到空闲缓冲区，进行分配（binary→one-hot编码转换）
+            Matmul_Unit2buffer_ptr(0).payload := binaryToOneHot(next_idle_buffer_ptr, cfg.out_MatZ_buffer_num)
             Matmul_Unit2buffer_ptr(0).valid := True
             buffer_array(next_idle_buffer_ptr).Status := out_MatZ_buffer_Status.Matmul_Collecting
             last_allocated_ptr := next_idle_buffer_ptr
       }
-    } 
-    
+    }
+
     // Matmul_Unit2buffer_ptr对角线指针传递：将前一级指针值向后传递（从高位索引向低位索引传递）
+    // 使用 one-hot per-buffer 解码替代动态索引
     for (i <- (0 until cfg.diag_num-1).reverse){// i<-{cfg.diag_num-1,cfg.diag_num-2,...,1}
-      
-        when(Matmul_Unit2buffer_ptr(i).valid&&buffer_array(Matmul_Unit2buffer_ptr(i).payload).diag_valid(i)
-          &&(buffer_array(Matmul_Unit2buffer_ptr(i).payload).Status === out_MatZ_buffer_Status.Matmul_Collecting)){
+        val ptr_i_diag_ok = Bool()
+        val ptr_i_collecting = Bool()
+        ptr_i_diag_ok := False
+        ptr_i_collecting := False
+        for (b <- 0 until cfg.out_MatZ_buffer_num) {
+          when(Matmul_Unit2buffer_ptr(i).payload(b)) {
+            ptr_i_diag_ok := buffer_array(b).diag_valid(i)
+            ptr_i_collecting := (buffer_array(b).Status === out_MatZ_buffer_Status.Matmul_Collecting)
+          }
+        }
+        when(Matmul_Unit2buffer_ptr(i).valid && ptr_i_diag_ok && ptr_i_collecting){
             if(i+1<cfg.diag_num-1)
             {Matmul_Unit2buffer_ptr(i+1) := Matmul_Unit2buffer_ptr(i)}
             Matmul_Unit2buffer_ptr(i).valid:=False
         }
-        
+
     }
 
     //mat_mul缓存逻辑
     //对于每个计算单元，当其输出结果且工作状态是mat_mul时，更新buffer的对应位置
+    //【方案1+3】per-buffer one-hot 解码写入路径，替代动态索引，便于综合工具独立优化各 buffer 写入路径
     for (row_index <- 0 until cfg.in_MatA_row_num) {
       for (col_index <- 0 until cfg.in_MatB_col_num) {
         ResultStreams(row_index)(col_index).ready:=False//默认状态
+        // one-hot解码：提取目标buffer的all_valid_reg状态
+        val ptr_not_done = Bool()
+        ptr_not_done := True  // 默认允许写入（当指针无效时不会进入下方when分支）
+        for (b <- 0 until cfg.out_MatZ_buffer_num) {
+          when(Matmul_Unit2buffer_ptr(row_index+col_index).payload(b)) {
+            ptr_not_done := !buffer_array(b).all_valid_reg
+          }
+        }
         when(ResultStreams(row_index)(col_index).valid&&
         ResultStreams(row_index)(col_index).payload.Ctrl.Mode === MatrixOperation_TypeDef.MatMul&&
-        Matmul_Unit2buffer_ptr(row_index+col_index).valid&&buffer_array(Matmul_Unit2buffer_ptr(row_index+col_index).payload).all_valid===False)
+        Matmul_Unit2buffer_ptr(row_index+col_index).valid && ptr_not_done)
         {//判定工作模式为mat_mul
-          ResultStreams(row_index)(col_index).ready:=Matmul_Unit2buffer_ptr(row_index+col_index).valid
-          when(Matmul_Unit2buffer_ptr(row_index+col_index).valid)
+          ResultStreams(row_index)(col_index).ready:=True
+          when(ResultStreams(row_index)(col_index).fire)
           {
-            when(ResultStreams(row_index)(col_index).fire)
-            {
-              buffer_array(Matmul_Unit2buffer_ptr(row_index+col_index).payload).data(row_index)(col_index).payload := ResultStreams(row_index)(col_index).payload.Z
-              buffer_array(Matmul_Unit2buffer_ptr(row_index+col_index).payload).data(row_index)(col_index).valid:=True
-              buffer_array(Matmul_Unit2buffer_ptr(row_index+col_index).payload).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
-              buffer_array(Matmul_Unit2buffer_ptr(row_index+col_index).payload).ID := ResultStreams(row_index)(col_index).payload.ID
+            // per-buffer 解码写入：每个 buffer 独立的写入路径
+            for (b <- 0 until cfg.out_MatZ_buffer_num) {
+              when(Matmul_Unit2buffer_ptr(row_index+col_index).payload(b)) {
+                buffer_array(b).data(row_index)(col_index).payload := ResultStreams(row_index)(col_index).payload.Z
+                buffer_array(b).data(row_index)(col_index).valid:=True
+                buffer_array(b).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
+                buffer_array(b).ID := ResultStreams(row_index)(col_index).payload.ID
+              }
             }
           }
         }
@@ -600,27 +602,28 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
       //分配逻辑
       when(request_Element_allocation&&request_Matmul_allocation===False) {
         when(idle_buffer_found) {
-          Element_Unit2buffer_ptr.payload := next_idle_buffer_ptr
+          Element_Unit2buffer_ptr.payload := binaryToOneHot(next_idle_buffer_ptr, cfg.out_MatZ_buffer_num)
           Element_Unit2buffer_ptr.valid := True
-          buffer_array(next_idle_buffer_ptr).Status := out_MatZ_buffer_Status.Element_Collecting  
+          buffer_array(next_idle_buffer_ptr).Status := out_MatZ_buffer_Status.Element_Collecting
           last_allocated_ptr := next_idle_buffer_ptr
           element_allocation_grant := False
         } otherwise {
           // 没有找到空闲缓冲区，
           Element_Unit2buffer_ptr.payload:=0
           Element_Unit2buffer_ptr.valid := False
-          
+
         }
       }
       //elementwise缓存逻辑
       //对于反对角线上的计算单元
+      //【方案1+3】per-buffer one-hot 解码写入
       for (row_index <- 0 until cfg.in_MatA_row_num) {
         for (col_index <- 0 until cfg.in_MatB_col_num) {
           if(row_index + col_index == cfg.in_MatA_row_num - 1){//在反对角线上
           //输出结果且工作状态不是mat_mul时（也就是说是按元素逻辑），按照Element_col_ptr更新buffer的对应位置
           when((ResultStreams(row_index)(col_index).valid&&
           ResultStreams(row_index)(col_index).payload.Ctrl.Mode =/= MatrixOperation_TypeDef.MatMul&&
-          buffer_array(Element_Unit2buffer_ptr.payload.resized).all_valid===False)) {
+          !element_collecting_done)) {
             ResultStreams(row_index)(col_index).ready:=Element_Unit2buffer_ptr.valid
             when(Element_Unit2buffer_ptr.valid){
               when(ResultStreams(row_index)(col_index).fire){
@@ -628,11 +631,19 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
                 when(Element_col_ptr < cfg.in_MatA_row_num-1){
                   Element_col_ptr := Element_col_ptr + U(1)
                 }
-                when(Element_col_ptr <= cfg.in_MatA_row_num-1) {//&& RegNext(units(0)(cfg.in_MatB_col_num-1).io.Go)
-                    buffer_array(Element_Unit2buffer_ptr.payload.resized).data(row_index)(Element_col_ptr).payload := ResultStreams(row_index)(col_index).payload.Z
-                    buffer_array(Element_Unit2buffer_ptr.payload.resized).data(row_index)(Element_col_ptr).valid := True
-                    buffer_array(Element_Unit2buffer_ptr.payload.resized).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
-                    buffer_array(Element_Unit2buffer_ptr.payload.resized).ID := ResultStreams(row_index)(col_index).payload.ID
+                when(Element_col_ptr <= cfg.in_MatA_row_num-1) {
+                    // per-buffer one-hot 解码写入
+                    for (b <- 0 until cfg.out_MatZ_buffer_num) {
+                      when(Element_Unit2buffer_ptr.payload(b)) {
+                        buffer_array(b).data(row_index)(Element_col_ptr).payload := ResultStreams(row_index)(col_index).payload.Z
+                        buffer_array(b).data(row_index)(Element_col_ptr).valid := True
+                        buffer_array(b).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
+                        buffer_array(b).ID := ResultStreams(row_index)(col_index).payload.ID
+                      }
+                    }
+                    when(Element_col_ptr === cfg.in_MatA_row_num-1) {
+                      element_collecting_done := True //最后一列写入完成，置位标志以阻止后续写入
+                    }
                   }
                 }
               }
@@ -663,9 +674,9 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     }
   }
 
-  
+
   current_output_ptr := next_valid_buffer_ptr
-  
+
   // 输出流的控制逻辑
   io.out_Mats.valid := valid_buffer_found
   if(cfg.Enable_Transpose_logic){
@@ -696,21 +707,22 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     valid_buffer_found:=False
     // 更新last_output_ptr以指向刚刚输出的缓冲区，为下一次查找提供起点
     last_output_ptr := current_output_ptr
-    
-    
+
+
     // 释放指针的valid标志，以允许新的分配
-    // Matmul_Unit2buffer_ptr释放，需要找到哪个指针指向了current_output_ptr
+    // Matmul_Unit2buffer_ptr释放：one-hot解码检查
     for(i <- 0 until cfg.diag_num - 1){
-      when(Matmul_Unit2buffer_ptr(i).valid && Matmul_Unit2buffer_ptr(i).payload === current_output_ptr){
+      when(Matmul_Unit2buffer_ptr(i).valid && Matmul_Unit2buffer_ptr(i).payload(current_output_ptr)){
         Matmul_Unit2buffer_ptr(i).valid := False
       }
     }
-    // Element_Unit2buffer_ptr释放
+    // Element_Unit2buffer_ptr释放：one-hot解码检查
     if(enableElementWise){
-      when(Element_Unit2buffer_ptr.valid && Element_Unit2buffer_ptr.payload === current_output_ptr){
+      when(Element_Unit2buffer_ptr.valid && Element_Unit2buffer_ptr.payload(current_output_ptr)){
         Element_Unit2buffer_ptr.valid := False
         element_allocation_grant := True
         Element_col_ptr := 0
+        element_collecting_done := False //释放时复位写入完成标志
       }
     }
     for(row_index <- 0 until cfg.in_MatA_row_num){
