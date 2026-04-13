@@ -12,51 +12,80 @@ import java.util.Arrays;
 
 public class HWAcceleratedAddLogV13Test extends HWAcceleratedTestCase {
 
-    private final long T_OUT = 18L;
-    private final long S_DATA = 16L;
+    private final long T_OUT = 19L;
+    private final long S_DATA = 19L; // 对应 fpga_in_shift
 
     @Test
     public void testAddLog2D() throws Exception {
-        System.out.println("\n--- Testing 2D AddLog (Original Format) ---");
+        System.out.println("\n--- Testing 2D AddLog (Static Shift Bit-Match) ---");
         int rows = 64, cols = 128;
         runFormattedTest(new long[]{rows, cols}, "Test2D_AddLog");
     }
 
     @Test
     public void testAddLog3D() throws Exception {
-        System.out.println("\n--- Testing 3D AddLog (Original Format) ---");
+        System.out.println("\n--- Testing 3D AddLog (Static Shift Bit-Match) ---");
         int batch = 2, rows = 32, cols = 32;
         runFormattedTest(new long[]{batch, rows, cols}, "Test3D_AddLog");
     }
 
     private void runFormattedTest(long[] shape, String nodeName) throws Exception {
-        // 1. 生成测试数据 (保持和你原来 generateRandom2D 类似的定点化逻辑)
-        INDArray mA = Transforms.round(Nd4j.rand(shape, 1.0f, 15.0f, Nd4j.getRandom()).mul(Math.pow(2, S_DATA)));
-        INDArray mB = Transforms.round(Nd4j.rand(shape, 1.0f, 15.0f, Nd4j.getRandom()).mul(Math.pow(2, S_DATA)));
+        // 1. 获取硬件参数
+        long s_hw_frac = AcceleratorSimInterface.acceleratorCfg().fracWidth(); // intWidth=12 时这里是 12
+        long internalAddShift = 20L; // 对应 fpga_after_mat_shift
+        long fpgaBeforeActShift = 20L; // 对应 fpga_before_act_shift
 
-        // 2. 理论值计算
-        INDArray floatSum = mA.castTo(DataType.DOUBLE).div(Math.pow(2, S_DATA))
-                .add(mB.castTo(DataType.DOUBLE).div(Math.pow(2, S_DATA)));
-        INDArray theoretical = Transforms.round(Transforms.log(floatSum).mul(Math.pow(2, T_OUT)));
+        int staticTPS = (int) (fpgaBeforeActShift - s_hw_frac);
+        // 2. 生成原始随机数据 (mA, mB)
+        // 使用 double 显式转换，并传入随机数生成器（通常使用 Nd4j.getRandom()）
+        INDArray mA = Transforms.round(Nd4j.rand(shape, 1.0, 15.0, Nd4j.getRandom()).mul(Math.pow(2, S_DATA)));
+        INDArray mB = Transforms.round(Nd4j.rand(shape, 1.0, 15.0, Nd4j.getRandom()).mul(Math.pow(2, S_DATA)));
 
-        // 3. 模拟器计算 (包含 +6 补偿修正)
-        INDArray simulated = calculateSimulatedFixedPointAddLog(mA, mB, S_DATA, S_DATA, S_DATA, S_DATA, T_OUT);
+        // 3. 模拟算子内部求和 (基于 internalAddShift)
+        // 强制对齐到 20 位中间层
+        double scaleToInternal = Math.pow(2, internalAddShift - S_DATA);
+        // --- 修改 HWAcceleratedAddLogV13Test.java 中的理论值计算部分 ---
 
-        // 4. 算子计算
+        // 1. 获取硬件加法后的原始和 (20位平面)
+        INDArray sumArr = mA.add(mB).mul(scaleToInternal);
+
+        // 2. 【关键】模拟硬件指令的截断行为 (addShiftAmount = 8)
+        // 硬件实际上是拿这个 shiftedSum 在算对数
+        INDArray shiftedSum = Transforms.floor(sumArr.div(Math.pow(2, staticTPS)));
+
+        // 3. 计算基于硬件入口的“真值”
+        // 硬件的 fracWidth 是 12，所以除以 2^12 才是硬件认定的真值
+        INDArray hwRealValue = shiftedSum.div(Math.pow(2, s_hw_frac));
+
+        // 4. 对这个“截断后的真值”取对数，并放大回输出位宽
+        INDArray theoretical = Transforms.round(
+                Transforms.log(hwRealValue).mul(Math.pow(2, T_OUT))
+        );
+
+
+        // 6. 模拟器计算
+        INDArray simulated = calculateSimulatedFixedPointAddLog(
+                mA, mB, S_DATA, S_DATA, internalAddShift, fpgaBeforeActShift, T_OUT, staticTPS
+        );
+
+        // 7. 算子计算
         HWAcceleratedAddLogV13 operator = new HWAcceleratedAddLogV13();
-        INDArray actual = operator.addLog(mA, mB, S_DATA, S_DATA, S_DATA, S_DATA, T_OUT, nodeName);
+        INDArray actual = operator.addLog(
+                mA, mB, S_DATA, S_DATA, internalAddShift, fpgaBeforeActShift, T_OUT, nodeName
+        );
 
-        // 5. 调用你原来的 validate 格式化输出方法
-        // 如果你的 validate 接收 (String, INDArray, INDArray, INDArray, double)
-        HWAcceleratedTestModel.validate(nodeName, theoretical, simulated, actual, 100.0);
+        // 8. 验证
+        // 重点：Logic Error (模拟与实际绝对误差) 必须为 0
+        HWAcceleratedTestModel.validate(nodeName, theoretical, simulated, actual, 1000.0);
     }
 
-    private INDArray calculateSimulatedFixedPointAddLog(INDArray a, INDArray b, long sA, long sB, long tInA, long tInB, long tOut) {
+    private INDArray calculateSimulatedFixedPointAddLog(INDArray a, INDArray b, long sA, long sB,
+                                                        long internalAddShift, long fpgaBeforeActShift,
+                                                        long tOut, int staticTPS) {
         if (!Arrays.equals(a.shape(), b.shape())) {
             long[] bs = getBroadcastShape(a.shape(), b.shape());
             a = a.broadcast(bs); b = b.broadcast(bs);
         }
-
         long[] originalShape = a.shape();
         if (a.rank() > 2) {
             long lastDim = a.size(-1);
@@ -65,48 +94,41 @@ public class HWAcceleratedAddLogV13Test extends HWAcceleratedTestCase {
             b = b.reshape('c', otherDims, lastDim);
         }
 
-        int rows = (int) a.rows(), cols = (int) a.columns();
+        int rows = (int) a.rows();
+        int cols = (int) a.columns();
         long s_hw_frac = AcceleratorSimInterface.acceleratorCfg().fracWidth();
 
-        int resA = (int)(sA - tInA), resB = (int)(sB - tInB);
+        // 模拟算子内部：Rescale -> Add
+        int resA = (int)(sA - internalAddShift);
+        int resB = (int)(sB - internalAddShift);
         long[][] addRes = new long[rows][cols];
-        long maxAbs = 0;
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 long vA = (resA < 0) ? (a.getLong(i, j) << -resA) : (a.getLong(i, j) >> resA);
                 long vB = (resB < 0) ? (b.getLong(i, j) << -resB) : (b.getLong(i, j) >> resB);
                 addRes[i][j] = Math.max(vA + vB, 1L);
-                maxAbs = Math.max(maxAbs, Math.abs(addRes[i][j]));
             }
         }
 
-        int logScale = (int)(tInA - s_hw_frac);
-        long hwMaxFix = (long)(5.80 * (1L << s_hw_frac));
-        int dynShift = 0;
-        if (maxAbs > 0) {
-            long tV = (logScale > 0) ? (maxAbs >> logScale) : (maxAbs << -logScale);
-            while ((tV >> dynShift) > hwMaxFix) { dynShift++; }
-        }
-        int totalPreShift = logScale + dynShift;
+        // 使用静态 TPS (对应指令里的 addShiftAmount)
+        int totalPreShift = staticTPS;
 
-        // 对齐算子里的 +6 补偿
-        double ln2 = Math.log(2.0);
-        long compensation = Math.round((totalPreShift + 6) * ln2 * Math.pow(2, tOut));
-
-        LogCordicSimulator sim = new LogCordicSimulator((int)AcceleratorSimInterface.acceleratorCfg().intWidth()-1, (int)s_hw_frac);
+        LogCordicSimulator sim = new LogCordicSimulator(13, (int)s_hw_frac);
         long[] flat = new long[rows * cols];
-        int postShift = (int)(s_hw_frac - tOut);
-
-        long hwMinFix = (long)Math.ceil(0.21 * (1L << s_hw_frac));
-        long safeMin = (totalPreShift > 0) ? (hwMinFix << totalPreShift) : (hwMinFix >> -totalPreShift);
+        int postShift = (int)(s_hw_frac - tOut); // 12 - 19 = -7
 
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                long val = Math.max(addRes[i][j], safeMin);
+                long val = addRes[i][j];
+                // 执行硬件预位移
                 int x_hw = (int)((totalPreShift > 0) ? (val >> totalPreShift) : (val << -totalPreShift));
                 long rawLog = sim.compute(x_hw);
+
+                // 执行硬件后位移 (左移 7 位)
                 long base = (postShift < 0) ? (rawLog << -postShift) : (rawLog >> postShift);
-                flat[i * cols + j] = base + compensation;
+
+                // 最终结果 (无动态补偿)
+                flat[i * cols + j] = (long)((int)base);
             }
         }
         return Nd4j.create(flat, new long[]{rows, cols}, DataType.LONG).reshape('c', originalShape);

@@ -38,7 +38,7 @@ public class HWTest {
 
         for (int i = 0; i < totalElements; i++) {
             // 产生阶梯数据
-            rawData[i] = (i / 512) % 32;
+            rawData[i] = ((i / 512) % 32) * 10000 + 50000;
         }
 
         INDArray inputNd = Nd4j.create(rawData, expectedShape, DataType.INT);
@@ -59,7 +59,7 @@ public class HWTest {
         System.out.printf("%-6s | %-12s | %-12s | %-12s%n", "Idx", "A (Raw)", "B (Raw)", "B (Decoded)");
         System.out.println("------------------------------------------------------------");
 
-        double qScale = Math.pow(2, 22); // 你的 frac_bits
+        double qScale = Math.pow(2, 19); // 你的 frac_bits
         for (int i = 0; i < outA.length && i < 10 * 512; i += 512) {
             int intA = Float.floatToRawIntBits(outA[i]);
             int intB = Float.floatToRawIntBits(outB[i]);
@@ -94,34 +94,30 @@ public class HWTest {
         float[] outputData;
 
         try (Session<?> session = backend.newSession()) {
-            // 1. 获取模型官方定义的 Input 列表
+
             var graphInputs = model.getGraph().getInputs();
-            java.util.HashSet<String> fedNames = new java.util.HashSet<>();
+            java.util.Set<String> initializerNames = new java.util.HashSet<>();
+            if (model.getGraph().getConstants() != null) {
+                for (var c : model.getGraph().getConstants()) {
+                    initializerNames.add(c.getName());
+                }
+            }
 
             for (var gi : graphInputs) {
                 String name = gi.getName();
-                session.feed(buildInt32Tensor(model, name, inputNd), false);
-                fedNames.add(name);
-                System.out.println("  [" + tag + "] Fed Input: " + name);
-            }
 
-            // 2. 【关键补丁】针对融合模型 A 隐藏的 Initializer 变量
-            // 既然 Model A 的内容显示它包含 PPQ_Variable_825，我们强制盲喂
-            String specialVar = "PPQ_Variable_825";
-            if (!fedNames.contains(specialVar)) {
-                try {
-                    // 即使它不在 Inputs 里，只要它在 Initializer 里，feed 也会成功
-                    session.feed(buildInt32Tensor(model, specialVar, inputNd), false);
-                    System.out.println("  [" + tag + "] Forced Fed Initializer: " + specialVar);
-                } catch (Exception e) {
-                    // 如果 Model B 报错说没这个变量，说明 B 确实已经处理过了，忽略即可
+                if (!initializerNames.contains(name)) {
+                    session.feed(buildInt32Tensor(model, name, inputNd), false);
+                    System.out.println("  [" + tag + "] Fed Input Variable: " + name);
+                } else {
+                    System.out.println("  [" + tag + "] Skip Feeding Constant/Initializer: " + name);
                 }
             }
 
             System.out.println("[" + tag + "] Forwarding...");
             session.forward();
 
-            // 3. 获取第一个输出（无论是 AddLog 输出还是拆分后的 Log 输出）
+            // 3. 获取输出（保持不变）
             String outputName = model.getGraph().getOutputs()[0].getName();
             Tensor outputTensor = session.getOutput(outputName);
 
