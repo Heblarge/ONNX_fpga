@@ -36,7 +36,8 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
 
   // ================== A Port Glue Logic ==================
   sdpramA.io.read.Valid := slicer.io.memoryReadPortA.Valid
-  sdpramA.io.read.Address := slicer.io.memoryReadPortA.Address
+  // Slicer 输出的是字索引，Sdpram 内部会做 >> byteOffset，所以这里先左移补偿
+  sdpramA.io.read.Address := (slicer.io.memoryReadPortA.Address << sdpramA.byteOffset).resized
   // 如果 Sdpram 是同步读，可能需要时钟连接，具体取决于 Util.Sdpram 实现
   // sdpramA.io.read.clk := ClockDomain.current.readClockWire
 
@@ -51,7 +52,7 @@ case class SlicerTest(slicerCfg: SlicerCfg) extends Component {
 
   // ================== B Port Glue Logic ==================
   sdpramB.io.read.Valid := slicer.io.memoryReadPortB.Valid
-  sdpramB.io.read.Address := slicer.io.memoryReadPortB.Address
+  sdpramB.io.read.Address := (slicer.io.memoryReadPortB.Address << sdpramB.byteOffset).resized
 
   val rawDataB = sdpramB.io.read.Data // 160 bits (5 * 32)
   val slicedDataB = Vec(Bits(slicerCfg.elementWidthB bits), slicerCfg.systolicArraySideNum)
@@ -240,7 +241,7 @@ object SlicerTb extends App {
           println(s"test $i pass")
           i += 1
           if (i == testNum) {
-            println("TEST PASS".green)
+            println(s"TEST PASS at simTime=${simTime()}".green)
             simSuccess()
           }
         }
