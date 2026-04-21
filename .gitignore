@@ -97,3 +97,8 @@ tb_LN_function_relative_error.png
 #python scripts
 sw/python/
 sw/scala/test/resources/
+.sbtopts
+?/.sbt/1.0/java9-rt-ext-openlogic_openjdk_17_0_12/rt.jar
+scripts/use_jdk17_and_run_sbt.sh
+
+?/.sbt/boot/sbt.boot.lock
