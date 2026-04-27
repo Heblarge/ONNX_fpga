@@ -16,9 +16,9 @@ Host(CPU) ──hostAxi──► DDR(DRAM)
               │          │          ▲
               ▼          ▼          │
            Slicer    Slicer    Collector
-         (shiftA)   (shiftB)       ▲
+         (shiftA)   (shiftB)        ▲
               │          │          │
-              └────►SystolicArray──┘
+              └────►SystolicArray───┘
                     (8×8 脉动阵列)
 ```
 
@@ -77,7 +77,7 @@ Python ──pullToLong2D──► SW(移位+padding) ──hostAxi──► DDR
 execute(node) {
   if (canDdrNative(node)):     // → [DDR] 模式
     数据已在 DDR → 纯 DMA+Compute → 结果写回 DDR → 回读给 Python(仅验证用)
-  else:                        // → [FB] 模式  
+  else:                        // → [FB] 模式
     调用 super.execute() → 算子注册表 → pull→shift→pad→tiledHWOp→unpad→push
 }
 ```
@@ -113,7 +113,7 @@ preloadInitializers(graph):
       ddrDriver.writeLongMatrix(addr, padded)  // 通过 hostAxi 写入 DDR
       _tensorDdrMap[name] = DdrTensorInfo(...)  // 注册到 DDR 张量注册表
       _ddrWriteCache[fingerprint] = entry       // 建立指纹缓存（回退路径用）
-  
+
   allocateZeroMatrix()  // 预分配全零矩阵（供 Activation 使用）
 ```
 
@@ -134,19 +134,19 @@ preloadInitializers(graph):
 executeDdrMatMul(node):
   infoA = ensureInDdr(inputA)   // 查 _tensorDdrMap，未命中则从 Python 拉取写入
   infoB = ensureInDdr(inputB)
-  
+
   // 移位参数——合成到硬件指令中，由 Slicer 桶形移位器执行
   shiftA = tisA - ssA           // 正=左移，负=右移
   shiftB = tisB - ssB
   shiftAfterOp = tisA + tisB - tos
-  
+
   addrZ = memPool.allocate(...)  // 分配输出 DDR 空间
-  
+
   tiledHWOpDdr(addrA, addrB, addrZ,
     shiftA, shiftB, shiftAfterOp)  // 纯 DMA + Compute 指令序列
-  
+
   _tensorDdrMap[outName] = DdrTensorInfo(addrZ, ...)  // 注册输出（供后续算子直接读取）
-  
+
   materializeToHost(addrZ, ...)  // 回读到 Python（仅验证用，不计入推理周期）
 ```
 
@@ -235,9 +235,9 @@ materializeToHost(addrZ, origRows, origCols, padRows, padCols, shape):
            │  tile(tM×K)      │
            └──────────────────┘
                                K×totalCols (N)
-                         ┌─────────┬─────────┐
+                         ┌──────────┬──────────┐
                          │tile(K,tN)│tile(K,tN)│ ← DMA_B 加载（lifeCfg=numTilesM，跨 M 方向复用）
-                         └─────────┴─────────┘
+                         └──────────┴──────────┘
 ```
 
 - CacheA lifeCfg = numTilesN（A 块在 N 方向上被 B 的多个列块复用）
@@ -302,7 +302,7 @@ if (isSub) bData(i)(j) = -bData(i)(j)  // 逐元素取反
 
 **移位公式：**
 ```
-sHW = hwFracWidth            // 硬件查表的定点精度（固定值）  
+sHW = hwFracWidth            // 硬件查表的定点精度（固定值）
 shiftLeft_A = sHW - ssX      // 将输入对齐到 HW 查表精度
 shiftLeft_B = 0              // 零矩阵不需要移位
 shiftAfterOp = 0             // elementadd 后不移位（激活函数内部处理）
@@ -399,7 +399,7 @@ case class DdrTensorInfo(
   origRows: Int,           // 原始行数（未填充，如 256）
   origCols: Int,           // 原始列数（未填充，如 64）
   padRows: Int,            // 填充后行数（sideNum 的倍数，如 256）
-  padCols: Int,            // 填充后列数（sideNum 的倍数，如 64）  
+  padCols: Int,            // 填充后列数（sideNum 的倍数，如 64）
   originalShape: Array[Long],  // 原始 N 维形状（如 [4, 64, 64]）
   isPreloaded: Boolean     // 是否为 Phase 1 预加载常量
 )
@@ -439,10 +439,10 @@ tile 划分：
 对每个 tile (mIdx, nIdx):
   if nIdx == 0:  DMA_A.load(addrA + mOff, tM×K);  lifeCfgA = numTilesN  // A 行块跨 N 复用
   if mIdx == 0:  DMA_B.load(addrB + nOff, K×tN);   lifeCfgB = numTilesM  // B 列块跨 M 复用
-  
+
   发送指令: InstSim(matmul, shiftA, shiftB, shiftAfterOp, tM, K, tN)
   waitComputeDone()
-  
+
   DMA_Z.store(addrZ + (mOff, nOff), tM×tN)
   clearGlobalIntr()
 ```
@@ -462,16 +462,16 @@ tile 划分：
 
 对每个 tile rIdx:
   DMA_A.load(addrA + rOff, tR×cols);  lifeCfgA = 1
-  
+
   if zeroBMode:
     DMA_B.load(addrB, tR×cols, offset=0)  // 始终从零矩阵开头加载
   else:
     DMA_B.load(addrB + rOff, tR×cols)     // 按 tile offset 加载
   lifeCfgB = 1
-  
+
   发送指令: InstSim(elementadd/max, shiftA, shiftB, shiftAfterOp, actFn, shiftAfterAct, tR, cols, cols)
   waitComputeDone()
-  
+
   DMA_Z.store(addrZ + rOff, tR×cols)
   clearGlobalIntr()
 ```
@@ -487,7 +487,7 @@ tile 划分：
 val rsA = (ssA - tisA).toInt
 val alignedA = aData.map(_.map(v => roundShiftRight(v, rsA)))
 // rsA > 0: 右移（低精度对齐到高精度）
-// rsA < 0: 左移  
+// rsA < 0: 左移
 
 def roundShiftRight(x: Long, n: Int): Long = {
   if (n <= 0) x << -n
@@ -597,6 +597,24 @@ private val HW_BACKEND = "system"   // "sw" / "verilator" / "vcs" / "system"
 或通过 JVM 属性：
 ```bash
 sbt -Dhw.backend=system 'testOnly runtime.dispatch.HWBackendTestSuite'
+```
+
+### Python Bridge 解释器配置（团队分发建议）
+
+`TorchBridge` 会按以下顺序查找 Python：
+
+1. `TORCH_BRIDGE_PYTHON`（支持相对路径，如 `./.venv/bin/python3`）
+2. `TORCH_BRIDGE_CONDA/bin/python3`
+3. 仓库内 `./.venv/bin/python3` 或 `./venv/bin/python3`
+4. `python3`（来自 `PATH`）
+
+推荐在项目根目录创建虚拟环境并使用相对路径：
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+# 按需安装依赖（至少 numpy / torch / onnx）
+TORCH_BRIDGE_PYTHON=./.venv/bin/python3 sbt -Dhw.backend=system 'testOnly runtime.dispatch.HWBackendTestSuite'
 ```
 
 ### 配置参数

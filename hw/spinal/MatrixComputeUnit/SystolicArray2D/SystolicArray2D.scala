@@ -426,26 +426,13 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         }
       }
     }
-    // 首先定义Status，以便其能在 all_valid_reg 逻辑中使用
     val Status = Reg(out_MatZ_buffer_Status()) init out_MatZ_buffer_Status.Idle
-    val OpMode = Reg(OpMode_TypeDef(cfg)) init init_OpMode(cfg) // 操作模式 | Operation OpMode
-    val ID = Reg(UInt(cfg.ID_Width bits))
+    // OpMode/ID 是 per-buffer 元数据，已抽到外层 buffer_OpMode/buffer_ID 表
 
-    // 出于优化时序的考量，利用脉动阵列按对角线顺序吐出结果的特性，
-    // 增量式地规约 valid 信号：每条对角线数据到达时，将其 diag_valid 与已累积的
-    // 寄存器做 AND。这样在最后一条对角线到达时，只需 1 级组合逻辑即可得出结果。
-    // 对比旧方案（N×N 位树形规约，calcStages 级流水线）：
-    //   - 组合深度：从 4-input AND × 多级 降低为 ≤min(N,M)-input AND + 1 个与门
-    //   - 寄存器延迟：从 calcStages(N×N) 拍 降低为 1 拍（链与数据到达同步推进）
-    //   - 寄存器数量：从 ~N×N/3 个 降低为 diag_num 个
-
-    // 检测缓冲区何时转为"Idle"状态（用于累积链复位）
+    // 增量对角线 valid 累积链：diag_done_accum(i) = 第 0..i 条对角线全部 valid
+    // 进入 Idle 时整链复位
     val was_idle = RegNext(this.Status === out_MatZ_buffer_Status.Idle) init True
     val just_entered_idle = (this.Status === out_MatZ_buffer_Status.Idle) && !was_idle
-
-    // 增量对角线 valid 累积链
-    // diag_done_accum(i) = 第 0..i 条对角线的数据是否已全部写入
-    // 每级组合深度 = diag_valid(i) 的扇入（≤min(N,M) 位 AND）+ 1 个与门
     val diag_done_accum = Vec.fill(cfg.diag_num)(Reg(Bool()) init False)
 
     when(just_entered_idle) {
@@ -457,7 +444,6 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
       }
     }
 
-    // all_valid_reg：最后一条对角线累积完成即表示全部 valid
     def all_valid_reg: Bool = diag_done_accum.last
 
     // State transition logic
@@ -471,8 +457,11 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   }
   val buffer_array = Vec.fill(cfg.out_MatZ_buffer_num)(out_MatZ_buffer(cfg))
 
-  // ========== 方案3: One-hot pointer encoding ==========
-  // binary → one-hot 编码转换: 减少指针解码逻辑的组合深度
+  // Per-buffer 元数据表：分配时单点写入，收集期间恒定，释放时不重置（下次分配覆写）
+  val buffer_OpMode = Vec.fill(cfg.out_MatZ_buffer_num)(Reg(OpMode_TypeDef(cfg)) init init_OpMode(cfg))
+  val buffer_ID     = Vec.fill(cfg.out_MatZ_buffer_num)(Reg(UInt(cfg.ID_Width bits)) init 0)
+
+  // binary → one-hot 转换：降低指针解码组合深度
   def binaryToOneHot(binary: UInt, width: Int): UInt = {
     val result = UInt(width bits)
     result := 0
@@ -534,10 +523,12 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     // 分配逻辑
     when(request_Matmul_allocation) {
       when(idle_buffer_found&&Matmul_Unit2buffer_ptr(0).valid===False)
-      {// 找到空闲缓冲区，进行分配（binary→one-hot编码转换）
+      {// 分配空闲 buffer
             Matmul_Unit2buffer_ptr(0).payload := binaryToOneHot(next_idle_buffer_ptr, cfg.out_MatZ_buffer_num)
             Matmul_Unit2buffer_ptr(0).valid := True
             buffer_array(next_idle_buffer_ptr).Status := out_MatZ_buffer_Status.Matmul_Collecting
+            buffer_OpMode(next_idle_buffer_ptr) := ResultStreams(0)(0).payload.Ctrl
+            buffer_ID(next_idle_buffer_ptr)     := ResultStreams(0)(0).payload.ID
             last_allocated_ptr := next_idle_buffer_ptr
       }
     }
@@ -563,9 +554,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
 
     }
 
-    //mat_mul缓存逻辑
-    //对于每个计算单元，当其输出结果且工作状态是mat_mul时，更新buffer的对应位置
-    //【方案1+3】per-buffer one-hot 解码写入路径，替代动态索引，便于综合工具独立优化各 buffer 写入路径
+    // mat_mul 缓存逻辑：per-buffer one-hot 解码写入 per-cell data
     for (row_index <- 0 until cfg.in_MatA_row_num) {
       for (col_index <- 0 until cfg.in_MatB_col_num) {
         ResultStreams(row_index)(col_index).ready:=False//默认状态
@@ -580,17 +569,14 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
         when(ResultStreams(row_index)(col_index).valid&&
         ResultStreams(row_index)(col_index).payload.Ctrl.Mode === MatrixOperation_TypeDef.MatMul&&
         Matmul_Unit2buffer_ptr(row_index+col_index).valid && ptr_not_done)
-        {//判定工作模式为mat_mul
+        {
           ResultStreams(row_index)(col_index).ready:=True
           when(ResultStreams(row_index)(col_index).fire)
           {
-            // per-buffer 解码写入：每个 buffer 独立的写入路径
             for (b <- 0 until cfg.out_MatZ_buffer_num) {
               when(Matmul_Unit2buffer_ptr(row_index+col_index).payload(b)) {
                 buffer_array(b).data(row_index)(col_index).payload := ResultStreams(row_index)(col_index).payload.Z
                 buffer_array(b).data(row_index)(col_index).valid:=True
-                buffer_array(b).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
-                buffer_array(b).ID := ResultStreams(row_index)(col_index).payload.ID
               }
             }
           }
@@ -599,12 +585,14 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
     }
 
     if(enableElementWise){
-      //分配逻辑
+      // 分配逻辑（element-wise 数据来自反对角线 CU(0, in_MatB_col_num-1)）
       when(request_Element_allocation&&request_Matmul_allocation===False) {
         when(idle_buffer_found) {
           Element_Unit2buffer_ptr.payload := binaryToOneHot(next_idle_buffer_ptr, cfg.out_MatZ_buffer_num)
           Element_Unit2buffer_ptr.valid := True
           buffer_array(next_idle_buffer_ptr).Status := out_MatZ_buffer_Status.Element_Collecting
+          buffer_OpMode(next_idle_buffer_ptr) := ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.Ctrl
+          buffer_ID(next_idle_buffer_ptr)     := ResultStreams(0)(cfg.in_MatB_col_num - 1).payload.ID
           last_allocated_ptr := next_idle_buffer_ptr
           element_allocation_grant := False
         } otherwise {
@@ -614,9 +602,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
 
         }
       }
-      //elementwise缓存逻辑
-      //对于反对角线上的计算单元
-      //【方案1+3】per-buffer one-hot 解码写入
+      // elementwise 缓存逻辑：反对角线 CU，per-buffer one-hot 解码写入
       for (row_index <- 0 until cfg.in_MatA_row_num) {
         for (col_index <- 0 until cfg.in_MatB_col_num) {
           if(row_index + col_index == cfg.in_MatA_row_num - 1){//在反对角线上
@@ -632,13 +618,10 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
                   Element_col_ptr := Element_col_ptr + U(1)
                 }
                 when(Element_col_ptr <= cfg.in_MatA_row_num-1) {
-                    // per-buffer one-hot 解码写入
                     for (b <- 0 until cfg.out_MatZ_buffer_num) {
                       when(Element_Unit2buffer_ptr.payload(b)) {
                         buffer_array(b).data(row_index)(Element_col_ptr).payload := ResultStreams(row_index)(col_index).payload.Z
                         buffer_array(b).data(row_index)(Element_col_ptr).valid := True
-                        buffer_array(b).OpMode := ResultStreams(row_index)(col_index).payload.Ctrl
-                        buffer_array(b).ID := ResultStreams(row_index)(col_index).payload.ID
                       }
                     }
                     when(Element_col_ptr === cfg.in_MatA_row_num-1) {
@@ -668,7 +651,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   for (i <- 0 until cfg.out_MatZ_buffer_num) {
 
     when(buffer_array((start_search_ptr_output + U(i)) % cfg.out_MatZ_buffer_num).Status === out_MatZ_buffer_Status.Ready_to_Output
-    &&(buffer_array((start_search_ptr_output + U(i)) % cfg.out_MatZ_buffer_num).ID ===current_output_ID)) {
+    &&(buffer_ID((start_search_ptr_output + U(i)) % cfg.out_MatZ_buffer_num) === current_output_ID)) {
         next_valid_buffer_ptr := (start_search_ptr_output + U(i)) % cfg.out_MatZ_buffer_num
         valid_buffer_found := True
     }
@@ -680,7 +663,7 @@ case class SystolicArray2D(cfg: SystolicArray2D_Config) extends Component {
   // 输出流的控制逻辑
   io.out_Mats.valid := valid_buffer_found
   if(cfg.Enable_Transpose_logic){
-    when(buffer_array(current_output_ptr).OpMode.do_PostTranspose){
+    when(buffer_OpMode(current_output_ptr).do_PostTranspose){
       for (row_index <- 0 until cfg.in_MatA_row_num) {
         for (col_index <- 0 until cfg.in_MatB_col_num) {
           io.out_Mats.payload.Z(row_index)(col_index) := buffer_array(current_output_ptr).data(col_index)(row_index).payload

@@ -515,7 +515,7 @@ object SystolicArray2D_CC_Sim extends App {
     StreamDriver(dut.io.in_Mats, dut.clk_in) { payload =>
       if (AllTestCaseSentReported){
         false
-      } 
+      }
       else {
       payload.mode.do_PostTranspose #= mode_sending(0)
       payload.mode.post_Shift #= shift_sending
@@ -569,7 +569,7 @@ object SystolicArray2D_CC_Sim extends App {
         printMatrix(matrixA_sending)
         println("B:")
         printMatrix(matrixB_sending)
-        
+
         if (matrixA_queue.isEmpty || matrixB_queue.isEmpty || mode_queue.isEmpty || shift_queue.isEmpty)
         {
         if(AllTestCaseSentReported!=true)
@@ -637,4 +637,3 @@ object SystolicArray2D_CC_Sim extends App {
     simSuccess()
   }
 }
-
