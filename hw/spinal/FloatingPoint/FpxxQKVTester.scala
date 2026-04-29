@@ -113,97 +113,114 @@ object FpxxQKVTester extends App {
         SimTimeout(200000)
         dut.clockDomain.forkStimulus(10)
         dut.io.input.valid #= false
+        dut.io.output.ready #= false
         dut.clockDomain.waitSampling(5)
 
-        for ((tc, caseId) <- cases.zipWithIndex) {
-            val (scoreRef, expRef, normRef, maxRef, sumRef, accRef, accNormRef) = golden(tc)
+        val refs = cases.map(golden)
+        var sendIdx = 0
+        var recvIdx = 0
+        var cycles = 0
+        val maxCycles = 4000
 
-            dut.io.input.valid #= true
-            for (d <- 0 until headDim) {
-                dut.io.input.payload.q(d) #= FpxxHost(tc.q(d))
-                dut.io.input.payload.prevAcc(d) #= FpxxHost(tc.prevAcc(d))
+        while ((sendIdx < cases.length || recvIdx < cases.length) && cycles < maxCycles) {
+            val outReady = scala.util.Random.nextBoolean()
+            dut.io.output.ready #= outReady
+
+            if (sendIdx < cases.length) {
+                dut.io.input.valid #= true
+                val tc = cases(sendIdx)
+                for (d <- 0 until headDim) {
+                    dut.io.input.payload.q(d) #= FpxxHost(tc.q(d))
+                    dut.io.input.payload.prevAcc(d) #= FpxxHost(tc.prevAcc(d))
+                }
+                for (i <- 0 until tileSize; d <- 0 until headDim) {
+                    dut.io.input.payload.k(i)(d) #= FpxxHost(tc.k(i)(d))
+                    dut.io.input.payload.v(i)(d) #= FpxxHost(tc.v(i)(d))
+                }
+                dut.io.input.payload.prevMax #= FpxxHost(tc.prevMax)
+                dut.io.input.payload.prevSum #= FpxxHost(tc.prevSum)
+                dut.io.input.payload.init #= tc.init
+            } else {
+                dut.io.input.valid #= false
             }
-            for (i <- 0 until tileSize; d <- 0 until headDim) {
-                dut.io.input.payload.k(i)(d) #= FpxxHost(tc.k(i)(d))
-                dut.io.input.payload.v(i)(d) #= FpxxHost(tc.v(i)(d))
+
+            val inFire = dut.io.input.valid.toBoolean && dut.io.input.ready.toBoolean
+            val outFire = dut.io.output.valid.toBoolean && dut.io.output.ready.toBoolean
+
+            if (outFire) {
+                val (scoreRef, expRef, normRef, maxRef, sumRef, accRef, accNormRef) = refs(recvIdx)
+                val hwScores = (0 until tileSize).map { i =>
+                    toFloat(
+                      dut.io.output.payload.scores(i).sign.toBigInt,
+                      dut.io.output.payload.scores(i).exp.toBigInt,
+                      dut.io.output.payload.scores(i).mant.toBigInt
+                    ).toDouble
+                }
+                val hwExp = (0 until tileSize).map { i =>
+                    toFloat(
+                      dut.io.output.payload.expScores(i).sign.toBigInt,
+                      dut.io.output.payload.expScores(i).exp.toBigInt,
+                      dut.io.output.payload.expScores(i).mant.toBigInt
+                    ).toDouble
+                }
+                val hwNorm = (0 until tileSize).map { i =>
+                    toFloat(
+                      dut.io.output.payload.normScores(i).sign.toBigInt,
+                      dut.io.output.payload.normScores(i).exp.toBigInt,
+                      dut.io.output.payload.normScores(i).mant.toBigInt
+                    ).toDouble
+                }
+                val hwMax = toFloat(
+                  dut.io.output.payload.newMax.sign.toBigInt,
+                  dut.io.output.payload.newMax.exp.toBigInt,
+                  dut.io.output.payload.newMax.mant.toBigInt
+                ).toDouble
+                val hwSum = toFloat(
+                  dut.io.output.payload.newSum.sign.toBigInt,
+                  dut.io.output.payload.newSum.exp.toBigInt,
+                  dut.io.output.payload.newSum.mant.toBigInt
+                ).toDouble
+                val hwAcc = (0 until headDim).map { d =>
+                    toFloat(
+                      dut.io.output.payload.newAcc(d).sign.toBigInt,
+                      dut.io.output.payload.newAcc(d).exp.toBigInt,
+                      dut.io.output.payload.newAcc(d).mant.toBigInt
+                    ).toDouble
+                }
+                val hwAccNorm = (0 until headDim).map { d =>
+                    toFloat(
+                      dut.io.output.payload.newAccNorm(d).sign.toBigInt,
+                      dut.io.output.payload.newAccNorm(d).exp.toBigInt,
+                      dut.io.output.payload.newAccNorm(d).mant.toBigInt
+                    ).toDouble
+                }
+
+                hwScores.zip(scoreRef).zipWithIndex.foreach { case ((hw, ref), i) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx score[$i] mismatch: hw=$hw ref=$ref")
+                }
+                hwExp.zip(expRef).zipWithIndex.foreach { case ((hw, ref), i) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx exp[$i] mismatch: hw=$hw ref=$ref")
+                }
+                hwNorm.zip(normRef).zipWithIndex.foreach { case ((hw, ref), i) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx norm[$i] mismatch: hw=$hw ref=$ref")
+                }
+                assert(almostEqual(hwMax, maxRef), s"case $recvIdx newMax mismatch: hw=$hwMax ref=$maxRef")
+                assert(almostEqual(hwSum, sumRef), s"case $recvIdx newSum mismatch: hw=$hwSum ref=$sumRef")
+                hwAcc.zip(accRef).zipWithIndex.foreach { case ((hw, ref), d) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx acc[$d] mismatch: hw=$hw ref=$ref")
+                }
+                hwAccNorm.zip(accNormRef).zipWithIndex.foreach { case ((hw, ref), d) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx accNorm[$d] mismatch: hw=$hw ref=$ref")
+                }
+                recvIdx += 1
             }
-            dut.io.input.payload.prevMax #= FpxxHost(tc.prevMax)
-            dut.io.input.payload.prevSum #= FpxxHost(tc.prevSum)
-            dut.io.input.payload.init #= tc.init
+
             dut.clockDomain.waitSampling()
-            dut.io.input.valid #= false
-
-            var timeout = 0
-            while (!dut.io.output.valid.toBoolean && timeout < 400) {
-                dut.clockDomain.waitSampling()
-                timeout += 1
-            }
-            assert(dut.io.output.valid.toBoolean, s"QKV case $caseId timed out")
-
-            val hwScores = (0 until tileSize).map { i =>
-                toFloat(
-                  dut.io.output.payload.scores(i).sign.toBigInt,
-                  dut.io.output.payload.scores(i).exp.toBigInt,
-                  dut.io.output.payload.scores(i).mant.toBigInt
-                ).toDouble
-            }
-            val hwExp = (0 until tileSize).map { i =>
-                toFloat(
-                  dut.io.output.payload.expScores(i).sign.toBigInt,
-                  dut.io.output.payload.expScores(i).exp.toBigInt,
-                  dut.io.output.payload.expScores(i).mant.toBigInt
-                ).toDouble
-            }
-            val hwNorm = (0 until tileSize).map { i =>
-                toFloat(
-                  dut.io.output.payload.normScores(i).sign.toBigInt,
-                  dut.io.output.payload.normScores(i).exp.toBigInt,
-                  dut.io.output.payload.normScores(i).mant.toBigInt
-                ).toDouble
-            }
-            val hwMax = toFloat(
-              dut.io.output.payload.newMax.sign.toBigInt,
-              dut.io.output.payload.newMax.exp.toBigInt,
-              dut.io.output.payload.newMax.mant.toBigInt
-            ).toDouble
-            val hwSum = toFloat(
-              dut.io.output.payload.newSum.sign.toBigInt,
-              dut.io.output.payload.newSum.exp.toBigInt,
-              dut.io.output.payload.newSum.mant.toBigInt
-            ).toDouble
-            val hwAcc = (0 until headDim).map { d =>
-                toFloat(
-                  dut.io.output.payload.newAcc(d).sign.toBigInt,
-                  dut.io.output.payload.newAcc(d).exp.toBigInt,
-                  dut.io.output.payload.newAcc(d).mant.toBigInt
-                ).toDouble
-            }
-            val hwAccNorm = (0 until headDim).map { d =>
-                toFloat(
-                  dut.io.output.payload.newAccNorm(d).sign.toBigInt,
-                  dut.io.output.payload.newAccNorm(d).exp.toBigInt,
-                  dut.io.output.payload.newAccNorm(d).mant.toBigInt
-                ).toDouble
-            }
-
-            hwScores.zip(scoreRef).zipWithIndex.foreach { case ((hw, ref), i) =>
-                assert(almostEqual(hw, ref), s"case $caseId score[$i] mismatch: hw=$hw ref=$ref")
-            }
-            hwExp.zip(expRef).zipWithIndex.foreach { case ((hw, ref), i) =>
-                assert(almostEqual(hw, ref), s"case $caseId exp[$i] mismatch: hw=$hw ref=$ref")
-            }
-            hwNorm.zip(normRef).zipWithIndex.foreach { case ((hw, ref), i) =>
-                assert(almostEqual(hw, ref), s"case $caseId norm[$i] mismatch: hw=$hw ref=$ref")
-            }
-            assert(almostEqual(hwMax, maxRef), s"case $caseId newMax mismatch: hw=$hwMax ref=$maxRef")
-            assert(almostEqual(hwSum, sumRef), s"case $caseId newSum mismatch: hw=$hwSum ref=$sumRef")
-            hwAcc.zip(accRef).zipWithIndex.foreach { case ((hw, ref), d) =>
-                assert(almostEqual(hw, ref), s"case $caseId acc[$d] mismatch: hw=$hw ref=$ref")
-            }
-            hwAccNorm.zip(accNormRef).zipWithIndex.foreach { case ((hw, ref), d) =>
-                assert(almostEqual(hw, ref), s"case $caseId accNorm[$d] mismatch: hw=$hw ref=$ref")
-            }
+            if (inFire) sendIdx += 1
+            cycles += 1
         }
+        assert(sendIdx == cases.length, s"not all inputs were accepted: $sendIdx/${cases.length}")
+        assert(recvIdx == cases.length, s"not all outputs were drained: $recvIdx/${cases.length}")
 
         simSuccess()
     }

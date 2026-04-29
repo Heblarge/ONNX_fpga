@@ -73,68 +73,85 @@ object FpxxOnlineSoftmaxTester extends App {
         SimTimeout(100000)
         dut.clockDomain.forkStimulus(10)
         dut.io.input.valid #= false
+        dut.io.output.ready #= false
         dut.clockDomain.waitSampling(5)
 
-        for ((tc, caseId) <- cases.zipWithIndex) {
-            val (expScoresRef, normScoresRef, newMaxRef, prevScaleRef, newSumRef) = golden(tc)
+        val refs = cases.map(golden)
+        var sendIdx = 0
+        var recvIdx = 0
+        var cycles = 0
+        val maxCycles = 2000
 
-            dut.io.input.valid #= true
-            for (i <- 0 until tileSize) {
-                dut.io.input.payload.scores(i) #= FpxxHost(tc.scores(i))
+        while ((sendIdx < cases.length || recvIdx < cases.length) && cycles < maxCycles) {
+            val outReady = scala.util.Random.nextBoolean()
+            dut.io.output.ready #= outReady
+
+            if (sendIdx < cases.length) {
+                dut.io.input.valid #= true
+                val tc = cases(sendIdx)
+                for (i <- 0 until tileSize) {
+                    dut.io.input.payload.scores(i) #= FpxxHost(tc.scores(i))
+                }
+                dut.io.input.payload.prevMax #= FpxxHost(tc.prevMax)
+                dut.io.input.payload.prevSum #= FpxxHost(tc.prevSum)
+                dut.io.input.payload.init #= tc.init
+            } else {
+                dut.io.input.valid #= false
             }
-            dut.io.input.payload.prevMax #= FpxxHost(tc.prevMax)
-            dut.io.input.payload.prevSum #= FpxxHost(tc.prevSum)
-            dut.io.input.payload.init #= tc.init
+
+            val inFire = dut.io.input.valid.toBoolean && dut.io.input.ready.toBoolean
+            val outFire = dut.io.output.valid.toBoolean && dut.io.output.ready.toBoolean
+
+            if (outFire) {
+                val (expScoresRef, normScoresRef, newMaxRef, prevScaleRef, newSumRef) = refs(recvIdx)
+                val hwNewMax = toFloat(
+                  dut.io.output.payload.newMax.sign.toBigInt,
+                  dut.io.output.payload.newMax.exp.toBigInt,
+                  dut.io.output.payload.newMax.mant.toBigInt
+                ).toDouble
+                val hwPrevScale = toFloat(
+                  dut.io.output.payload.prevScale.sign.toBigInt,
+                  dut.io.output.payload.prevScale.exp.toBigInt,
+                  dut.io.output.payload.prevScale.mant.toBigInt
+                ).toDouble
+                val hwNewSum = toFloat(
+                  dut.io.output.payload.newSum.sign.toBigInt,
+                  dut.io.output.payload.newSum.exp.toBigInt,
+                  dut.io.output.payload.newSum.mant.toBigInt
+                ).toDouble
+                val hwExpScores = (0 until tileSize).map { i =>
+                    toFloat(
+                      dut.io.output.payload.expScores(i).sign.toBigInt,
+                      dut.io.output.payload.expScores(i).exp.toBigInt,
+                      dut.io.output.payload.expScores(i).mant.toBigInt
+                    ).toDouble
+                }
+                val hwNormScores = (0 until tileSize).map { i =>
+                    toFloat(
+                      dut.io.output.payload.normScores(i).sign.toBigInt,
+                      dut.io.output.payload.normScores(i).exp.toBigInt,
+                      dut.io.output.payload.normScores(i).mant.toBigInt
+                    ).toDouble
+                }
+
+                assert(almostEqual(hwNewMax, newMaxRef), s"case $recvIdx newMax mismatch: hw=$hwNewMax ref=$newMaxRef")
+                assert(almostEqual(hwPrevScale, prevScaleRef), s"case $recvIdx prevScale mismatch: hw=$hwPrevScale ref=$prevScaleRef")
+                assert(almostEqual(hwNewSum, newSumRef), s"case $recvIdx newSum mismatch: hw=$hwNewSum ref=$newSumRef")
+                hwExpScores.zip(expScoresRef).zipWithIndex.foreach { case ((hw, ref), i) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx exp[$i] mismatch: hw=$hw ref=$ref")
+                }
+                hwNormScores.zip(normScoresRef).zipWithIndex.foreach { case ((hw, ref), i) =>
+                    assert(almostEqual(hw, ref), s"case $recvIdx norm[$i] mismatch: hw=$hw ref=$ref")
+                }
+                recvIdx += 1
+            }
+
             dut.clockDomain.waitSampling()
-            dut.io.input.valid #= false
-
-            var timeout = 0
-            while (!dut.io.output.valid.toBoolean && timeout < 200) {
-                dut.clockDomain.waitSampling()
-                timeout += 1
-            }
-            assert(dut.io.output.valid.toBoolean, s"softmax case $caseId timed out")
-
-            val hwNewMax = toFloat(
-              dut.io.output.payload.newMax.sign.toBigInt,
-              dut.io.output.payload.newMax.exp.toBigInt,
-              dut.io.output.payload.newMax.mant.toBigInt
-            ).toDouble
-            val hwPrevScale = toFloat(
-              dut.io.output.payload.prevScale.sign.toBigInt,
-              dut.io.output.payload.prevScale.exp.toBigInt,
-              dut.io.output.payload.prevScale.mant.toBigInt
-            ).toDouble
-            val hwNewSum = toFloat(
-              dut.io.output.payload.newSum.sign.toBigInt,
-              dut.io.output.payload.newSum.exp.toBigInt,
-              dut.io.output.payload.newSum.mant.toBigInt
-            ).toDouble
-            val hwExpScores = (0 until tileSize).map { i =>
-                toFloat(
-                  dut.io.output.payload.expScores(i).sign.toBigInt,
-                  dut.io.output.payload.expScores(i).exp.toBigInt,
-                  dut.io.output.payload.expScores(i).mant.toBigInt
-                ).toDouble
-            }
-            val hwNormScores = (0 until tileSize).map { i =>
-                toFloat(
-                  dut.io.output.payload.normScores(i).sign.toBigInt,
-                  dut.io.output.payload.normScores(i).exp.toBigInt,
-                  dut.io.output.payload.normScores(i).mant.toBigInt
-                ).toDouble
-            }
-
-            assert(almostEqual(hwNewMax, newMaxRef), s"case $caseId newMax mismatch: hw=$hwNewMax ref=$newMaxRef")
-            assert(almostEqual(hwPrevScale, prevScaleRef), s"case $caseId prevScale mismatch: hw=$hwPrevScale ref=$prevScaleRef")
-            assert(almostEqual(hwNewSum, newSumRef), s"case $caseId newSum mismatch: hw=$hwNewSum ref=$newSumRef")
-            hwExpScores.zip(expScoresRef).zipWithIndex.foreach { case ((hw, ref), i) =>
-                assert(almostEqual(hw, ref), s"case $caseId exp[$i] mismatch: hw=$hw ref=$ref")
-            }
-            hwNormScores.zip(normScoresRef).zipWithIndex.foreach { case ((hw, ref), i) =>
-                assert(almostEqual(hw, ref), s"case $caseId norm[$i] mismatch: hw=$hw ref=$ref")
-            }
+            if (inFire) sendIdx += 1
+            cycles += 1
         }
+        assert(sendIdx == cases.length, s"not all inputs were accepted: $sendIdx/${cases.length}")
+        assert(recvIdx == cases.length, s"not all outputs were drained: $recvIdx/${cases.length}")
 
         simSuccess()
     }

@@ -6,9 +6,12 @@ import scala.collection.mutable
 
 case class AttentionExpConfig(
     expLutFracBits: Int = 4,
-    expLutMin: Double = -8.0
+    expLutMin: Double = -12.0,
+    expLutRoundToNearest: Boolean = true,
+    expLutClipToZero: Boolean = true
 ) {
     require(expLutFracBits > 0)
+    require(expLutMin < 0.0, "expLutMin must be negative")
     val expLutStepsPerUnit: Int = 1 << expLutFracBits
     val expLutMaxIndex: Int = (-expLutMin * expLutStepsPerUnit).toInt
 }
@@ -28,7 +31,7 @@ object AttentionOps {
             c
         }
     }
-
+/*mulConfigFor是对应浮点格式的扩大，能容纳两个对应浮点格式的乘积不溢出*/
     def delayWhenValid[T <: Data](that: T, cycles: Int, valid: Bool): T = {
         require(cycles >= 0)
         if (cycles == 0) {
@@ -292,23 +295,49 @@ class FpxxExpNegLut(c: FpxxConfig, cfg: AttentionExpConfig, pipeStages: Int = 1)
 
     val thresholds = Vec((0 to cfg.expLutMaxIndex).map(i => AttentionOps.fpxxConst(-i.toDouble / cfg.expLutStepsPerUnit.toDouble, c)))
     val values = Vec((0 to cfg.expLutMaxIndex).map(i => AttentionOps.fpxxConst(scala.math.exp(-i.toDouble / cfg.expLutStepsPerUnit.toDouble), c)))
+    val zeroVal = AttentionOps.fpxxConst(0.0, c)
 
     val idx = UInt(log2Up(lutSize) bits)
-    idx := cfg.expLutMaxIndex
-    for (i <- 0 to cfg.expLutMaxIndex) {
-        when(FpxxCompare.lte(io.op.payload, thresholds(i))) {
-            idx := i
+    idx := 0
+
+    if (cfg.expLutRoundToNearest) {
+        val boundaries = Vec((1 to cfg.expLutMaxIndex).map(i => AttentionOps.fpxxConst(-(i.toDouble - 0.5) / cfg.expLutStepsPerUnit.toDouble, c)))
+        for (i <- 1 to cfg.expLutMaxIndex) {
+            when(FpxxCompare.lte(io.op.payload, boundaries(i - 1))) {
+                idx := i
+            }
+        }
+    } else {
+        for (i <- 0 to cfg.expLutMaxIndex) {
+            when(FpxxCompare.lte(io.op.payload, thresholds(i))) {
+                idx := i
+            }
         }
     }
+
     when(!FpxxCompare.lt(io.op.payload, thresholds(0))) {
         idx := 0
+    }
+    when(FpxxCompare.lte(io.op.payload, thresholds(cfg.expLutMaxIndex))) {
+        idx := cfg.expLutMaxIndex
+    }
+
+    val underflowToZero = if (cfg.expLutClipToZero) {
+        FpxxCompare.lte(io.op.payload, thresholds(cfg.expLutMaxIndex))
+    } else {
+        False
+    }
+    val lutOut = Fpxx(c)
+    lutOut := values(idx)
+    when(underflowToZero) {
+        lutOut := zeroVal
     }
 
     val outPayload = Reg(Fpxx(c))
     val outValid = Reg(Bool()) init (False)
 
     when(io.op.valid) {
-        outPayload := values(idx)
+        outPayload := lutOut
     }
     outValid := RegNext(io.op.valid) init (False)
 
@@ -321,27 +350,47 @@ class FpxxAddChain(values: Seq[Flow[Fpxx]], c: FpxxConfig) extends Area {
 
     private val addLatencyRef = new FpxxAddCompatible(FpxxAdd.Options(c = c, pipeStages = 1))
     addLatencyRef.io.op.valid := False
-    addLatencyRef.io.op.a.set_zero()
-    addLatencyRef.io.op.b.set_zero()
+    val zeroVal = AttentionOps.fpxxConst(0.0, c)
+    addLatencyRef.io.op.a := zeroVal
+    addLatencyRef.io.op.b := zeroVal
     private val addLatency = LatencyAnalysis(addLatencyRef.io.op.valid, addLatencyRef.io.result.valid)
 
-    var accPayload = values.head.payload
-    var accValid = values.head.valid
-    var delayCycles = 0
+    private def delayFlow(in: Flow[Fpxx], cycles: Int): Flow[Fpxx] = {
+        val out = Flow(Fpxx(c))
+        var delayedValid = in.valid
+        for (_ <- 0 until cycles) {
+            delayedValid = RegNext(delayedValid) init (False)
+        }
+        out.valid := delayedValid
+        out.payload := AttentionOps.delayWhenValid(in.payload, cycles, in.valid)
+        out
+    }
 
-    values.tail.foreach { v =>
-        val adder = new FpxxAddCompatible(FpxxAdd.Options(c = c, pipeStages = 1))
-        adder.io.op.valid := accValid
-        adder.io.op.a := accPayload
-        adder.io.op.b := AttentionOps.delayWhenValid(v.payload, delayCycles, v.valid)
-        accPayload = adder.io.result.payload
-        accValid = adder.io.result.valid
-        delayCycles += addLatency
+    private def reduceLevel(level: Seq[Flow[Fpxx]]): Seq[Flow[Fpxx]] = {
+        val next = scala.collection.mutable.ArrayBuffer[Flow[Fpxx]]()
+        var i = 0
+        while (i + 1 < level.length) {
+            val adder = new FpxxAddCompatible(FpxxAdd.Options(c = c, pipeStages = 1))
+            adder.io.op.valid := level(i).valid
+            adder.io.op.a := level(i).payload
+            adder.io.op.b := level(i + 1).payload
+            next += adder.io.result
+            i += 2
+        }
+        if (i < level.length) {
+            next += delayFlow(level(i), addLatency)
+        }
+        next.toSeq
+    }
+
+    var current = values
+    while (current.length > 1) {
+        current = reduceLevel(current)
     }
 
     val result = Flow(Fpxx(c))
-    result.valid := accValid
-    result.payload := accPayload
+    result.valid := current.head.valid
+    result.payload := current.head.payload
 }
 
 class FpxxDotProduct(vectorSize: Int, c: FpxxConfig) extends Component {
@@ -371,19 +420,25 @@ class FpxxOnlineSoftmax(tileSize: Int, c: FpxxConfig, cfg: AttentionExpConfig = 
     require(tileSize > 0)
 
     val io = new Bundle {
-        val input = slave Flow(new Bundle {
+        val input = slave Stream(new Bundle {
             val scores = Vec.fill(tileSize)(Fpxx(c))
             val prevMax = Fpxx(c)
             val prevSum = Fpxx(c)
             val init = Bool()
         })
-        val output = master Flow(new Bundle {
+        val output = master Stream(new Bundle {
             val expScores = Vec.fill(tileSize)(Fpxx(c))
             val normScores = Vec.fill(tileSize)(Fpxx(c))
             val newMax = Fpxx(c)
             val prevScale = Fpxx(c)
             val newSum = Fpxx(c)
         })
+    }
+    val inputFire = io.input.valid && io.input.ready
+    val busy = Reg(Bool()) init (False)
+    io.input.ready := !busy
+    when(inputFire) {
+        busy := True
     }
 
     val blockMax = FpxxCompare.maxOf(io.input.payload.scores.toSeq)
@@ -403,14 +458,14 @@ class FpxxOnlineSoftmax(tileSize: Int, c: FpxxConfig, cfg: AttentionExpConfig = 
     val expUnits = Array.fill(tileSize)(new FpxxExpNegLut(c, cfg, pipeStages = 1))
     val subUnits = Array.fill(tileSize)(new FpxxSubCompatible(FpxxAdd.Options(c = c, pipeStages = 1)))
     for (i <- 0 until tileSize) {
-        subUnits(i).io.op.valid := io.input.valid
+        subUnits(i).io.op.valid := inputFire
         subUnits(i).io.op.a := io.input.payload.scores(i)
         subUnits(i).io.op.b := newMaxComb
         expUnits(i).io.op <> subUnits(i).io.result
     }
 
     val prevScaleSub = new FpxxSubCompatible(FpxxAdd.Options(c = c, pipeStages = 1))
-    prevScaleSub.io.op.valid := io.input.valid
+    prevScaleSub.io.op.valid := inputFire
     prevScaleSub.io.op.a := io.input.payload.prevMax
     prevScaleSub.io.op.b := newMaxComb
     val prevScaleExp = new FpxxExpNegLut(c, cfg, pipeStages = 1)
@@ -419,13 +474,13 @@ class FpxxOnlineSoftmax(tileSize: Int, c: FpxxConfig, cfg: AttentionExpConfig = 
     val mulCfg = AttentionOps.mulConfigFor(c)
     val prevMul = new FpxxMulCompatible(FpxxMul.Options(cIn = c, cOut = Some(mulCfg), pipeStages = 1))
     prevMul.io.input.valid := prevScaleExp.io.result.valid
-    prevMul.io.input.payload.a := AttentionOps.delayWhenValid(io.input.payload.prevSum, 2 + subLatency, io.input.valid)
+    prevMul.io.input.payload.a := AttentionOps.delayWhenValid(io.input.payload.prevSum, 2 + subLatency, inputFire)
     prevMul.io.input.payload.b := prevScaleExp.io.result.payload
 
     val expSumChain = new FpxxAddChain(expUnits.map(_.io.result), c)
 
     val zeroVal = AttentionOps.fpxxConst(0.0, c)
-    val delayedInit = AttentionOps.delayBoolWhenValid(io.input.payload.init, 2 + subLatency, io.input.valid)
+    val delayedInit = AttentionOps.delayBoolWhenValid(io.input.payload.init, 2 + subLatency, inputFire)
 
     val sumAdder = new FpxxAddCompatible(FpxxAdd.Options(c = c, pipeStages = 1))
     sumAdder.io.op.valid := expSumChain.result.valid
@@ -433,7 +488,7 @@ class FpxxOnlineSoftmax(tileSize: Int, c: FpxxConfig, cfg: AttentionExpConfig = 
     sumAdder.io.op.b := prevMul.io.result.payload
 
     val prevScaleAligned = AttentionOps.delayWhenValid(prevScaleExp.io.result.payload, 1, prevScaleExp.io.result.valid)
-    val newMaxAligned = AttentionOps.delayWhenValid(newMaxComb, 2 + subLatency + 1, io.input.valid)
+    val newMaxAligned = AttentionOps.delayWhenValid(newMaxComb, 2 + subLatency + 1, inputFire)
     val expAligned = expUnits.map(u => AttentionOps.delayWhenValid(u.io.result.payload, 1, u.io.result.valid))
     val newSumFinal = Fpxx(c)
     newSumFinal := sumAdder.io.result.payload
@@ -459,14 +514,22 @@ class FpxxOnlineSoftmax(tileSize: Int, c: FpxxConfig, cfg: AttentionExpConfig = 
         normDivs(i).io.input.payload.den := newSumFinal
     }
 
-    io.output.valid := normDivs(0).io.result.valid
+    val coreOut = Stream(cloneOf(io.output.payload))
+    coreOut.valid := normDivs(0).io.result.valid
     for (i <- 0 until tileSize) {
-        io.output.payload.expScores(i) := AttentionOps.delayWhenValid(expAligned(i), normDivLatency, sumAdder.io.result.valid)
-        io.output.payload.normScores(i) := normDivs(i).io.result.payload
+        coreOut.payload.expScores(i) := AttentionOps.delayWhenValid(expAligned(i), normDivLatency, sumAdder.io.result.valid)
+        coreOut.payload.normScores(i) := normDivs(i).io.result.payload
     }
-    io.output.payload.newMax := AttentionOps.delayWhenValid(newMaxAligned, normDivLatency, sumAdder.io.result.valid)
-    io.output.payload.prevScale := AttentionOps.delayWhenValid(prevScaleFinal, normDivLatency, sumAdder.io.result.valid)
-    io.output.payload.newSum := AttentionOps.delayWhenValid(newSumFinal, normDivLatency, sumAdder.io.result.valid)
+    coreOut.payload.newMax := AttentionOps.delayWhenValid(newMaxAligned, normDivLatency, sumAdder.io.result.valid)
+    coreOut.payload.prevScale := AttentionOps.delayWhenValid(prevScaleFinal, normDivLatency, sumAdder.io.result.valid)
+    coreOut.payload.newSum := AttentionOps.delayWhenValid(newSumFinal, normDivLatency, sumAdder.io.result.valid)
+
+    val outFifo = StreamFifo(cloneOf(io.output.payload), 1)
+    outFifo.io.push << coreOut
+    io.output << outFifo.io.pop
+    when(coreOut.fire) {
+        busy := False
+    }
 }
 
 class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfig = AttentionExpConfig()) extends Component {
@@ -477,7 +540,7 @@ class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfi
     private val postSoftmaxLatency = 3
 
     val io = new Bundle {
-        val input = slave Flow(new Bundle {
+        val input = slave Stream(new Bundle {
             val q = Vec.fill(headDim)(Fpxx(c))
             val k = Vec.fill(tileSize)(Vec.fill(headDim)(Fpxx(c)))
             val v = Vec.fill(tileSize)(Vec.fill(headDim)(Fpxx(c)))
@@ -486,7 +549,7 @@ class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfi
             val prevAcc = Vec.fill(headDim)(Fpxx(scoreCfg))
             val init = Bool()
         })
-        val output = master Flow(new Bundle {
+        val output = master Stream(new Bundle {
             val scores = Vec.fill(tileSize)(Fpxx(scoreCfg))
             val expScores = Vec.fill(tileSize)(Fpxx(scoreCfg))
             val normScores = Vec.fill(tileSize)(Fpxx(scoreCfg))
@@ -496,10 +559,16 @@ class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfi
             val newAccNorm = Vec.fill(headDim)(Fpxx(scoreCfg))
         })
     }
+    val inputFire = io.input.valid && io.input.ready
+    val busy = Reg(Bool()) init (False)
+    io.input.ready := !busy
+    when(inputFire) {
+        busy := True
+    }
 
     val qk = Array.fill(tileSize)(new FpxxDotProduct(headDim, c))
     for (i <- 0 until tileSize) {
-        qk(i).io.input.valid := io.input.valid
+        qk(i).io.input.valid := inputFire
         for (d <- 0 until headDim) {
             qk(i).io.input.payload.a(d) := io.input.payload.q(d)
             qk(i).io.input.payload.b(d) := io.input.payload.k(i)(d)
@@ -511,28 +580,29 @@ class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfi
     for (i <- 0 until tileSize) {
         softmax.io.input.payload.scores(i) := qk(i).io.result.payload
     }
-    softmax.io.input.payload.prevMax := AttentionOps.delayWhenValid(io.input.payload.prevMax, 3, io.input.valid)
-    softmax.io.input.payload.prevSum := AttentionOps.delayWhenValid(io.input.payload.prevSum, 3, io.input.valid)
-    softmax.io.input.payload.init := AttentionOps.delayBoolWhenValid(io.input.payload.init, 3, io.input.valid)
+    softmax.io.input.payload.prevMax := AttentionOps.delayWhenValid(io.input.payload.prevMax, 3, inputFire)
+    softmax.io.input.payload.prevSum := AttentionOps.delayWhenValid(io.input.payload.prevSum, 3, inputFire)
+    softmax.io.input.payload.init := AttentionOps.delayBoolWhenValid(io.input.payload.init, 3, inputFire)
+    softmax.io.output.ready := True
 
-    val alignLatency = LatencyAnalysis(io.input.valid, softmax.io.output.valid)
+    val alignLatency = LatencyAnalysis(inputFire, softmax.io.output.valid)
 
     val vConverters = Array.tabulate(tileSize, headDim) { (i, d) =>
         val conv = FpxxConverter(FpxxConverter.Options(in_config = c, out_config = scoreCfg, pipeStages = List(true, true, true, true)))
-        conv.io.a.valid := io.input.valid
+        conv.io.a.valid := inputFire
         conv.io.a.payload := io.input.payload.v(i)(d)
         conv
     }
-    val vConvLatency = LatencyAnalysis(io.input.valid, vConverters(0)(0).io.r.valid)
+    val vConvLatency = LatencyAnalysis(inputFire, vConverters(0)(0).io.r.valid)
     val vAlignLatency = alignLatency - vConvLatency
     require(vAlignLatency >= 0, s"vAlignLatency must be non-negative, got $vAlignLatency")
     val vAligned = Array.tabulate(tileSize, headDim) { (i, d) =>
         AttentionOps.delayWhenValid(vConverters(i)(d).io.r.payload, vAlignLatency, vConverters(i)(d).io.r.valid)
     }
     val prevAccAligned = Array.tabulate(headDim) { d =>
-        AttentionOps.delayWhenValid(io.input.payload.prevAcc(d), alignLatency, io.input.valid)
+        AttentionOps.delayWhenValid(io.input.payload.prevAcc(d), alignLatency, inputFire)
     }
-    val initAligned = AttentionOps.delayBoolWhenValid(io.input.payload.init, alignLatency, io.input.valid)
+    val initAligned = AttentionOps.delayBoolWhenValid(io.input.payload.init, alignLatency, inputFire)
 
     val zeroScore = AttentionOps.fpxxConst(0.0, scoreCfg)
 
@@ -581,16 +651,24 @@ class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfi
         accNormDivs(d).io.input.payload.den := newSumAligned
     }
 
-    io.output.valid := accNormDivs(0).io.result.valid
+    val coreOut = Stream(cloneOf(io.output.payload))
+    coreOut.valid := accNormDivs(0).io.result.valid
     for (i <- 0 until tileSize) {
-        io.output.payload.scores(i) := AttentionOps.delayWhenValid(qk(i).io.result.payload, 8 + accNormLatency, qk(i).io.result.valid)
-        io.output.payload.expScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.expScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
-        io.output.payload.normScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.normScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
+        coreOut.payload.scores(i) := AttentionOps.delayWhenValid(qk(i).io.result.payload, 8 + accNormLatency, qk(i).io.result.valid)
+        coreOut.payload.expScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.expScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
+        coreOut.payload.normScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.normScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
     }
-    io.output.payload.newMax := AttentionOps.delayWhenValid(softmax.io.output.payload.newMax, postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
-    io.output.payload.newSum := AttentionOps.delayWhenValid(newSumAligned, accNormLatency, accOutputs(0).valid)
+    coreOut.payload.newMax := AttentionOps.delayWhenValid(softmax.io.output.payload.newMax, postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
+    coreOut.payload.newSum := AttentionOps.delayWhenValid(newSumAligned, accNormLatency, accOutputs(0).valid)
     for (d <- 0 until headDim) {
-        io.output.payload.newAcc(d) := AttentionOps.delayWhenValid(accOutputs(d).payload, accNormLatency, accOutputs(d).valid)
-        io.output.payload.newAccNorm(d) := accNormDivs(d).io.result.payload
+        coreOut.payload.newAcc(d) := AttentionOps.delayWhenValid(accOutputs(d).payload, accNormLatency, accOutputs(d).valid)
+        coreOut.payload.newAccNorm(d) := accNormDivs(d).io.result.payload
+    }
+
+    val outFifo = StreamFifo(cloneOf(io.output.payload), 1)
+    outFifo.io.push << coreOut
+    io.output << outFifo.io.pop
+    when(coreOut.fire) {
+        busy := False
     }
 }
