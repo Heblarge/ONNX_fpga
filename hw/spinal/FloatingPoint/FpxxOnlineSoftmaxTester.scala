@@ -29,7 +29,7 @@ object FpxxOnlineSoftmaxTester extends App {
         if (a.isNaN && b.isNaN) true
         else if (a.isInfinite || b.isInfinite) a == b
         else math.abs(a - b) <= tol.max(math.abs(b) * 0.1)
-    }
+    }  
 
     def golden(tc: SoftmaxCase): (Seq[Double], Seq[Double], Double, Double, Double) = {
         val blockMax = tc.scores.max.toDouble
@@ -41,12 +41,26 @@ object FpxxOnlineSoftmaxTester extends App {
         (expScores, normScores, newMax, prevScale, newSum)
     }
 
-    val cases = Seq(
+    val seed = 20260429
+    val rng = new scala.util.Random(seed)
+    def randIn(min: Float, max: Float): Float = min + rng.nextFloat() * (max - min)
+
+    val cornerCases = Seq(
       SoftmaxCase(Seq(1.0f, 0.0f, -1.0f, 0.5f), 0.0f, 0.0f, init = true),
       SoftmaxCase(Seq(-0.5f, -1.0f, -0.25f, -2.0f), 0.25f, 1.7f, init = false),
       SoftmaxCase(Seq(3.0f, 2.5f, 2.0f, 1.5f), 2.75f, 0.8f, init = false),
       SoftmaxCase(Seq(-3.0f, -3.5f, -2.75f, -4.0f), -2.5f, 2.2f, init = false)
     )
+    val randomCases = (0 until 96).map { _ =>
+        val init = rng.nextInt(4) == 0
+        SoftmaxCase(
+          scores = Seq.fill(tileSize)(randIn(-12.0f, 12.0f)),
+          prevMax = randIn(-8.0f, 8.0f),
+          prevSum = randIn(0.01f, 8.0f),
+          init = init
+        )
+    }
+    val cases = cornerCases ++ randomCases
 
     val flag = VCSFlags(
       compileFlags = List("-kdb", "-lca", "+notimingchecks"),
@@ -70,7 +84,7 @@ object FpxxOnlineSoftmaxTester extends App {
       .compile(new FpxxOnlineSoftmax(tileSize, fpCfg, fxCfg))
 
     compiled.doSim { dut =>
-        SimTimeout(100000)
+        SimTimeout(2000000)
         dut.clockDomain.forkStimulus(10)
         dut.io.input.valid #= false
         dut.io.output.ready #= false
@@ -80,10 +94,26 @@ object FpxxOnlineSoftmaxTester extends App {
         var sendIdx = 0
         var recvIdx = 0
         var cycles = 0
-        val maxCycles = 2000
+        val maxCycles = 80000
+
+        var holdReadyVal = false
+        var holdReadyCycles = 0
+        def nextReady(): Boolean = {
+            if (holdReadyCycles == 0) {
+                if (rng.nextInt(100) < 60) {
+                    holdReadyVal = false
+                    holdReadyCycles = 8 + rng.nextInt(33) // long backpressure
+                } else {
+                    holdReadyVal = true
+                    holdReadyCycles = 1 + rng.nextInt(6) // short drain burst
+                }
+            }
+            holdReadyCycles -= 1
+            holdReadyVal
+        }
 
         while ((sendIdx < cases.length || recvIdx < cases.length) && cycles < maxCycles) {
-            val outReady = scala.util.Random.nextBoolean()
+            val outReady = nextReady()
             dut.io.output.ready #= outReady
 
             if (sendIdx < cases.length) {

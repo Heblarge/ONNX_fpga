@@ -514,20 +514,26 @@ class FpxxOnlineSoftmax(tileSize: Int, c: FpxxConfig, cfg: AttentionExpConfig = 
         normDivs(i).io.input.payload.den := newSumFinal
     }
 
-    val coreOut = Stream(cloneOf(io.output.payload))
-    coreOut.valid := normDivs(0).io.result.valid
+    val coreOutValid = normDivs(0).io.result.valid
+    val coreOutPayload = cloneOf(io.output.payload)
     for (i <- 0 until tileSize) {
-        coreOut.payload.expScores(i) := AttentionOps.delayWhenValid(expAligned(i), normDivLatency, sumAdder.io.result.valid)
-        coreOut.payload.normScores(i) := normDivs(i).io.result.payload
+        coreOutPayload.expScores(i) := AttentionOps.delayWhenValid(expAligned(i), normDivLatency, sumAdder.io.result.valid)
+        coreOutPayload.normScores(i) := normDivs(i).io.result.payload
     }
-    coreOut.payload.newMax := AttentionOps.delayWhenValid(newMaxAligned, normDivLatency, sumAdder.io.result.valid)
-    coreOut.payload.prevScale := AttentionOps.delayWhenValid(prevScaleFinal, normDivLatency, sumAdder.io.result.valid)
-    coreOut.payload.newSum := AttentionOps.delayWhenValid(newSumFinal, normDivLatency, sumAdder.io.result.valid)
+    coreOutPayload.newMax := AttentionOps.delayWhenValid(newMaxAligned, normDivLatency, sumAdder.io.result.valid)
+    coreOutPayload.prevScale := AttentionOps.delayWhenValid(prevScaleFinal, normDivLatency, sumAdder.io.result.valid)
+    coreOutPayload.newSum := AttentionOps.delayWhenValid(newSumFinal, normDivLatency, sumAdder.io.result.valid)
 
-    val outFifo = StreamFifo(cloneOf(io.output.payload), 1)
-    outFifo.io.push << coreOut
-    io.output << outFifo.io.pop
-    when(coreOut.fire) {
+    val outValidReg = Reg(Bool()) init (False)
+    val outPayloadReg = Reg(cloneOf(io.output.payload))
+    when(coreOutValid) {
+        outPayloadReg := coreOutPayload
+        outValidReg := True
+    }
+    io.output.valid := outValidReg
+    io.output.payload := outPayloadReg
+    when(io.output.fire) {
+        outValidReg := False
         busy := False
     }
 }
@@ -651,24 +657,30 @@ class FpxxQKV(tileSize: Int, headDim: Int, c: FpxxConfig, cfg: AttentionExpConfi
         accNormDivs(d).io.input.payload.den := newSumAligned
     }
 
-    val coreOut = Stream(cloneOf(io.output.payload))
-    coreOut.valid := accNormDivs(0).io.result.valid
+    val coreOutValid = accNormDivs(0).io.result.valid
+    val coreOutPayload = cloneOf(io.output.payload)
     for (i <- 0 until tileSize) {
-        coreOut.payload.scores(i) := AttentionOps.delayWhenValid(qk(i).io.result.payload, 8 + accNormLatency, qk(i).io.result.valid)
-        coreOut.payload.expScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.expScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
-        coreOut.payload.normScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.normScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
+        coreOutPayload.scores(i) := AttentionOps.delayWhenValid(qk(i).io.result.payload, 8 + accNormLatency, qk(i).io.result.valid)
+        coreOutPayload.expScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.expScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
+        coreOutPayload.normScores(i) := AttentionOps.delayWhenValid(softmax.io.output.payload.normScores(i), postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
     }
-    coreOut.payload.newMax := AttentionOps.delayWhenValid(softmax.io.output.payload.newMax, postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
-    coreOut.payload.newSum := AttentionOps.delayWhenValid(newSumAligned, accNormLatency, accOutputs(0).valid)
+    coreOutPayload.newMax := AttentionOps.delayWhenValid(softmax.io.output.payload.newMax, postSoftmaxLatency + accNormLatency, softmax.io.output.valid)
+    coreOutPayload.newSum := AttentionOps.delayWhenValid(newSumAligned, accNormLatency, accOutputs(0).valid)
     for (d <- 0 until headDim) {
-        coreOut.payload.newAcc(d) := AttentionOps.delayWhenValid(accOutputs(d).payload, accNormLatency, accOutputs(d).valid)
-        coreOut.payload.newAccNorm(d) := accNormDivs(d).io.result.payload
+        coreOutPayload.newAcc(d) := AttentionOps.delayWhenValid(accOutputs(d).payload, accNormLatency, accOutputs(d).valid)
+        coreOutPayload.newAccNorm(d) := accNormDivs(d).io.result.payload
     }
 
-    val outFifo = StreamFifo(cloneOf(io.output.payload), 1)
-    outFifo.io.push << coreOut
-    io.output << outFifo.io.pop
-    when(coreOut.fire) {
+    val outValidReg = Reg(Bool()) init (False)
+    val outPayloadReg = Reg(cloneOf(io.output.payload))
+    when(coreOutValid) {
+        outPayloadReg := coreOutPayload
+        outValidReg := True
+    }
+    io.output.valid := outValidReg
+    io.output.payload := outPayloadReg
+    when(io.output.fire) {
+        outValidReg := False
         busy := False
     }
 }

@@ -29,9 +29,17 @@ object FpxxQKVTester extends App {
     }
 
     def quantizedExp(x: Double): Double = {
-        val clipped = math.min(0.0, math.max(fxCfg.expLutMin, x))
-        val idx = math.floor((-clipped) * fxCfg.expLutStepsPerUnit.toDouble + 1e-9).toInt
-        math.exp(-idx.toDouble / fxCfg.expLutStepsPerUnit.toDouble)
+        if (fxCfg.expLutClipToZero && x <= fxCfg.expLutMin) {
+            0.0
+        } else {
+            val clipped = math.min(0.0, math.max(fxCfg.expLutMin, x))
+            val scaled = (-clipped) * fxCfg.expLutStepsPerUnit.toDouble
+            val idxRaw =
+                if (fxCfg.expLutRoundToNearest) math.floor(scaled + 0.5)
+                else math.floor(scaled + 1e-9)
+            val idx = idxRaw.toInt.max(0).min(fxCfg.expLutMaxIndex)
+            math.exp(-idx.toDouble / fxCfg.expLutStepsPerUnit.toDouble)
+        }
     }
 
     def almostEqual(a: Double, b: Double, tol: Double = 1.2e-1): Boolean = {
@@ -55,7 +63,11 @@ object FpxxQKVTester extends App {
         (scores, expScores, normScores, newMax, newSum, newAcc, newAccNorm)
     }
 
-    val cases = Seq(
+    val seed = 20260429
+    val rng = new scala.util.Random(seed ^ 0x55aa)
+    def randIn(min: Float, max: Float): Float = min + rng.nextFloat() * (max - min)
+
+    val cornerCases = Seq(
       QKVCase(
         q = Seq(0.25f, -0.5f, 0.75f, 1.0f),
         k = Seq(
@@ -87,6 +99,19 @@ object FpxxQKVTester extends App {
         init = false
       )
     )
+    val randomCases = (0 until 64).map { _ =>
+        val init = rng.nextInt(4) == 0
+        QKVCase(
+          q = Seq.fill(headDim)(randIn(-3.0f, 3.0f)),
+          k = Seq.fill(tileSize)(Seq.fill(headDim)(randIn(-3.0f, 3.0f))),
+          v = Seq.fill(tileSize)(Seq.fill(headDim)(randIn(-3.0f, 3.0f))),
+          prevMax = randIn(-6.0f, 6.0f),
+          prevSum = randIn(0.01f, 6.0f),
+          prevAcc = Seq.fill(headDim)(randIn(-4.0f, 4.0f)),
+          init = init
+        )
+    }
+    val cases = cornerCases ++ randomCases
 
     val flag = VCSFlags(
       compileFlags = List("-kdb", "-lca", "+notimingchecks"),
@@ -110,7 +135,7 @@ object FpxxQKVTester extends App {
       .compile(new FpxxQKV(tileSize, headDim, fpCfg, fxCfg))
 
     compiled.doSim { dut =>
-        SimTimeout(200000)
+        SimTimeout(3000000)
         dut.clockDomain.forkStimulus(10)
         dut.io.input.valid #= false
         dut.io.output.ready #= false
@@ -120,10 +145,25 @@ object FpxxQKVTester extends App {
         var sendIdx = 0
         var recvIdx = 0
         var cycles = 0
-        val maxCycles = 4000
+        val maxCycles = 60000
+        var holdReadyVal = false
+        var holdReadyCycles = 0
+        def nextReady(): Boolean = {
+            if (holdReadyCycles == 0) {
+                if (rng.nextInt(100) < 65) {
+                    holdReadyVal = false
+                    holdReadyCycles = 10 + rng.nextInt(41)
+                } else {
+                    holdReadyVal = true
+                    holdReadyCycles = 1 + rng.nextInt(8)
+                }
+            }
+            holdReadyCycles -= 1
+            holdReadyVal
+        }
 
         while ((sendIdx < cases.length || recvIdx < cases.length) && cycles < maxCycles) {
-            val outReady = scala.util.Random.nextBoolean()
+            val outReady = nextReady()
             dut.io.output.ready #= outReady
 
             if (sendIdx < cases.length) {
