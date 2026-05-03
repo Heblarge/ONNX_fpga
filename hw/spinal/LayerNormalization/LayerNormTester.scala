@@ -6,71 +6,101 @@ import spinal.lib._
 import spinal.lib.sim._
 import FloatingPoint._
 import FloatingPoint.AttentionOps._
-import java.io.File
 import spinal.sim.VCSFlags
+import scala.math._
 
 object LayerNormTester extends App {
-  val opts = LayerNormOpts(
-    c = FpxxConfig.float32(),
-    dim = 4
-  )
+  val opts = LayerNormOpts(c = FpxxConfig.float32(), dim = 100, epsilon = 1e-5)
+  val rng = new scala.util.Random(2026)
+
+  // 辅助函数：Float转换与判定
+  def toFloat(f: Fpxx): Float = {
+    val bits = ((f.sign.toBigInt << 31) | (f.exp.toBigInt << 23) | f.mant.toBigInt).toInt
+    java.lang.Float.intBitsToFloat(bits)
+  }
 
 
-  val vcsFlag = VCSFlags(
-    compileFlags = List("-kdb", "-lca", "+notimingchecks"),
-    elaborateFlags = List("-fgp", "-kdb", "-lca", "+rad", "+notimingchecks"),
-    runFlags = List("-l ./run.log")
-  )
+  def almostEqual(hw: Float, ref: Double): Boolean = {
+    val diff = java.lang.Math.abs(hw.toDouble - ref)
+    // 允许 10% 的相对误差或 0.1 的绝对误差
+    diff < 0.01 || diff < java.lang.Math.abs(ref) * 0.01
+  }
 
+  // 将函数改为这种写法，显式调用 .toLong (通常浮点数 Bits 用 toLong 更稳)
+  def getFloatFromPort(f: Fpxx): Float = {
+    // 使用 .toLong 或 .toBigInt 都可以，前提是导入了 spinal.core.sim._
+    val rawBits: Long = f.sign.toBigInt.toLong << 31 |
+      f.exp.toBigInt.toLong << 23 |
+      f.mant.toBigInt.toLong
+    java.lang.Float.intBitsToFloat(rawBits.toInt)
+  }
 
-  val simConfig = SimConfig
-    .withVCS(vcsFlag)
-    .withFsdbWave
-    .withConfig(SpinalConfig(targetDirectory = "rtl/ReduceMean"))
+  val simConfig = SimConfig.withVCS(VCSFlags(compileFlags = List("-kdb", "-lca"))).withFsdbWave
 
   simConfig.compile(new LayerNorm(opts)).doSim { dut =>
+    dut.clockDomain.forkStimulus(10)
 
-    dut.clockDomain.forkStimulus(period = 10)
+    // 1. 生成 100 组随机测试向量
 
+    val testCases = Array.fill(100)(Array.fill(opts.dim)(rng.nextFloat() * 200.0f - 100.0f))
+    val gammaArr = Array.fill(opts.dim)(1.0f + rng.nextFloat())
+    val betaArr  = Array.fill(opts.dim)(rng.nextFloat() - 0.5f)
 
-    val testData = Array(10.0f, 20.0f, 30.0f, 40.0f)
-    val expectedMean = testData.sum / opts.dim
+    // 初始化参数
+    for (i <- 0 until opts.dim) {
+      dut.io.gamma(i) #= fpxxHostFromDouble(gammaArr(i).toDouble, opts.c)
+      dut.io.beta(i)  #= fpxxHostFromDouble(betaArr(i).toDouble, opts.c)
+    }
 
+    var sendIdx = 0
+    var recvIdx = 0
 
-    FlowDriver(dut.io.input, dut.clockDomain) { payload =>
+    // 2. 异步监控器：输出详细的对比结果
+    FlowMonitor(dut.io.output, dut.clockDomain) { (payload: Vec[Fpxx]) =>
+      val inputs: Array[Float] = testCases(recvIdx)
+      val mean: Double = inputs.sum.toDouble / opts.dim
+
+      val variance: Double = inputs.map { x =>
+        val diff = x.toDouble - mean
+        diff * diff
+      }.sum / opts.dim
+
+      val invStd: Double = 1.0 / java.lang.Math.sqrt(variance + opts.epsilon)
+
+      println(s"\n" + "="*60)
+      println(s"检查案例 [$recvIdx]")
+      println(f"${"Index"}%-10s | ${"Input"}%-12s | ${"HW Out"}%-12s | ${"REF Out"}%-12s | ${"Diff"}%-12s")
+      println("-" * 60)
+
       for (i <- 0 until opts.dim) {
-        // 使用 FpxxHost 的 apply 方法将 Float 转为 FpxxHost
-        payload(i) #= FpxxHost(testData(i))
+        val hw = getFloatFromPort(payload(i))
+        val ref = (inputs(i).toDouble - mean) * invStd * gammaArr(i).toDouble + betaArr(i).toDouble
+        val diff = Math.abs(hw - ref)
+
+        // 打印每一维度的详细对比
+        println(f"$i%-10d | ${inputs(i)}%-12.6f | $hw%-12.6f | $ref%-12.6f | $diff%-12.6f")
+
+        assert(almostEqual(hw, ref), s"数据偏差过大 @Case $recvIdx, Dim $i")
       }
-      true
+      println("="*60)
+      recvIdx += 1
     }
 
-
-    FlowMonitor(dut.io.output, dut.clockDomain) { (payload: Fpxx) =>
-
-      val s = payload.sign.toBigInt
-      val e = payload.exp.toBigInt
-      val m = payload.mant.toBigInt
-
-      // 2. 根据 float32 的位宽手动拼接 (1 + 8 + 23)
-      val rawBits = (s << 31) | (e << 23) | m
-
-      // 3. 转为 Float 进行比对
-      val hwFloat = java.lang.Float.intBitsToFloat(rawBits.toInt)
-
-      println(s"[@${simTime()}] 硬件原始位: S=$s, E=$e, M=$m (0x${rawBits.toString(16)})")
-      println(s"[@${simTime()}] 硬件计算结果: $hwFloat")
-      println(s"[@${simTime()}] 软件预期结果: $expectedMean")
-
-      val error = Math.abs(hwFloat - expectedMean)
-      if (error < 0.01) {
-        println(">>> SUCCESS <<<")
+    // 3. 连续驱动：模拟流水线满载
+    while (recvIdx < testCases.length) {
+      if (sendIdx < testCases.length) {
+        dut.io.input.valid #= true
+        for (i <- 0 until opts.dim) {
+          dut.io.input.payload(i) #= fpxxHostFromDouble(testCases(sendIdx)(i).toDouble, opts.c)
+        }
+        sendIdx += 1
       } else {
-        println(">>> FAIL: Mismatch! <<<")
+        dut.io.input.valid #= false
       }
+      dut.clockDomain.waitSampling()
     }
 
-    dut.clockDomain.waitSampling(100)
-    println("Simulation Finished")
+    println(s"测试圆满完成！共校验 ${testCases.length} 组向量。")
+    simSuccess()
   }
 }
