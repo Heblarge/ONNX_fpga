@@ -2,43 +2,32 @@ ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.13.14"
 ThisBuild / organization := "org.example"
 
-val spinalVersion = "1.11.0"
-val spinalCore = "com.github.spinalhdl" %% "spinalhdl-core" % spinalVersion
-val spinalLib = "com.github.spinalhdl" %% "spinalhdl-lib" % spinalVersion
-val spinalIdslPlugin = compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-plugin" % spinalVersion)
-val nd4jVersion = "1.0.0-beta6" // 请根据需要调整版本号
-val tensorflowVersion = "1.15.0" // 你可以根据需要调整版本号
+val nd4jVersion = "1.0.0-beta6"
+val tensorflowVersion = "1.15.0"
 
-lazy val Onnx_SpinalHDL = (project in file("."))
-  .settings(
-    Compile / scalaSource := baseDirectory.value / "hw" / "spinal",
-    Compile / unmanagedSourceDirectories += baseDirectory.value / "sw" / "scala" / "main" / "scala",
-    Test / unmanagedSourceDirectories += baseDirectory.value / "sw" / "scala" / "test" / "scala",
-    Compile / unmanagedResourceDirectories += baseDirectory.value / "sw" / "scala" / "main" / "resources",
-    Test / unmanagedResourceDirectories += baseDirectory.value / "sw" / "scala" / "test" / "resources",
-    scalacOptions ++= Seq("-language:postfixOps"),
-    //scalacOptions ++= Seq("-encoding", "UTF-8"),//用来支持中文注释
-    libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin,"com.github.spinalhdl" %% "spinalhdl-sim" % spinalVersion),
-    libraryDependencies += "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
-    libraryDependencies += "org.scalanlp" %% "breeze-viz" % "2.1.0",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18",
-    libraryDependencies += "com.github.alexarchambault" %% "case-app" % "2.0.6"
+// ==========================================
+// 1. 屏蔽原有业务代码编译（指向空目录）
+// ==========================================
+Compile / scalaSource := baseDirectory.value / "src_dummy" / "scala"
+Compile / javaSource := baseDirectory.value / "src_dummy" / "java"
+Compile / resourceDirectory := baseDirectory.value / "src_dummy" / "resources"
 
+// ==========================================
+// 2. 保留测试路径（你将在这里写依赖加载测试类）
+// ==========================================
+Test / scalaSource := baseDirectory.value / "sw" / "scala" / "test" / "scala"
+Test / javaSource := baseDirectory.value / "sw" / "java" / "test" / "java"
+Test / resourceDirectory := baseDirectory.value / "sw" / "java" / "test" / "resources"
 
-  )
-lazy val Onnx_SpinalHDL_test = (project in file("."))
-.settings(
-  name := "onnx4j_test",
-)
-.dependsOn(Onnx_SpinalHDL)
+// ==========================================
+// 3. 编译与运行参数（极度重要，缺一不可）
+// ==========================================
+fork := true
+crossPaths := false
+javacOptions ++= Seq("-encoding", "UTF-8", "-Xlint:unchecked", "-Xlint:deprecation", "-parameters")
+Compile / doc / sources := Seq.empty
 
-// build.sbt
-//手动设置java的source和resource的位置
-javacOptions ++= Seq("-encoding", "UTF-8")//用来支持中文注释
-Compile / javaSource := baseDirectory.value / "sw"/ "java"/"main"/"java"
-Test / javaSource := baseDirectory.value / "sw" / "java"/"test"/"java"
-Compile / resourceDirectory := baseDirectory.value / "sw" /"java"/"main"/ "resources"
-Test / resourceDirectory := baseDirectory.value / "sw" /"java"/"test"/ "resources"
+// ND4J 和 TF 的老版本在高版本 JDK 上加载 .so 必须的反射放行参数
 javaOptions ++= Seq(
   "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
   "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
@@ -46,51 +35,37 @@ javaOptions ++= Seq(
   "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
   "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
   "--add-exports=java.base/sun.nio=ALL-UNNAMED",
-  "--add-opens=java.base/java.nio=ALL-UNNAMED",
-  //! if you are using IDEA with lombok plugin, uncomment the following line:
-  //"-processor",
-  //"lombok.launch.AnnotationProcessorHider$AnnotationProcessor"
-  
-)
-Compile / compile := (Compile / compile).value
-Compile / doc / sources := Seq.empty
-Compile / compile / javacOptions ++= Seq(
-  "-Xlint:unchecked",
-  "-Xlint:deprecation",
-  "-parameters"
+  "--add-opens=java.base/java.nio=ALL-UNNAMED"
 )
 
-//onnx4j
-libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.1"
-libraryDependencies += "org.apache.commons" % "commons-lang3" % "3.12.0"
-libraryDependencies += "org.apache.commons" % "commons-configuration2" % "2.11.0"
-libraryDependencies += "com.google.protobuf" % "protobuf-java" % "3.19.4"
-libraryDependencies += "com.google.guava" % "guava" % "30.1-jre"
-libraryDependencies += "javax.annotation" % "javax.annotation-api" % "1.3.2"
-libraryDependencies += "javax.servlet" % "javax.servlet-api" % "4.0.1"
-
-libraryDependencies += "org.projectlombok" % "lombok" % "1.18.30" % Provided
-
-
-
+// ==========================================
+// 4. 纯净的混合推理依赖树（已剔除 SpinalHDL 和 CUDA）
+// ==========================================
+javacOptions ++= Seq("-encoding", "UTF-8")//用来支持中文注释
 libraryDependencies ++= Seq(
+  // --- 模型解析层 ---
+  "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
+  "com.google.protobuf" % "protobuf-java" % "3.19.4",
+
+  // --- CPU 回退推理层 (混合模式所需) ---
+  // 注意：去掉了 nd4j-cuda，仅保留 native-platform (包含 ARM/x86 的纯 CPU c++ 库)
   "org.nd4j" % "nd4j-api" % nd4jVersion,
-  "org.nd4j" % "nd4j-native" % nd4jVersion,
   "org.nd4j" % "nd4j-native-platform" % nd4jVersion,
-  "org.nd4j" % "nd4j-cuda-10.2" % nd4jVersion
-)
-libraryDependencies ++= Seq(
+  
   "org.tensorflow" % "tensorflow" % tensorflowVersion,
-  "org.tensorflow" % "proto" % tensorflowVersion exclude("com.google.protobuf", "protobuf-java")
+  "org.tensorflow" % "proto" % tensorflowVersion exclude("com.google.protobuf", "protobuf-java"),
+
+  // --- 基础工具依赖 ---
+  "org.apache.commons" % "commons-lang3" % "3.12.0",
+  "org.apache.commons" % "commons-configuration2" % "2.11.0",
+  "com.google.guava" % "guava" % "30.1-jre",
+  "org.reflections" % "reflections" % "0.9.11",
+  "javax.annotation" % "javax.annotation-api" % "1.3.2",
+  "javax.servlet" % "javax.servlet-api" % "4.0.1",
+  "org.projectlombok" % "lombok" % "1.18.30" % Provided,
+  "com.github.alexarchambault" %% "case-app" % "2.0.6",
+
+  // --- 测试框架 ---
+  "org.scalatest" %% "scalatest" % "3.2.18" % Test,
+  "com.github.sbt" % "junit-interface" % "0.13.1" % Test
 )
-// https://mvnrepository.com/artifact/org.reflections/reflections
-libraryDependencies += "org.reflections" % "reflections" % "0.9.11"
-
-// case app
-libraryDependencies += "com.github.alexarchambault" %% "case-app" % "2.0.6"
-
-// scalatest
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18"
-
-crossPaths := false
-fork := true
