@@ -1,0 +1,7 @@
+Command Line: /opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/bin/elabcom -logdir /root/onnx_spinal_project_new/simWorkspace/WrapForFPGATest/WrapForFPGATest.daidir/elabcomLog -simvdaidir /root/onnx_spinal_project_new/simWorkspace/WrapForFPGATest/WrapForFPGATest.daidir -elab /root/onnx_spinal_project_new/simWorkspace/WrapForFPGATest/WrapForFPGATest.daidir/kdb -simflow -top WrapForFPGATest __simulation_def -ssz -ssv -ssy +disable_message+C00380+C00381 +disable_message+C00388+C00389
+uname(Linux EDA 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64)
+[INFO] error/warning message 'C00380' has been suppressed.
+[INFO] error/warning message 'C00381' has been suppressed.
+[INFO] error/warning message 'C00388' has been suppressed.
+[INFO] error/warning message 'C00389' has been suppressed.
+au time 0.245905 0.130550 0.107852 delta 123367424 123367424 total 200867840 200867840

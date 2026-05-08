@@ -1,0 +1,5 @@
+@elabcom rc file Version 1.0
+[oh]
+invokeDir = /root/onnx_spinal_project_new/simWorkspace/WrapForFPGATest
+hostCommand = -elab /root/onnx_spinal_project_new/simWorkspace/WrapForFPGATest/WrapForFPGATest.daidir/kdb -simflow -top "WrapForFPGATest __simulation_def" +disable_message+C00380+C00381 +disable_message+C00388+C00389 -SNPS_ELABCOM -saveElab
+simType = VCS

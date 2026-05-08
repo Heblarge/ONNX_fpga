@@ -1,0 +1,1270 @@
+{
+    "version": "1.4.0",
+    "project": {
+        "name": "onnx_spinal_project_new",
+        "directory": "/root/onnx_spinal_project_new",
+        "workspaceDir": "/root/onnx_spinal_project_new",
+        "sources": [
+            "/root/onnx_spinal_project_new/src_dummy/scala",
+            "/root/onnx_spinal_project_new/src_dummy/java",
+            "/root/onnx_spinal_project_new/target/src_managed/main"
+        ],
+        "dependencies": [
+            
+        ],
+        "classpath": [
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime/1.21.0/onnxruntime-1.21.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/protobuf/protobuf-java/3.19.4/protobuf-java-3.19.4.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-api/1.0.0-beta6/nd4j-api-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-platform/1.0.0-beta6/nd4j-native-platform-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/tensorflow/1.15.0/tensorflow-1.15.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/proto/1.15.0/proto-1.15.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-configuration2/2.11.0/commons-configuration2-2.11.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/guava/30.1-jre/guava-30.1-jre.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/reflections/reflections/0.9.11/reflections-0.9.11.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.3.2/javax.annotation-api-1.3.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/servlet/javax.servlet-api/4.0.1/javax.servlet-api-4.0.1.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app_2.13/2.0.6/case-app_2.13-2.0.6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/jakewharton/byteunits/byteunits/0.9.1/byteunits-0.9.1.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-math3/3.5/commons-math3-3.5.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/flatbuffers/flatbuffers-java/1.10.0/flatbuffers-java-1.10.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/protobuf/1.0.0-beta6/protobuf-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/oshi/oshi-core/3.4.2/oshi-core-3.4.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.24/slf4j-api-1.7.24.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/jackson/1.0.0-beta6/jackson-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-net/commons-net/3.1/commons-net-3.1.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-buffer/1.0.0-beta6/nd4j-buffer-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-context/1.0.0-beta6/nd4j-context-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/ericaro/neoitertools/1.0.0/neoitertools-1.0.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas-platform/0.3.7-1.5.2/openblas-platform-0.3.7-1.5.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl-platform/2019.5-1.5.2/mkl-platform-2019.5-1.5.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-arm.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-arm64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-x86.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-ios-arm64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-ios-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-linux-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-macosx-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-windows-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-linux-ppc64le.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-linux-armhf.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow/1.15.0/libtensorflow-1.15.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow_jni/1.15.0/libtensorflow_jni-1.15.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-logging/commons-logging/1.3.2/commons-logging-1.3.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/checkerframework/checker-qual/3.5.0/checker-qual-3.5.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/errorprone/error_prone_annotations/2.3.4/error_prone_annotations-2.3.4.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/j2objc/j2objc-annotations/1.3/j2objc-annotations-1.3.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/javassist/javassist/3.21.0-GA/javassist-3.21.0-GA.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-annotations_2.13/2.0.6/case-app-annotations_2.13-2.0.6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-util_2.13/2.0.6/case-app-util_2.13-2.0.6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna-platform/4.3.0/jna-platform-4.3.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/threeten/threetenbp/1.3.3/threetenbp-1.3.3.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/javacpp/1.5.2/javacpp-1.5.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-common/1.0.0-beta6/nd4j-common-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-arm.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-arm64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-x86.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-ios-arm64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-ios-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-x86.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-armhf.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-arm64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-ppc64le.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-macosx-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-windows-x86.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-windows-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-linux-x86.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-linux-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-macosx-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-windows-x86.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-windows-x86_64.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-api/1.0.0-beta6/nd4j-native-api-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/chuusai/shapeless_2.13/2.3.3/shapeless_2.13-2.3.3.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/4.3.0/jna-4.3.0.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/guava/1.0.0-beta6/guava-1.0.0-beta6.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.5/commons-io-2.5.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-compress/1.18/commons-compress-1.18.jar",
+            "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-codec/commons-codec/1.10/commons-codec-1.10.jar"
+        ],
+        "out": "/root/onnx_spinal_project_new/.bloop/onnx_spinal_project_new",
+        "classesDir": "/root/onnx_spinal_project_new/.bloop/onnx_spinal_project_new/classes",
+        "resources": [
+            "/root/onnx_spinal_project_new/src_dummy/resources",
+            "/root/onnx_spinal_project_new/target/resource_managed/main"
+        ],
+        "scala": {
+            "organization": "org.scala-lang",
+            "name": "scala-compiler",
+            "version": "2.13.14",
+            "options": [
+                
+            ],
+            "jars": [
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-compiler/2.13.14/scala-compiler-2.13.14.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-reflect/2.13.14/scala-reflect-2.13.14.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/io/github/java-diff-utils/java-diff-utils/4.12/java-diff-utils-4.12.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/jline/jline/3.25.1/jline-3.25.1.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar"
+            ],
+            "setup": {
+                "order": "mixed",
+                "addLibraryToBootClasspath": false,
+                "addCompilerToClasspath": false,
+                "addExtraJarsToClasspath": false,
+                "manageBootClasspath": false,
+                "filterLibraryFromClasspath": false
+            },
+            "bridgeJars": [
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala2-sbt-bridge/2.13.14/scala2-sbt-bridge-2.13.14.jar"
+            ]
+        },
+        "java": {
+            "options": [
+                "-encoding",
+                "UTF-8",
+                "-Xlint:unchecked",
+                "-Xlint:deprecation",
+                "-parameters",
+                "-encoding",
+                "UTF-8"
+            ]
+        },
+        "test": {
+            "frameworks": [
+                {
+                    "names": [
+                        "org.scalacheck.ScalaCheckFramework"
+                    ]
+                },
+                {
+                    "names": [
+                        "org.specs2.runner.Specs2Framework",
+                        "org.specs2.runner.SpecsFramework"
+                    ]
+                },
+                {
+                    "names": [
+                        "org.specs.runner.SpecsFramework"
+                    ]
+                },
+                {
+                    "names": [
+                        "org.scalatest.tools.Framework",
+                        "org.scalatest.tools.ScalaTestFramework"
+                    ]
+                },
+                {
+                    "names": [
+                        "com.novocode.junit.JUnitFramework"
+                    ]
+                },
+                {
+                    "names": [
+                        "munit.Framework"
+                    ]
+                },
+                {
+                    "names": [
+                        "zio.test.sbt.ZTestFramework"
+                    ]
+                },
+                {
+                    "names": [
+                        "weaver.framework.CatsEffect"
+                    ]
+                },
+                {
+                    "names": [
+                        "hedgehog.sbt.Framework"
+                    ]
+                }
+            ],
+            "options": {
+                "excludes": [
+                    
+                ],
+                "arguments": [
+                    
+                ]
+            }
+        },
+        "platform": {
+            "name": "jvm",
+            "config": {
+                "home": "/usr/lib/jvm/java-17-openjdk-17.0.14.0.7-2.el9.x86_64",
+                "options": [
+                    "-Duser.dir=/root/onnx_spinal_project_new",
+                    "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+                    "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED",
+                    "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
+                    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+                    "--add-exports=java.base/sun.nio=ALL-UNNAMED",
+                    "--add-opens=java.base/java.nio=ALL-UNNAMED"
+                ]
+            },
+            "mainClass": [
+                
+            ],
+            "runtimeConfig": {
+                "home": "/usr/lib/jvm/java-17-openjdk-17.0.14.0.7-2.el9.x86_64",
+                "options": [
+                    "-Duser.dir=/root/onnx_spinal_project_new",
+                    "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+                    "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
+                    "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED",
+                    "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED",
+                    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+                    "--add-exports=java.base/sun.nio=ALL-UNNAMED",
+                    "--add-opens=java.base/java.nio=ALL-UNNAMED"
+                ]
+            },
+            "classpath": [
+                "/root/onnx_spinal_project_new/.bloop/onnx_spinal_project_new/classes",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime/1.21.0/onnxruntime-1.21.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/protobuf/protobuf-java/3.19.4/protobuf-java-3.19.4.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-api/1.0.0-beta6/nd4j-api-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-platform/1.0.0-beta6/nd4j-native-platform-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/tensorflow/1.15.0/tensorflow-1.15.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/proto/1.15.0/proto-1.15.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-configuration2/2.11.0/commons-configuration2-2.11.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/guava/30.1-jre/guava-30.1-jre.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/reflections/reflections/0.9.11/reflections-0.9.11.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.3.2/javax.annotation-api-1.3.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/servlet/javax.servlet-api/4.0.1/javax.servlet-api-4.0.1.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app_2.13/2.0.6/case-app_2.13-2.0.6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/jakewharton/byteunits/byteunits/0.9.1/byteunits-0.9.1.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-math3/3.5/commons-math3-3.5.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/flatbuffers/flatbuffers-java/1.10.0/flatbuffers-java-1.10.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/protobuf/1.0.0-beta6/protobuf-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/oshi/oshi-core/3.4.2/oshi-core-3.4.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.24/slf4j-api-1.7.24.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/jackson/1.0.0-beta6/jackson-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-net/commons-net/3.1/commons-net-3.1.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-buffer/1.0.0-beta6/nd4j-buffer-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-context/1.0.0-beta6/nd4j-context-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/ericaro/neoitertools/1.0.0/neoitertools-1.0.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas-platform/0.3.7-1.5.2/openblas-platform-0.3.7-1.5.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl-platform/2019.5-1.5.2/mkl-platform-2019.5-1.5.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-arm.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-arm64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-x86.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-android-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-ios-arm64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-ios-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-linux-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-macosx-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-windows-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-linux-ppc64le.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-linux-armhf.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow/1.15.0/libtensorflow-1.15.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow_jni/1.15.0/libtensorflow_jni-1.15.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-logging/commons-logging/1.3.2/commons-logging-1.3.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/checkerframework/checker-qual/3.5.0/checker-qual-3.5.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/errorprone/error_prone_annotations/2.3.4/error_prone_annotations-2.3.4.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/j2objc/j2objc-annotations/1.3/j2objc-annotations-1.3.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/javassist/javassist/3.21.0-GA/javassist-3.21.0-GA.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-annotations_2.13/2.0.6/case-app-annotations_2.13-2.0.6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-util_2.13/2.0.6/case-app-util_2.13-2.0.6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna-platform/4.3.0/jna-platform-4.3.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/threeten/threetenbp/1.3.3/threetenbp-1.3.3.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/javacpp/1.5.2/javacpp-1.5.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-common/1.0.0-beta6/nd4j-common-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-arm.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-arm64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-x86.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-android-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-ios-arm64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-ios-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-x86.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-armhf.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-arm64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-linux-ppc64le.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-macosx-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-windows-x86.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-windows-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-linux-x86.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-linux-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-macosx-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-windows-x86.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-windows-x86_64.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-api/1.0.0-beta6/nd4j-native-api-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/chuusai/shapeless_2.13/2.3.3/shapeless_2.13-2.3.3.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/4.3.0/jna-4.3.0.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/guava/1.0.0-beta6/guava-1.0.0-beta6.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.5/commons-io-2.5.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-compress/1.18/commons-compress-1.18.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-codec/commons-codec/1.10/commons-codec-1.10.jar",
+                "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar"
+            ]
+        },
+        "resolution": {
+            "modules": [
+                {
+                    "organization": "org.scala-lang",
+                    "name": "scala-library",
+                    "version": "2.13.14",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "scala-library",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar"
+                        },
+                        {
+                            "name": "scala-library",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.microsoft.onnxruntime",
+                    "name": "onnxruntime",
+                    "version": "1.21.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "onnxruntime",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime/1.21.0/onnxruntime-1.21.0.jar"
+                        },
+                        {
+                            "name": "onnxruntime",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/microsoft/onnxruntime/onnxruntime/1.21.0/onnxruntime-1.21.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.protobuf",
+                    "name": "protobuf-java",
+                    "version": "3.19.4",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "protobuf-java",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/protobuf/protobuf-java/3.19.4/protobuf-java-3.19.4.jar"
+                        },
+                        {
+                            "name": "protobuf-java",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/protobuf/protobuf-java/3.19.4/protobuf-java-3.19.4-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-api",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-api",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-api/1.0.0-beta6/nd4j-api-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-api",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-api/1.0.0-beta6/nd4j-api-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-native-platform",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-native-platform",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-platform/1.0.0-beta6/nd4j-native-platform-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-native-platform",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-platform/1.0.0-beta6/nd4j-native-platform-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.tensorflow",
+                    "name": "tensorflow",
+                    "version": "1.15.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "tensorflow",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/tensorflow/1.15.0/tensorflow-1.15.0.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.tensorflow",
+                    "name": "proto",
+                    "version": "1.15.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "proto",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/proto/1.15.0/proto-1.15.0.jar"
+                        },
+                        {
+                            "name": "proto",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/proto/1.15.0/proto-1.15.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.apache.commons",
+                    "name": "commons-lang3",
+                    "version": "3.14.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-lang3",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar"
+                        },
+                        {
+                            "name": "commons-lang3",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.apache.commons",
+                    "name": "commons-configuration2",
+                    "version": "2.11.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-configuration2",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-configuration2/2.11.0/commons-configuration2-2.11.0.jar"
+                        },
+                        {
+                            "name": "commons-configuration2",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-configuration2/2.11.0/commons-configuration2-2.11.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.guava",
+                    "name": "guava",
+                    "version": "30.1-jre",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "guava",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/guava/30.1-jre/guava-30.1-jre.jar"
+                        },
+                        {
+                            "name": "guava",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/guava/30.1-jre/guava-30.1-jre-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.reflections",
+                    "name": "reflections",
+                    "version": "0.9.11",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "reflections",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/reflections/reflections/0.9.11/reflections-0.9.11.jar"
+                        },
+                        {
+                            "name": "reflections",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/reflections/reflections/0.9.11/reflections-0.9.11-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "javax.annotation",
+                    "name": "javax.annotation-api",
+                    "version": "1.3.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "javax.annotation-api",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.3.2/javax.annotation-api-1.3.2.jar"
+                        },
+                        {
+                            "name": "javax.annotation-api",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/annotation/javax.annotation-api/1.3.2/javax.annotation-api-1.3.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "javax.servlet",
+                    "name": "javax.servlet-api",
+                    "version": "4.0.1",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "javax.servlet-api",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/servlet/javax.servlet-api/4.0.1/javax.servlet-api-4.0.1.jar"
+                        },
+                        {
+                            "name": "javax.servlet-api",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/javax/servlet/javax.servlet-api/4.0.1/javax.servlet-api-4.0.1-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.github.alexarchambault",
+                    "name": "case-app_2.13",
+                    "version": "2.0.6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "case-app_2.13",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app_2.13/2.0.6/case-app_2.13-2.0.6.jar"
+                        },
+                        {
+                            "name": "case-app_2.13",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app_2.13/2.0.6/case-app_2.13-2.0.6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.jakewharton.byteunits",
+                    "name": "byteunits",
+                    "version": "0.9.1",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "byteunits",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/jakewharton/byteunits/byteunits/0.9.1/byteunits-0.9.1.jar"
+                        },
+                        {
+                            "name": "byteunits",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/jakewharton/byteunits/byteunits/0.9.1/byteunits-0.9.1-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.apache.commons",
+                    "name": "commons-math3",
+                    "version": "3.5",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-math3",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-math3/3.5/commons-math3-3.5.jar"
+                        },
+                        {
+                            "name": "commons-math3",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-math3/3.5/commons-math3-3.5-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.flatbuffers",
+                    "name": "flatbuffers-java",
+                    "version": "1.10.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "flatbuffers-java",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/flatbuffers/flatbuffers-java/1.10.0/flatbuffers-java-1.10.0.jar"
+                        },
+                        {
+                            "name": "flatbuffers-java",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/flatbuffers/flatbuffers-java/1.10.0/flatbuffers-java-1.10.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "protobuf",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "protobuf",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/protobuf/1.0.0-beta6/protobuf-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "protobuf",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/protobuf/1.0.0-beta6/protobuf-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.github.oshi",
+                    "name": "oshi-core",
+                    "version": "3.4.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "oshi-core",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/oshi/oshi-core/3.4.2/oshi-core-3.4.2.jar"
+                        },
+                        {
+                            "name": "oshi-core",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/oshi/oshi-core/3.4.2/oshi-core-3.4.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.slf4j",
+                    "name": "slf4j-api",
+                    "version": "1.7.24",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "slf4j-api",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.24/slf4j-api-1.7.24.jar"
+                        },
+                        {
+                            "name": "slf4j-api",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/slf4j/slf4j-api/1.7.24/slf4j-api-1.7.24-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "jackson",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "jackson",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/jackson/1.0.0-beta6/jackson-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "jackson",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/jackson/1.0.0-beta6/jackson-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "commons-net",
+                    "name": "commons-net",
+                    "version": "3.1",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-net",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-net/commons-net/3.1/commons-net-3.1.jar"
+                        },
+                        {
+                            "name": "commons-net",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-net/commons-net/3.1/commons-net-3.1-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-buffer",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-buffer",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-buffer/1.0.0-beta6/nd4j-buffer-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-buffer",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-buffer/1.0.0-beta6/nd4j-buffer-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-context",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-context",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-context/1.0.0-beta6/nd4j-context-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-context",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-context/1.0.0-beta6/nd4j-context-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "net.ericaro",
+                    "name": "neoitertools",
+                    "version": "1.0.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "neoitertools",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/ericaro/neoitertools/1.0.0/neoitertools-1.0.0.jar"
+                        },
+                        {
+                            "name": "neoitertools",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/ericaro/neoitertools/1.0.0/neoitertools-1.0.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.bytedeco",
+                    "name": "openblas-platform",
+                    "version": "0.3.7-1.5.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "openblas-platform",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas-platform/0.3.7-1.5.2/openblas-platform-0.3.7-1.5.2.jar"
+                        },
+                        {
+                            "name": "openblas-platform",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas-platform/0.3.7-1.5.2/openblas-platform-0.3.7-1.5.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.bytedeco",
+                    "name": "mkl-platform",
+                    "version": "2019.5-1.5.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "mkl-platform",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl-platform/2019.5-1.5.2/mkl-platform-2019.5-1.5.2.jar"
+                        },
+                        {
+                            "name": "mkl-platform",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl-platform/2019.5-1.5.2/mkl-platform-2019.5-1.5.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-native",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-native",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-native",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native/1.0.0-beta6/nd4j-native-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.tensorflow",
+                    "name": "libtensorflow",
+                    "version": "1.15.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "libtensorflow",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow/1.15.0/libtensorflow-1.15.0.jar"
+                        },
+                        {
+                            "name": "libtensorflow",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow/1.15.0/libtensorflow-1.15.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.tensorflow",
+                    "name": "libtensorflow_jni",
+                    "version": "1.15.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "libtensorflow_jni",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/tensorflow/libtensorflow_jni/1.15.0/libtensorflow_jni-1.15.0.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.apache.commons",
+                    "name": "commons-text",
+                    "version": "1.12.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-text",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar"
+                        },
+                        {
+                            "name": "commons-text",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "commons-logging",
+                    "name": "commons-logging",
+                    "version": "1.3.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-logging",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-logging/commons-logging/1.3.2/commons-logging-1.3.2.jar"
+                        },
+                        {
+                            "name": "commons-logging",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-logging/commons-logging/1.3.2/commons-logging-1.3.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.guava",
+                    "name": "failureaccess",
+                    "version": "1.0.1",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "failureaccess",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar"
+                        },
+                        {
+                            "name": "failureaccess",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.guava",
+                    "name": "listenablefuture",
+                    "version": "9999.0-empty-to-avoid-conflict-with-guava",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "listenablefuture",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.code.findbugs",
+                    "name": "jsr305",
+                    "version": "3.0.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "jsr305",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar"
+                        },
+                        {
+                            "name": "jsr305",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.checkerframework",
+                    "name": "checker-qual",
+                    "version": "3.5.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "checker-qual",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/checkerframework/checker-qual/3.5.0/checker-qual-3.5.0.jar"
+                        },
+                        {
+                            "name": "checker-qual",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/checkerframework/checker-qual/3.5.0/checker-qual-3.5.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.errorprone",
+                    "name": "error_prone_annotations",
+                    "version": "2.3.4",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "error_prone_annotations",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/errorprone/error_prone_annotations/2.3.4/error_prone_annotations-2.3.4.jar"
+                        },
+                        {
+                            "name": "error_prone_annotations",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/errorprone/error_prone_annotations/2.3.4/error_prone_annotations-2.3.4-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.google.j2objc",
+                    "name": "j2objc-annotations",
+                    "version": "1.3",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "j2objc-annotations",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/j2objc/j2objc-annotations/1.3/j2objc-annotations-1.3.jar"
+                        },
+                        {
+                            "name": "j2objc-annotations",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/google/j2objc/j2objc-annotations/1.3/j2objc-annotations-1.3-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.javassist",
+                    "name": "javassist",
+                    "version": "3.21.0-GA",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "javassist",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/javassist/javassist/3.21.0-GA/javassist-3.21.0-GA.jar"
+                        },
+                        {
+                            "name": "javassist",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/javassist/javassist/3.21.0-GA/javassist-3.21.0-GA-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.github.alexarchambault",
+                    "name": "case-app-annotations_2.13",
+                    "version": "2.0.6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "case-app-annotations_2.13",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-annotations_2.13/2.0.6/case-app-annotations_2.13-2.0.6.jar"
+                        },
+                        {
+                            "name": "case-app-annotations_2.13",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-annotations_2.13/2.0.6/case-app-annotations_2.13-2.0.6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.github.alexarchambault",
+                    "name": "case-app-util_2.13",
+                    "version": "2.0.6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "case-app-util_2.13",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-util_2.13/2.0.6/case-app-util_2.13-2.0.6.jar"
+                        },
+                        {
+                            "name": "case-app-util_2.13",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/github/alexarchambault/case-app-util_2.13/2.0.6/case-app-util_2.13-2.0.6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "net.java.dev.jna",
+                    "name": "jna-platform",
+                    "version": "4.3.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "jna-platform",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna-platform/4.3.0/jna-platform-4.3.0.jar"
+                        },
+                        {
+                            "name": "jna-platform",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna-platform/4.3.0/jna-platform-4.3.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.threeten",
+                    "name": "threetenbp",
+                    "version": "1.3.3",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "threetenbp",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/threeten/threetenbp/1.3.3/threetenbp-1.3.3.jar"
+                        },
+                        {
+                            "name": "threetenbp",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/threeten/threetenbp/1.3.3/threetenbp-1.3.3-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.bytedeco",
+                    "name": "javacpp",
+                    "version": "1.5.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "javacpp",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/javacpp/1.5.2/javacpp-1.5.2.jar"
+                        },
+                        {
+                            "name": "javacpp",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/javacpp/1.5.2/javacpp-1.5.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-common",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-common",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-common/1.0.0-beta6/nd4j-common-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-common",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-common/1.0.0-beta6/nd4j-common-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.bytedeco",
+                    "name": "openblas",
+                    "version": "0.3.7-1.5.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "openblas",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2.jar"
+                        },
+                        {
+                            "name": "openblas",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/openblas/0.3.7-1.5.2/openblas-0.3.7-1.5.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.bytedeco",
+                    "name": "mkl",
+                    "version": "2019.5-1.5.2",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "mkl",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2.jar"
+                        },
+                        {
+                            "name": "mkl",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/bytedeco/mkl/2019.5-1.5.2/mkl-2019.5-1.5.2-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "nd4j-native-api",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "nd4j-native-api",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-api/1.0.0-beta6/nd4j-native-api-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "nd4j-native-api",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/nd4j-native-api/1.0.0-beta6/nd4j-native-api-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "com.chuusai",
+                    "name": "shapeless_2.13",
+                    "version": "2.3.3",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "shapeless_2.13",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/chuusai/shapeless_2.13/2.3.3/shapeless_2.13-2.3.3.jar"
+                        },
+                        {
+                            "name": "shapeless_2.13",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/com/chuusai/shapeless_2.13/2.3.3/shapeless_2.13-2.3.3-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "net.java.dev.jna",
+                    "name": "jna",
+                    "version": "4.3.0",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "jna",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/4.3.0/jna-4.3.0.jar"
+                        },
+                        {
+                            "name": "jna",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/net/java/dev/jna/jna/4.3.0/jna-4.3.0-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.nd4j",
+                    "name": "guava",
+                    "version": "1.0.0-beta6",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "guava",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/guava/1.0.0-beta6/guava-1.0.0-beta6.jar"
+                        },
+                        {
+                            "name": "guava",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/nd4j/guava/1.0.0-beta6/guava-1.0.0-beta6-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "commons-io",
+                    "name": "commons-io",
+                    "version": "2.5",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-io",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.5/commons-io-2.5.jar"
+                        },
+                        {
+                            "name": "commons-io",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-io/commons-io/2.5/commons-io-2.5-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.apache.commons",
+                    "name": "commons-compress",
+                    "version": "1.18",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-compress",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-compress/1.18/commons-compress-1.18.jar"
+                        },
+                        {
+                            "name": "commons-compress",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/apache/commons/commons-compress/1.18/commons-compress-1.18-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "commons-codec",
+                    "name": "commons-codec",
+                    "version": "1.10",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "commons-codec",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-codec/commons-codec/1.10/commons-codec-1.10.jar"
+                        },
+                        {
+                            "name": "commons-codec",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/commons-codec/commons-codec/1.10/commons-codec-1.10-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.projectlombok",
+                    "name": "lombok",
+                    "version": "1.18.30",
+                    "configurations": "default",
+                    "artifacts": [
+                        {
+                            "name": "lombok",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar"
+                        },
+                        {
+                            "name": "lombok",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/projectlombok/lombok/1.18.30/lombok-1.18.30-sources.jar"
+                        }
+                    ]
+                },
+                {
+                    "organization": "org.scala-lang",
+                    "name": "scala-library",
+                    "version": "2.13.14",
+                    "configurations": "optional",
+                    "artifacts": [
+                        {
+                            "name": "scala-library",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14.jar"
+                        },
+                        {
+                            "name": "scala-library",
+                            "classifier": "sources",
+                            "path": "/root/.cache/coursier/v1/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.14/scala-library-2.13.14-sources.jar"
+                        }
+                    ]
+                }
+            ]
+        },
+        "tags": [
+            "library"
+        ]
+    }
+}

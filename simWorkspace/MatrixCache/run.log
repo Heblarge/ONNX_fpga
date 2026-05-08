@@ -1,0 +1,18 @@
+Command: /root/onnx_spinal_project_new/simWorkspace/MatrixCache/./MatrixCache -l ./run.log
+Chronologic VCS simulator copyright 1991-2018
+Contains Synopsys proprietary information.
+Compiler version O-2018.09-SP2_Full64; Runtime version O-2018.09-SP2_Full64;  Apr 23 05:58 2026
+Shared memory key : SpinalHDL_0_1_1651667865_1222603167_1776923896918_8871279935111174873
+Start of simulation
+*Verdi* Loading libsscore_vcs201809.so
+FSDB Dumper for VCS, Release Verdi_O-2018.09-SP2, Linux x86_64/64bit, 02/21/2019
+(C) 1996 - 2019 by Synopsys, Inc.
+*Verdi* : Create FSDB file 'null_MatrixCache.fsdb'
+*Verdi* : Begin traversing the scope (MatrixCache), layer (0).
+*Verdi* : End of traversing.
+*Verdi* : Flush all FSDB Files at 0 ps.
+Unexpected termination of the simulation
+           V C S   S i m u l a t i o n   R e p o r t 
+Time: 581 ps
+CPU Time:      0.230 seconds;       Data structure size:   0.0Mb
+Thu Apr 23 05:58:30 2026

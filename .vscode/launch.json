@@ -1,0 +1,135 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "InstAxi4ToStream128_tb",
+      "mainClass": "playGround.InstAxi4ToStream128_tb",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "tb_Inst128_Wrapper",
+      "mainClass": "WrapForFPGA.tb_Inst128_Wrapper",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "Inst128_Wrapper_Verilog",
+      "mainClass": "WrapForFPGA.Inst128_Wrapper_Verilog",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "SlicerTb",
+      "mainClass": "Tiling.SlicerTb",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "sim_InputMatrixCache_test",
+      "mainClass": "MatrixCacheInterface.sim_InputMatrixCache_test",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "tb_MatrixCache_System",
+      "mainClass": "MatrixCacheInterface.tb_MatrixCache_System",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "WrapForFPGA_Verilog",
+      "mainClass": "WrapForFPGA.WrapForFPGA_Verilog",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "MatrixCache_Ctrl_verilog",
+      "mainClass": "WrapForFPGA.MatrixCache_Ctrl_verilog",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "DualCache_Ctrl_verilog",
+      "mainClass": "WrapForFPGA.DualCache_Ctrl_verilog",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "WrapForFPGATb",
+      "mainClass": "WrapForFPGA.WrapForFPGATb",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "CollectorTb",
+      "mainClass": "Tiling.CollectorTb",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "MatrixCache_verilog",
+      "mainClass": "MatrixCacheInterface.MatrixCache_verilog",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    },
+    {
+      "type": "scala",
+      "request": "launch",
+      "name": "MatrixCacheController_verilog",
+      "mainClass": "MatrixCacheInterface.MatrixCacheController_verilog",
+      "buildTarget": "file:/root/onnx_spinal_project_new/?id=Onnx_SpinalHDL",
+      "args": [],
+      "jvmOptions": [],
+      "env": {}
+    }
+  ]
+}

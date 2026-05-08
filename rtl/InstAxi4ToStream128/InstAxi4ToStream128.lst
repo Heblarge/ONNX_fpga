@@ -1,0 +1,3 @@
+rtl/InstAxi4ToStream128/Axi4CompatBridge128.v
+rtl/InstAxi4ToStream128/StreamFifo.v
+rtl/InstAxi4ToStream128/InstAxi4ToStream128.v

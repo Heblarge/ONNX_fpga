@@ -1,0 +1,333 @@
+#######################################################################################
+# log primitive debug message of FSDB dumping                                         #
+# This is for R&D to analyze when there are issues happening when FSDB dump           #
+#######################################################################################
+ANF: vcsd_get_serial_mode_status('./InputMatrixCache: undefined symbol: vcsd_get_serial_mode_status')
+ANF: vcsd_enable_sva_success_callback('./InputMatrixCache: undefined symbol: vcsd_enable_sva_success_callback')
+ANF: vcsd_disable_sva_success_callback('./InputMatrixCache: undefined symbol: vcsd_disable_sva_success_callback')
+ANF: vcsd_get_power_scope_name('./InputMatrixCache: undefined symbol: vcsd_get_power_scope_name')
+ANF: vcsd_begin_no_value_var_info('./InputMatrixCache: undefined symbol: vcsd_begin_no_value_var_info')
+ANF: vcsd_end_no_value_var_info('./InputMatrixCache: undefined symbol: vcsd_end_no_value_var_info')
+ANF: vcsd_remove_xprop_merge_mode_callback('./InputMatrixCache: undefined symbol: vcsd_remove_xprop_merge_mode_callback')
+ANF: vhpi_get_cb_info('./InputMatrixCache: undefined symbol: vhpi_get_cb_info')
+ANF: vhpi_free_handle('./InputMatrixCache: undefined symbol: vhpi_free_handle')
+ANF: vhpi_fetch_vcsd_handle('./InputMatrixCache: undefined symbol: vhpi_fetch_vcsd_handle')
+ANF: vhpi_fetch_vpi_handle('./InputMatrixCache: undefined symbol: vhpi_fetch_vpi_handle')
+ANF: vhpi_has_verilog_parent('./InputMatrixCache: undefined symbol: vhpi_has_verilog_parent')
+ANF: vhpi_is_verilog_scope('./InputMatrixCache: undefined symbol: vhpi_is_verilog_scope')
+ANF: scsd_xprop_is_enabled('./InputMatrixCache: undefined symbol: scsd_xprop_is_enabled')
+ANF: scsd_xprop_sig_is_promoted('./InputMatrixCache: undefined symbol: scsd_xprop_sig_is_promoted')
+ANF: scsd_xprop_int_xvalue('./InputMatrixCache: undefined symbol: scsd_xprop_int_xvalue')
+ANF: scsd_xprop_bool_xvalue('./InputMatrixCache: undefined symbol: scsd_xprop_bool_xvalue')
+ANF: scsd_xprop_enum_xvalue('./InputMatrixCache: undefined symbol: scsd_xprop_enum_xvalue')
+ANF: scsd_xprop_register_merge_mode_cb('./InputMatrixCache: undefined symbol: scsd_xprop_register_merge_mode_cb')
+ANF: scsd_xprop_delete_merge_mode_cb('./InputMatrixCache: undefined symbol: scsd_xprop_delete_merge_mode_cb')
+ANF: scsd_xprop_get_merge_mode('./InputMatrixCache: undefined symbol: scsd_xprop_get_merge_mode')
+ANF: scsd_thread_get_info('./InputMatrixCache: undefined symbol: scsd_thread_get_info')
+ANF: scsd_thread_vc_init('./InputMatrixCache: undefined symbol: scsd_thread_vc_init')
+ANF: scsd_master_set_delta_sync_cbk('./InputMatrixCache: undefined symbol: scsd_master_set_delta_sync_cbk')
+ANF: scsd_fgp_get_fsdb_cores('./InputMatrixCache: undefined symbol: scsd_fgp_get_fsdb_cores')
+ANF: msvEnableDumpingMode('./InputMatrixCache: undefined symbol: msvEnableDumpingMode')
+ANF: msvGetVersion('./InputMatrixCache: undefined symbol: msvGetVersion')
+ANF: msvGetInstProp('./InputMatrixCache: undefined symbol: msvGetInstProp')
+ANF: msvIsSpiceEngineReady('./InputMatrixCache: undefined symbol: msvIsSpiceEngineReady')
+ANF: msvSetAddProbeCallback('./InputMatrixCache: undefined symbol: msvSetAddProbeCallback')
+ANF: msvGetInstHandle('./InputMatrixCache: undefined symbol: msvGetInstHandle')
+ANF: msvGetProbeByInst('./InputMatrixCache: undefined symbol: msvGetProbeByInst')
+ANF: msvGetSigHandle('./InputMatrixCache: undefined symbol: msvGetSigHandle')
+ANF: msvGetProbeBySig('./InputMatrixCache: undefined symbol: msvGetProbeBySig')
+ANF: msvGetProbeInfo('./InputMatrixCache: undefined symbol: msvGetProbeInfo')
+ANF: msvRelease('./InputMatrixCache: undefined symbol: msvRelease')
+ANF: msvSetVcCallbackFunc('./InputMatrixCache: undefined symbol: msvSetVcCallbackFunc')
+ANF: msvCheckVcCallback('./InputMatrixCache: undefined symbol: msvCheckVcCallback')
+ANF: msvAddVcCallback('./InputMatrixCache: undefined symbol: msvAddVcCallback')
+ANF: msvRemoveVcCallback('./InputMatrixCache: undefined symbol: msvRemoveVcCallback')
+ANF: msvGetLatestValue('./InputMatrixCache: undefined symbol: msvGetLatestValue')
+ANF: msvSetEndofSimCallback('./InputMatrixCache: undefined symbol: msvSetEndofSimCallback')
+ANF: msvIgnoredProbe('./InputMatrixCache: undefined symbol: msvIgnoredProbe')
+ANF: msvGetThruNetInfo('./InputMatrixCache: undefined symbol: msvGetThruNetInfo')
+ANF: msvFreeThruNetInfo('./InputMatrixCache: undefined symbol: msvFreeThruNetInfo')
+ANF: PI_ace_get_output_time_unit('./InputMatrixCache: undefined symbol: PI_ace_get_output_time_unit')
+ANF: PI_ace_sim_sync('./InputMatrixCache: undefined symbol: PI_ace_sim_sync')
+ANF: msvGetRereadInitFile('./InputMatrixCache: undefined symbol: msvGetRereadInitFile')
+ANF: msvSetBeforeRereadCallback('./InputMatrixCache: undefined symbol: msvSetBeforeRereadCallback')
+ANF: msvSetAfterRereadCallback('./InputMatrixCache: undefined symbol: msvSetAfterRereadCallback')
+ANF: msvSetForceCallback('./InputMatrixCache: undefined symbol: msvSetForceCallback')
+ANF: msvSetReleaseCallback('./InputMatrixCache: undefined symbol: msvSetReleaseCallback')
+ANF: msvGetForceStatus('./InputMatrixCache: undefined symbol: msvGetForceStatus')
+ANF: vhdi_dt_get_type('./InputMatrixCache: undefined symbol: vhdi_dt_get_type')
+ANF: vhdi_dt_get_key('./InputMatrixCache: undefined symbol: vhdi_dt_get_key')
+ANF: vhdi_dt_get_vhdl_enum_info('./InputMatrixCache: undefined symbol: vhdi_dt_get_vhdl_enum_info')
+ANF: vhdi_dt_get_vhdl_physical_info('./InputMatrixCache: undefined symbol: vhdi_dt_get_vhdl_physical_info')
+ANF: vhdi_dt_get_vhdl_array_info('./InputMatrixCache: undefined symbol: vhdi_dt_get_vhdl_array_info')
+ANF: vhdi_dt_get_vhdl_record_info('./InputMatrixCache: undefined symbol: vhdi_dt_get_vhdl_record_info')
+ANF: vhdi_def_traverse_module('./InputMatrixCache: undefined symbol: vhdi_def_traverse_module')
+ANF: vhdi_def_traverse_scope('./InputMatrixCache: undefined symbol: vhdi_def_traverse_scope')
+ANF: vhdi_def_traverse_variable('./InputMatrixCache: undefined symbol: vhdi_def_traverse_variable')
+ANF: vhdi_def_get_module_id_by_vhpi('./InputMatrixCache: undefined symbol: vhdi_def_get_module_id_by_vhpi')
+ANF: vhdi_def_get_handle_by_module_id('./InputMatrixCache: undefined symbol: vhdi_def_get_handle_by_module_id')
+ANF: vhdi_def_get_variable_info_by_vhpi('./InputMatrixCache: undefined symbol: vhdi_def_get_variable_info_by_vhpi')
+ANF: vhdi_def_free('./InputMatrixCache: undefined symbol: vhdi_def_free')
+ANF: vhdi_ist_traverse_scope('./InputMatrixCache: undefined symbol: vhdi_ist_traverse_scope')
+ANF: vhdi_ist_traverse_variable('./InputMatrixCache: undefined symbol: vhdi_ist_traverse_variable')
+ANF: vhdi_ist_convert_by_vhpi('./InputMatrixCache: undefined symbol: vhdi_ist_convert_by_vhpi')
+ANF: vhdi_ist_clone('./InputMatrixCache: undefined symbol: vhdi_ist_clone')
+ANF: vhdi_ist_free('./InputMatrixCache: undefined symbol: vhdi_ist_free')
+ANF: vhdi_ist_hash_key('./InputMatrixCache: undefined symbol: vhdi_ist_hash_key')
+ANF: vhdi_ist_compare('./InputMatrixCache: undefined symbol: vhdi_ist_compare')
+ANF: vhdi_ist_get_value_addr('./InputMatrixCache: undefined symbol: vhdi_ist_get_value_addr')
+ANF: vhdi_set_scsd_callback('./InputMatrixCache: undefined symbol: vhdi_set_scsd_callback')
+ANF: vhdi_cbk_set_force_callback('./InputMatrixCache: undefined symbol: vhdi_cbk_set_force_callback')
+ANF: vhdi_trigger_init_force('./InputMatrixCache: undefined symbol: vhdi_trigger_init_force')
+ANF: vhdi_ist_check_scsd_callback('./InputMatrixCache: undefined symbol: vhdi_ist_check_scsd_callback')
+ANF: vhdi_ist_add_scsd_callback('./InputMatrixCache: undefined symbol: vhdi_ist_add_scsd_callback')
+ANF: vhdi_ist_remove_scsd_callback('./InputMatrixCache: undefined symbol: vhdi_ist_remove_scsd_callback')
+ANF: vhdi_ist_get_scsd_user_data('./InputMatrixCache: undefined symbol: vhdi_ist_get_scsd_user_data')
+ANF: vhdi_add_time_change_callback('./InputMatrixCache: undefined symbol: vhdi_add_time_change_callback')
+ANF: vhdi_get_real_value_by_value_addr('./InputMatrixCache: undefined symbol: vhdi_get_real_value_by_value_addr')
+ANF: vhdi_get_64_value_by_value_addr('./InputMatrixCache: undefined symbol: vhdi_get_64_value_by_value_addr')
+ANF: vhdi_xprop_inst_is_promoted('./InputMatrixCache: undefined symbol: vhdi_xprop_inst_is_promoted')
+ANF: vdi_ist_convert_by_vhdi('./InputMatrixCache: undefined symbol: vdi_ist_convert_by_vhdi')
+ANF: vhdi_ist_get_module_id('./InputMatrixCache: undefined symbol: vhdi_ist_get_module_id')
+ANF: vhdi_refine_foreign_scope_type('./InputMatrixCache: undefined symbol: vhdi_refine_foreign_scope_type')
+ANF: vhdi_flush_callback('./InputMatrixCache: undefined symbol: vhdi_flush_callback')
+ANF: vhdi_set_orig_name('./InputMatrixCache: undefined symbol: vhdi_set_orig_name')
+ANF: vhdi_set_dump_pt('./InputMatrixCache: undefined symbol: vhdi_set_dump_pt')
+ANF: vhdi_get_fsdb_option('./InputMatrixCache: undefined symbol: vhdi_get_fsdb_option')
+ANF: vhdi_fgp_get_mode('./InputMatrixCache: undefined symbol: vhdi_fgp_get_mode')
+ANF: vhdi_node_register_composite_var('./InputMatrixCache: undefined symbol: vhdi_node_register_composite_var')
+ANF: vhdi_node_analysis('./InputMatrixCache: undefined symbol: vhdi_node_analysis')
+ANF: vhdi_node_id('./InputMatrixCache: undefined symbol: vhdi_node_id')
+ANF: vhdi_node_ist_check_scsd_callback('./InputMatrixCache: undefined symbol: vhdi_node_ist_check_scsd_callback')
+ANF: vhdi_node_ist_add_scsd_callback('./InputMatrixCache: undefined symbol: vhdi_node_ist_add_scsd_callback')
+ANF: vhdi_node_ist_get_value_addr('./InputMatrixCache: undefined symbol: vhdi_node_ist_get_value_addr')
+VCS compile option:
+ option[0]: ./InputMatrixCache
+ option[1]: -l
+ option[2]: ./run.log
+ option[3]: /opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/bin/vcs1
+ option[4]: -Mcc=gcc
+ option[5]: -Mcplusplus=g++
+ option[6]: -Masflags=
+ option[7]: -Mcfl= -pipe -fPIC -O -I/opt/synopsys/vcs-mx/O-2018.09-SP2/include 
+ option[8]: -Mxcflags= -pipe -fPIC -I/opt/synopsys/vcs-mx/O-2018.09-SP2/include
+ option[9]: -Mldflags= -rdynamic -Wl,-E 
+ option[10]: -Mout=InputMatrixCache
+ option[11]: -Mamsrun=
+ option[12]: -Mvcsaceobjs=
+ option[13]: -Mobjects= /opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/lib/liberrorinf.so /opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/lib/libsnpsmalloc.so /opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/lib/libvfs.so /opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/pli.a 
+ option[14]: -Mexternalobj=
+ option[15]: -Msaverestoreobj=/opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/lib/vcs_save_restore_new.o
+ option[16]: -Mcrt0=
+ option[17]: -Mcrtn=
+ option[18]: -Mcsrc=
+ option[19]: -Msyslibs=/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/pli.a -ldl -lm 
+ option[20]: -l
+ option[21]: vcs.log
+ option[22]: -uum
+ option[23]: InputMatrixCache
+ option[24]: __simulation_def
+ option[25]: -mxunielab
+ option[26]: -uni_make
+ option[27]: -Xhdlxmropt
+ option[28]: -full64
+ option[29]: -q
+ option[30]: -debug_access+all
+ option[31]: +vpi
+ option[32]: +vcsd1
+ option[33]: +itf+/opt/synopsys/vcs-mx/O-2018.09-SP2/linux64/lib/vcsdp_lite.tab
+ option[34]: -debug_acc+pp+dmptf
+ option[35]: -debug_region=+cell+encrypt
+ option[36]: +vcs+initreg+random
+ option[37]: -fgp
+ option[38]: -kdb
+ option[39]: -Xufe=2steps
+ option[40]: -lca
+ option[41]: +notimingchecks
+ option[42]: -load
+ option[43]: /root/onnx_spinal_project_new/./simWorkspace/.pluginsCachePath/vpi_vcs.so:entry_point_cb
+ option[44]: -o
+ option[45]: InputMatrixCache
+ option[46]: -timescale=1ns/1ps
+ option[47]: -P
+ option[48]: /opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/novas.tab
+ option[49]: -uum
+ option[50]: -elaboration_options=/tmp/vcs_20251211061516_49576/elaboptfile_49576
+ option[51]: -full64
+ option[52]: -picarchive
+ option[53]: -P
+ option[54]: /opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/verdi.tab
+ option[55]: -fsdb
+ option[56]: +vpi
+ option[57]: +rad
+ option[58]: -VHDLelab=-mxunielab -uni_make -nc -Xhdlxmropt -nc -q -fgp -kdb -lca -exe InputMatrixCache -uum -elaboration_options /tmp/vcs_20251211061516_49576/elaboptfile_49576 -picarchive -fsdb -debug_acc_options all+pp+dmptf -debug_region_options =+cell+encrypt 
+ option[59]: -gen_obj
+ option[60]: -f
+ option[61]: InputMatrixCache.daidir/mxopt.db
+ option[62]: -load
+ option[63]: /opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/libnovas.so:FSDBDumpCmd
+ option[64]: timescale=1ns/1ps
+Chronologic Simulation VCS Release O-2018.09-SP2_Full64
+Linux 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64
+CPU cores: 32
+Limit information:
+======================================
+cputime		unlimited
+filesize		unlimited
+datasize		unlimited
+stacksize		8192 kbytes
+coredumpsize		0 kbytes
+memoryuse		unlimited
+vmemoryuse		unlimited
+descriptors		1048576
+memorylocked		unlimited
+maxproc		unlimited
+======================================
+(Special)Runtime environment variables:
+
+Runtime environment variables:
+SHELL=/bin/bash
+LSCOLORS=Gxfxcxdxdxegedabagacad
+COLORTERM=truecolor
+VCS_ARCH_OVERRIDE=linux
+NAILGUN_TTY_0=0
+NAILGUN_TTY_1=0
+NAILGUN_TTY_2=0
+LESS=-R
+HISTCONTROL=erasedups:ignoreboth
+VCS_TARGET_ARCH=linux64
+TERM_PROGRAM_VERSION=1.106.3
+NAILGUN_FILESEPARATOR=/
+HISTSIZE=2147450879
+HOSTNAME=EDA
+VCS_HOME=/opt/synopsys/vcs-mx/O-2018.09-SP2
+JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+ELECTRON_RUN_AS_NODE=1
+REMOTE_CONTAINERS_IPC=/tmp/vscode-remote-containers-ipc-30ea5e37-7373-4007-9d05-8e5105c3c4e8.sock
+VERDI_HOME=/opt/synopsys/verdi/Verdi_O-2018.09-SP2
+OSH=/root/.oh-my-bash
+PWD=/root/onnx_spinal_project_new
+LOGNAME=root
+VSCODE_ESM_ENTRYPOINT=vs/workbench/api/node/extensionHostProcess
+_=/usr/lib/jvm/java-17-openjdk-17.0.14.0.7-2.el9.x86_64/bin/java
+VSCODE_GIT_ASKPASS_NODE=/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61/node
+SYNOPSYS_ROOT=/opt/synopsys
+SCL_HOME=/opt/synopsys/scl/2018.06
+HOME=/root
+LANG=en_US.UTF-8
+LS_COLORS=
+NAILGUN_PATHSEPARATOR=:
+REMOTE_CONTAINERS=true
+VIRTUAL_ENV=/opt/oss-cad-suite
+GIT_ASKPASS=/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61/extensions/git/dist/askpass.sh
+VSCODE_L10N_BUNDLE_LOCATION=
+GHDL_PREFIX=/opt/oss-cad-suite/lib/ghdl
+VSCODE_GIT_ASKPASS_EXTRA_ARGS=
+VSCODE_HANDLES_SIGPIPE=true
+SNPSLMD_LICENSE_FILE=27000@EDA
+TERM=xterm-256color
+VSCODE_NONCE=0a1df389-7399-4159-bdc7-7827cec409c1
+REMOTE_CONTAINERS_SOCKETS=[]
+LESSOPEN=||/usr/bin/lesspipe.sh %s
+USER=root
+VSCODE_GIT_IPC_HANDLE=/tmp/vscode-git-8f62f22c7d.sock
+DISPLAY=host.docker.internal:0.0
+SHLVL=2
+PAGER=less
+VSCODE_CWD=/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61
+VERILATOR_ROOT=/opt/oss-cad-suite/share/verilator
+VIRTUAL_ENV_PROMPT=OSS CAD Suite
+LM_LICENSE_FILE=/opt/synopsys/scl/2018.06/admin/license/Synopsys.dat
+LD_LIBRARY_PATH=/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/MODELSIM/LINUX64:/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/Ius/LINUX64:/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/lib/LINUX64:/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/IUS/LINUX64:/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64:/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64
+LC_CTYPE=en_US.UTF-8
+DEBUGINFOD_URLS=https://debuginfod.centos.org/ 
+DEBUGINFOD_IMA_CERT_PATH=/etc/keys/ima:
+which_declare=declare -f
+LC_ALL=en_US.UTF-8
+VSCODE_GIT_ASKPASS_MAIN=/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61/extensions/git/dist/askpass-main.js
+XDG_DATA_DIRS=/root/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+BROWSER=/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61/bin/helpers/browser.sh
+PATH=/root/.vscode-server/data/User/globalStorage/github.copilot-chat/copilotCli:/root/.vscode-server/data/User/globalStorage/github.copilot-chat/debugCommand:/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61/bin/remote-cli:/opt/oss-cad-suite/bin:/opt/oss-cad-suite/py3bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/share/coursier/bin:/opt/synopsys/vcs-mx/O-2018.09-SP2/bin:/opt/synopsys/verdi/Verdi_O-2018.09-SP2/bin:/opt/synopsys/scl/2018.06/linux64/bin:/root/.local/share/coursier/bin
+HISTFILESIZE=2147450879
+APPLICATION_INSIGHTS_NO_STATSBEAT=true
+VSCODE_NLS_CONFIG={"userLocale":"en","osLocale":"en","resolvedLanguage":"en","defaultMessagesFile":"/root/.vscode-server/bin/bf9252a2fb45be6893dd8870c0bf37e2e1766d61/out/nls.messages.json","locale":"en","availableLanguages":{}}
+MAIL=/var/spool/mail/root
+VSCODE_HANDLES_UNCAUGHT_ERRORS=true
+TERM_PROGRAM=vscode
+VSCODE_IPC_HOOK_CLI=/tmp/vscode-ipc-695b74d0-e62c-4e2c-b2a1-85f03bbcdae0.sock
+BASH_FUNC_which%%=() {  ( alias;
+ eval ${which_declare} ) | /usr/bin/which --tty-only --read-alias --read-functions --show-tilde --show-dot $@
+}
+VCS_HEAP_EXEC=true
+VCS_PATHMAP_PRELOAD_DONE=1
+VCS_STACK_EXEC=true
+VCS_EXEC_DONE=1
+VCS_STOP_SAFE=1
+DVE=/opt/synopsys/vcs-mx/O-2018.09-SP2/gui/dve
+SPECMAN_OUTPUT_TO_TTY=1
+Runtime command line arguments:
+argv[0]=./InputMatrixCache
+argv[1]=-l
+argv[2]=./run.log
+269 profile - 100
+          CPU/Mem usage: 0.070 sys,  0.090 user,  185.23M mem
+270 Thu Dec 11 06:15:51 2025
+271 pliAppInit
+272 FSDB_GATE is set.
+273 FSDB_RTL is set.
+274 Enable Parallel Dumping.
+275 pliAppMiscSet: New Sim Round
+276 pliEntryInit
+277 LIBSSCORE=found /opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/lib/LINUXAMD64/libsscore_vcs201809.so through $NOVAS_HOME setting.
+278 FSDB Dumper for VCS, Release Verdi_O-2018.09-SP2, Linux x86_64/64bit, 02/21/2019
+279 (C) 1996 - 2019 by Synopsys, Inc.
+280 sps_call_fsdbDumpfile_main at 0 : ./rtl/__simulation_def.v(5)
+281 argv[0]: (null_InputMatrixCache.fsdb)
+282 *Verdi* : Create FSDB file 'null_InputMatrixCache.fsdb'
+283 compile option from '/root/onnx_spinal_project_new/simWorkspace/InputMatrixCache/InputMatrixCache.daidir/vcs_rebuild'.
+284   "vcs '-full64' '-quiet' '-debug_access+all' '-debug_acc+pp+dmptf' '-debug_region=+cell+encrypt' '-l' 'vcs.log' '+vpi' '+vcs+initreg+random' '-fgp' '-kdb' '-lca' '+rad' '+notimingchecks' '-load' '/root/onnx_spinal_project_new/./simWorkspace/.pluginsCachePath/vpi_vcs.so:entry_point_cb' '-o' 'InputMatrixCache' '-timescale=1ns/1ps' '-P' '/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/novas.tab' '/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/pli.a' 'InputMatrixCache' '__simulation_def' "-Xrebuild" "-makedepends=Makefile.Msimdepends""
+285   "gmake -f Makefile.Msimdepends"
+286   "vcs '-full64' '-quiet' '-debug_access+all' '-debug_acc+pp+dmptf' '-debug_region=+cell+encrypt' '-l' 'vcs.log' '+vpi' '+vcs+initreg+random' '-fgp' '-kdb' '-lca' '+rad' '+notimingchecks' '-load' '/root/onnx_spinal_project_new/./simWorkspace/.pluginsCachePath/vpi_vcs.so:entry_point_cb' '-o' 'InputMatrixCache' '-timescale=1ns/1ps' '-P' '/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/novas.tab' '/opt/synopsys/verdi/Verdi_O-2018.09-SP2/share/PLI/VCS/LINUX64/pli.a' 'InputMatrixCache' '__simulation_def' 2>&1"
+287 FSDB_VCS_ENABLE_FAST_VC is enable
+288 sps_call_fsdbDumpvars_vd_main at 0 : ./rtl/__simulation_def.v(6)
+289 argv[0]: (0)
+290 argv[1]: (handle) InputMatrixCache
+291 [spi_vcs_vd_ppi_create_root]: no upf option
+292 FSDB dumper cannot dump UPF related power signal ($power_tree): no ppiPowerNetwork.
+293 *Verdi* : Begin traversing the scope (InputMatrixCache), layer (0).
+294 *Verdi* : End of traversing.
+295 pliAppHDL_DumpVarComplete traverse var: profile - 
+          CPU/Mem usage: 0.070 sys,  0.100 user,  280.27M mem
+                   incr: 0.000 sys,  0.010 user,  7.10M mem
+                   accu: 0.000 sys,  0.010 user,  7.10M mem
+              accu incr: 0.000 sys,  0.010 user,  7.10M mem
+
+          Count usage: 75 var,  50 idcode,  29 callback
+                 incr: 75 var,  50 idcode,  29 callback
+                 accu: 75 var,  50 idcode,  29 callback
+            accu incr: 75 var,  50 idcode,  29 callback
+296 Thu Dec 11 06:15:51 2025
+297 pliAppHDL_DumpVarComplete: profile - 
+          CPU/Mem usage: 0.070 sys,  0.100 user,  281.32M mem
+                   incr: 0.000 sys,  0.000 user,  1.05M mem
+                   accu: 0.000 sys,  0.010 user,  8.15M mem
+              accu incr: 0.000 sys,  0.000 user,  1.05M mem
+
+          Count usage: 75 var,  50 idcode,  29 callback
+                 incr: 0 var,  0 idcode,  0 callback
+                 accu: 75 var,  50 idcode,  29 callback
+            accu incr: 0 var,  0 idcode,  0 callback
+298 Thu Dec 11 06:15:51 2025
+299 sps_call_fsdbDumpflush_vd_main at 0 : ./rtl/__simulation_def.v(7)
+300 *Verdi* : Flush all FSDB Files at 0 ps.
+301 End of simulation at 30310
+302 Thu Dec 11 06:15:51 2025
+303 Begin FSDB profile info:
+304 FSDB Writer : bc1(6259) bcn(1215) mtf/stf(0/1)
+FSDB Writer elapsed time : flush(0.089635) io wait(0.000000) theadpool wait(0.000000) target functin(0.000000)
+FSDB Writer cpu time : MT Compression : 0
+305 End FSDB profile info
+306 Parallel profile    -  Flush:4 Expand:0 ProduceWait:0 ConsumerWait:0 BlockUsed:0
+307                        ProduceTime:0.342920310 ConsumerTime:0.000000000 Buffer:64MB
+308 SimExit
+309 Sim process exit

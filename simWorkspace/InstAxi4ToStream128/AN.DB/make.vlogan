@@ -1,0 +1,17 @@
+
+VLOGAN	= vlogan
+VLOGAN_OPT	= -kdb -l vlogan.log -full64 -sverilog +v2k -ntb +notimingchecks -full64
+
+all :		_VCSgd_RLU33d_1.db \
+	_VCSgd_R0l8Sc_1.db \
+
+
+
+_VCSgd_RLU33d_1.db :	/root/onnx_spinal_project_new/./simWorkspace/tmp/job_1/InstAxi4ToStream128.v 
+		${VLOGAN}  ${VLOGAN_OPT} /root/onnx_spinal_project_new/./simWorkspace/tmp/job_1/InstAxi4ToStream128.v
+
+
+_VCSgd_R0l8Sc_1.db :	./rtl/__simulation_def.v 
+		${VLOGAN}  ${VLOGAN_OPT} ./rtl/__simulation_def.v
+
+

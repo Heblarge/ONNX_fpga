@@ -1,0 +1,19 @@
+
+Warning-[UNKWN_IGOPTS] Unknown option(s) ignored
+  Unknown option(s) '+notimingchecks ' passed to 'vlogan' command line is(are)
+  ignored.
+  Please make sure that there are no typos in the option(s) passed, or the 
+  options are only applicable to VCS at elaboration step. Also check 'vlogan 
+  -help' for supported options. 
+
+Command: vlogan -nc -full64 -sverilog +v2k -ntb -debug_access+all -l vlogan.log -kdb \
+-lca +notimingchecks /root/onnx_spinal_project_new/./simWorkspace/tmp/job_1/CollectorTest.v \
+./rtl/__simulation_def.v
+
+Warning-[LCA_FEATURES_ENABLED] Usage warning
+  LCA features enabled by '-lca' argument on the command line.  For more 
+  information regarding list of LCA features please refer to Chapter "LCA 
+  features" in the VCS/VCS-MX Release Notes
+
+Parsing design file '/root/onnx_spinal_project_new/./simWorkspace/tmp/job_1/CollectorTest.v'
+Parsing design file './rtl/__simulation_def.v'
