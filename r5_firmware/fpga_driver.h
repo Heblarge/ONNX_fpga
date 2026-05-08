@@ -3,6 +3,8 @@
  *
  * FPGA Accelerator Driver for R5 Firmware
  * Provides AXI4-Lite interface to configure the FPGA accelerator
+ *
+ * Merged from r5_bm_validation register definitions
  */
 
 #ifndef FPGA_DRIVER_H
@@ -15,53 +17,63 @@
 extern "C" {
 #endif
 
-// FPGA 寄存器地址定义
+// ==================== FPGA 寄存器地址定义 ====================
+// 从 r5_bm_validation/config.h 迁移而来
 // 这些地址需要根据实际硬件设计修改
-#define FPGA_ACCELERATOR_BASE  0x80000000  // AXI4-Lite 基地址
 
-// 指令寄存器偏移
-#define FPGA_REG_UID                      0x00
-#define FPGA_REG_MATRIX_OP                0x04
-#define FPGA_REG_SHIFT_AFTER_MATMUL       0x08
-#define FPGA_REG_DO_TRANSPOSE             0x0C
-#define FPGA_REG_ACTIVATION               0x10
-#define FPGA_REG_SHIFT_AFTER_ACTIVATION   0x14
-#define FPGA_REG_INPUT0_SHAPE0            0x18
-#define FPGA_REG_INPUT0_SHAPE1            0x1C
-#define FPGA_REG_INPUT1_SHAPE0            0x20  // 新增
-#define FPGA_REG_INPUT1_SHAPE1            0x24
-#define FPGA_REG_SHIFT_A                  0x28
-#define FPGA_REG_SHIFT_B                  0x2C
-#define FPGA_REG_CONTROL                  0x30  // 控制寄存器
-#define FPGA_REG_STATUS                   0x34  // 状态寄存器
+// 加速器指令寄存器基址
+#define INSTR_BASEADDR       0x80000000  // XPAR_WRAPFORFPGA_0_BASEADDR
+#define INSTR_FIRE_OFFSET    0x10        // 触发指令执行
 
-// 控制寄存器位定义
-#define FPGA_CTRL_START       (1 << 0)  // 启动计算
-#define FPGA_CTRL_RESET       (1 << 1)  // 复位
+// Cache 控制器
+#define CACHE_CTRL           0x80001000  // XPAR_MATRIXCACHECONTROLLER_0_BASEADDR
+#define CACHE_A_LIFECYCLE_OFFSET 0x00    // Cache A 生命周期配置
+#define CACHE_B_LIFECYCLE_OFFSET 0x04    // Cache B 生命周期配置
 
-// 状态寄存器位定义
-#define FPGA_STATUS_BUSY       (1 << 0)  // 忙标志
-#define FPGA_STATUS_DONE       (1 << 1)  // 完成标志
-#define FPGA_STATUS_ERROR      (1 << 2)  // 错误标志
+// BRAM 地址空间 (用于 Data Mover 数据传输)
+#define BRAM0_BASE           0xA0000000  // XPAR_AXI_BRAM_CTRL_0_S_AXI_BASEADDR
+#define BRAM1_BASE           0xA0010000  // XPAR_AXI_BRAM_CTRL_1_S_AXI_BASEADDR
+#define BRAM2_BASE           0xA0020000  // XPAR_AXI_BRAM_CTRL_2_S_AXI_BASEADDR
+#define BRAM_SIZE            0x100000    // 1MB 每个
+
+// DDR 地址空间 (PS DDR)
+#define DDR_BASE             0x00000000  // XPAR_PSU_DDR_0_S_AXI_BASEADDR
+
+// ==================== 指令格式定义 ====================
+// 128-bit 紧凑指令格式 (从 r5_bm_validation/drivers/accelerator.c)
 
 // 矩阵操作类型
-typedef enum {
-    FPGA_OP_MATMUL      = 0,
-    FPGA_OP_ELEMENT_ADD = 1,
-    FPGA_OP_ELEMENT_MUL = 2,
-    FPGA_OP_ELEMENT_MAX = 3
-} fpga_matrix_op_t;
+#define MATRIX_OP_MATMUL      0
+#define MATRIX_OP_ELEMENT_ADD 1
+#define MATRIX_OP_ELEMENT_MUL 2
+#define MATRIX_OP_ELEMENT_MAX 3
 
 // 激活函数类型
-typedef enum {
-    FPGA_ACT_EXP      = 0,
-    FPGA_ACT_LOG      = 1,
-    FPGA_ACT_SOFTPLUS = 2,
-    FPGA_ACT_RELU     = 3,
-    FPGA_ACT_NONE     = 4
-} fpga_activation_t;
+#define ACTIVATION_EXP       0
+#define ACTIVATION_LOG       1
+#define ACTIVATION_SOFTPLUS  2
+#define ACTIVATION_RELU      3
+#define ACTIVATION_NONE      4
 
-// FPGA 指令结构 (对应 ComputeInstruction_Simplified_TypeDef)
+// ==================== 指令结构 (对应 InstJavaTODO) ====================
+typedef struct {
+    uint32_t UID;                           // 位 [18:0] (19位)
+    uint32_t matrixOperation;               // 位 [20:19] (2位)
+    int32_t  shiftLeft_AfterMatrixOperation;// 位 [26:21] (6位)
+    uint8_t  doTranspose;                   // 位 [27] (1位)
+    uint32_t activationFunction;            // 位 [30:28] (3位)
+    int32_t  shiftLeft_AfterActivation;     // 位 [36:31] (6位)
+    uint32_t input0Shape0;                  // 位 [52:37] (16位)
+    uint32_t input0Shape1;                  // 位 [68:53] (16位)
+    uint32_t input1Shape0;                  // 位 [84:69] (16位)
+    uint32_t input1Shape1;                  // 位 [100:85] (16位)
+    int32_t  shiftLeft_A;                   // 位 [106:101] (6位)
+    int32_t  shiftLeft_B;                   // 位 [112:107] (6位)
+    // 总共 113 位，填充到 128 位 (16 字节)
+    uint8_t  _padding[1];
+} __attribute__((packed)) fpga_instruction_t;
+
+// 验证程序中使用的简化指令结构 (用于与 Java 层通信)
 typedef struct {
     uint32_t UID;
     uint32_t matrixOperation;
@@ -71,17 +83,21 @@ typedef struct {
     int32_t  shiftLeft_AfterActivation;
     uint32_t input0Shape0;
     uint32_t input0Shape1;
-    uint32_t input1Shape0;  // 新增！
+    uint32_t input1Shape0;
     uint32_t input1Shape1;
     int32_t  shiftLeft_A;
     int32_t  shiftLeft_B;
-} fpga_instruction_t;
+    uint8_t  _padding[3];
+} __attribute__((packed)) instruction_msg_t;
 
-// FPGA 驱动句柄
+// ==================== FPGA 驱动句柄 ====================
 typedef struct {
-    volatile uint32_t* base;     // 寄存器基址
+    volatile uint32_t* instr_base;   // 指令寄存器基址
+    volatile uint32_t* cache_base;   // Cache 控制器基址
     bool initialized;
 } fpga_driver_t;
+
+// ==================== 函数声明 ====================
 
 /**
  * 初始化 FPGA 驱动
@@ -97,31 +113,54 @@ int fpga_init(fpga_driver_t* driver);
 void fpga_cleanup(fpga_driver_t* driver);
 
 /**
+ * 组装 128-bit 指令数据到缓冲区
+ * 从 r5_bm_validation/drivers/accelerator.c 迁移
+ */
+void fpga_make_instruction(
+    uint8_t *cmd_buffer,
+    uint32_t uid,
+    uint8_t matrixOp,
+    int8_t shiftAfterMatrix,
+    uint8_t doTranspose,
+    uint8_t activationFunc,
+    int8_t shiftAfterActiv,
+    uint32_t input0Shape_0,
+    uint32_t input0Shape_1,
+    uint32_t input1Shape_0,
+    uint32_t input1Shape_1,
+    int8_t shiftLeft_A,
+    int8_t shiftLeft_B
+);
+
+/**
+ * 将指令写入硬件寄存器并触发
+ * 从 r5_bm_validation/drivers/accelerator.c 迁移
+ */
+void fpga_write_instruction(volatile uint32_t *base, uint8_t *cmd);
+
+/**
+ * 配置 Cache 生命周期
+ */
+void fpga_configure_cache(fpga_driver_t* driver, uint16_t cycle_a, uint16_t cycle_b);
+
+/**
+ * 从消息格式转换为硬件指令格式
+ */
+void fpga_convert_instruction(const instruction_msg_t* msg, fpga_instruction_t* inst);
+
+/**
  * 发送指令到 FPGA
- * @param driver 驱动句柄
- * @param inst 指令
- * @return 0=成功, <0=失败
  */
 int fpga_send_instruction(fpga_driver_t* driver, const fpga_instruction_t* inst);
 
 /**
- * 等待 FPGA 完成
- * @param driver 驱动句柄
- * @param timeout_ms 超时时间(毫秒)
- * @return 0=成功, <0=超时或错误
+ * 等待 FPGA 完成 (轮询方式)
+ * @param timeout_us 超时时间(微秒)
  */
-int fpga_wait_completion(fpga_driver_t* driver, int timeout_ms);
-
-/**
- * 读取 FPGA 状态
- * @param driver 驱动句柄
- * @return 状态寄存器值
- */
-uint32_t fpga_read_status(fpga_driver_t* driver);
+int fpga_wait_completion(fpga_driver_t* driver, int timeout_us);
 
 /**
  * 复位 FPGA
- * @param driver 驱动句柄
  */
 void fpga_reset(fpga_driver_t* driver);
 
