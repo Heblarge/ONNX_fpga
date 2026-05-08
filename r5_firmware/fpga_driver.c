@@ -171,6 +171,7 @@ void fpga_configure_cache(fpga_driver_t* driver, uint16_t cycle_a, uint16_t cycl
 
 /**
  * 从消息格式转换为硬件指令格式
+ * 与 Accelerator/InstJavaTODO.java 对齐
  */
 void fpga_convert_instruction(const instruction_msg_t* msg, fpga_instruction_t* inst) {
     inst->UID = msg->UID;
@@ -179,12 +180,20 @@ void fpga_convert_instruction(const instruction_msg_t* msg, fpga_instruction_t* 
     inst->doTranspose = msg->doTranspose;
     inst->activationFunction = msg->activationFunction;
     inst->shiftLeft_AfterActivation = msg->shiftLeft_AfterActivation;
+    // 注意：硬件指令格式中地址字段固定为0（由 Slicer 管理）
     inst->input0Shape0 = msg->input0Shape0;
     inst->input0Shape1 = msg->input0Shape1;
     inst->input1Shape0 = msg->input1Shape0;
     inst->input1Shape1 = msg->input1Shape1;
     inst->shiftLeft_A = msg->shiftLeft_A;
     inst->shiftLeft_B = msg->shiftLeft_B;
+
+    // 打印调试信息
+    xil_printf("[FPGA] Convert: UID=%d, op=%d, shapes=(%d,%d)x(%d,%d), shifts=(%d,%d)\n",
+               inst->UID, inst->matrixOperation,
+               inst->input0Shape0, inst->input0Shape1,
+               inst->input1Shape0, inst->input1Shape1,
+               inst->shiftLeft_A, inst->shiftLeft_B);
 }
 
 /**

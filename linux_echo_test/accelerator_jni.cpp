@@ -7,6 +7,8 @@
  * - Java → JNI → write(/dev/rpmsgX) → kernel driver → vring + IPI → R5
  * - No need for application-layer shared memory mapping
  *
+ * Instruction format aligned with r5_bm_validation/drivers/accelerator.c
+ *
  * Compile: gcc -shared -fPIC -o libaccelerator_jni.so \
  *              -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux \
  *              accelerator_jni.cpp rpmsg_comm.c -lpthread
@@ -39,24 +41,32 @@ typedef struct {
 // RPMsg 命令 (使用 rpmsg_comm.h 中的定义)
 #define RPMSG_CMD_INSTRUCTIONS_DATA 0x02  // 直接发送指令数据
 
-// InstJavaTODO 指令结构 (对应硬件 ComputeInstruction_Simplified_TypeDef)
-// 根据 Interface.scala 中 ComputeInstruction_Simplified_TypeDef 定义
+// ==================== 指令结构 (对应 InstJavaTODO.java) ====================
+// 与 Accelerator/InstJavaTODO.java 完全对齐
+//
+// Java: InstJavaTODO(int UID, String matrixOperation, int shiftLeft_AfterMatrixOperation,
+//                    boolean doTranspose, String activationFunction, int shiftLeft_AfterActivation,
+//                    int input0Address, int input1Address, int outputAddress,
+//                    int input0Shape0, int input0Shape1, int input1Shape1,
+//                    int shiftLeft_A, int shiftLeft_B)
+//
 typedef struct {
-    uint32_t UID;                           // 唯一标识符
-    uint32_t matrixOperation;               // 0=MatMul, 1=ElementAdd, 2=ElementMul, 3=ElementMax
-    int32_t  shiftLeft_AfterMatrixOperation;
-    uint8_t  doTranspose;
-    uint32_t activationFunction;            // 0=Exp, 1=Log, 2=Softplus, 3=Relu, 4=None
-    int32_t  shiftLeft_AfterActivation;
-    // 地址字段在 Simplified_TypeDef 中固定为 0，不需要传输
-    uint32_t input0Shape0;                  // input0Shape[0]
-    uint32_t input0Shape1;                  // input0Shape[1]
-    uint32_t input1Shape0;                  // input1Shape[0] ← 新增！
-    uint32_t input1Shape1;                  // input1Shape[1]
-    int32_t  shiftLeft_A;
-    int32_t  shiftLeft_B;
-    // 总共: 4+4+4+1+4+4+4+4+4+4+4+4 = 45字节，对齐到48字节
-    uint8_t  _padding[3];                   // 对齐到48字节
+    int32_t  UID;                           // 唯一标识符
+    uint8_t  matrixOperation;               // 0=MatMul, 1=ElementAdd, 2=ElementMul, 3=ElementMax
+    int8_t   shiftLeft_AfterMatrixOperation;
+    uint8_t  doTranspose;                   // 0=false, 1=true
+    uint8_t  activationFunction;            // 0=Exp, 1=Log, 2=Softplus, 3=Relu, 4=None
+    int8_t   shiftLeft_AfterActivation;
+    int32_t  input0Address;                 // 输入矩阵A地址 (字索引)
+    int32_t  input1Address;                 // 输入矩阵B地址 (字索引)
+    int32_t  outputAddress;                 // 输出矩阵Z地址 (字索引)
+    int32_t  input0Shape0;                  // input0Shape[0] (行数)
+    int32_t  input0Shape1;                  // input0Shape[1] (列数)
+    int32_t  input1Shape0;                  // input1Shape[0] (行数，ElementWise时等于input0Shape0)
+    int32_t  input1Shape1;                  // input1Shape[1] (列数)
+    int8_t   shiftLeft_A;                   // 输入A左移位数
+    int8_t   shiftLeft_B;                   // 输入B左移位数
+    // 总共: 4+1+1+1+1+1+4+4+4+4+4+4+4+1+1 = 40字节，对齐到40字节
 } __attribute__((packed)) InstructionStruct;
 
 // 全局状态
@@ -146,7 +156,10 @@ static void releaseStringUTFChars(JNIEnv* env, jstring str, const char* cstr) {
     }
 }
 
-// 将 InstJavaTODO 对象转换为本地结构
+/**
+ * 将 InstJavaTODO 对象转换为本地结构
+ * 与 Accelerator/InstJavaTODO.java 完全对齐
+ */
 static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct* instNative) {
     if (instJava == NULL || instNative == NULL) return false;
 
@@ -154,7 +167,7 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
 
     instNative->UID = getIntField(env, instJava, "UID");
 
-    // 转换 matrixOperation
+    // 转换 matrixOperation (String → uint8_t)
     jstring matOp = getStringField(env, instJava, "matrixOperation");
     const char* matOpStr = getStringUTFChars(env, matOp);
     if (strcmp(matOpStr, "matmul") == 0) {
@@ -170,10 +183,10 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     }
     releaseStringUTFChars(env, matOp, matOpStr);
 
-    instNative->shiftLeft_AfterMatrixOperation = getIntField(env, instJava, "shiftLeft_AfterMatrixOperation");
-    instNative->doTranspose = getBooleanField(env, instJava, "doTranspose");
+    instNative->shiftLeft_AfterMatrixOperation = (int8_t)getIntField(env, instJava, "shiftLeft_AfterMatrixOperation");
+    instNative->doTranspose = (uint8_t)getBooleanField(env, instJava, "doTranspose");
 
-    // 转换 activationFunction
+    // 转换 activationFunction (String → uint8_t)
     jstring actFunc = getStringField(env, instJava, "activationFunction");
     const char* actFuncStr = getStringUTFChars(env, actFunc);
     if (strcmp(actFuncStr, "exp") == 0) {
@@ -189,14 +202,22 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     }
     releaseStringUTFChars(env, actFunc, actFuncStr);
 
-    instNative->shiftLeft_AfterActivation = getIntField(env, instJava, "shiftLeft_AfterActivation");
-    // 地址字段不需要传输（Simplified_TypeDef 中固定为0）
+    instNative->shiftLeft_AfterActivation = (int8_t)getIntField(env, instJava, "shiftLeft_AfterActivation");
+
+    // 地址字段
+    instNative->input0Address = getIntField(env, instJava, "input0Address");
+    instNative->input1Address = getIntField(env, instJava, "input1Address");
+    instNative->outputAddress = getIntField(env, instJava, "outputAddress");
+
+    // 形状字段
     instNative->input0Shape0 = getIntField(env, instJava, "input0Shape0");
     instNative->input0Shape1 = getIntField(env, instJava, "input0Shape1");
-    instNative->input1Shape0 = getIntField(env, instJava, "input1Shape0");  // 新增
+    instNative->input1Shape0 = getIntField(env, instJava, "input0Shape0");  // ElementWise: 等于 input0Shape0
     instNative->input1Shape1 = getIntField(env, instJava, "input1Shape1");
-    instNative->shiftLeft_A = getIntField(env, instJava, "shiftLeft_A");
-    instNative->shiftLeft_B = getIntField(env, instJava, "shiftLeft_B");
+
+    // 移位字段
+    instNative->shiftLeft_A = (int8_t)getIntField(env, instJava, "shiftLeft_A");
+    instNative->shiftLeft_B = (int8_t)getIntField(env, instJava, "shiftLeft_B");
 
     return true;
 }
@@ -347,6 +368,7 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeSend
 
     jint actualCount = (count < MAX_INSTRUCTIONS) ? count : MAX_INSTRUCTIONS;
 
+    // RPMsg 缓冲区大小通常为 512B，可以发送多条指令
     // 计算数据包大小
     size_t data_size = sizeof(rpmsg_header_t) + actualCount * sizeof(InstructionStruct);
 
@@ -415,7 +437,7 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeWait
             // 读取响应
             uint32_t response;
             ssize_t n = read(g_state.ept_fd, &response, sizeof(response));
-            if (n == sizeof(response) && response == RPMSG_CMD_COMPLETION) {
+            if (n == sizeof(response) && response == 0x03) {  // RPMSG_CMD_COMPLETION
                 printf("[JNI] Received completion notification\n");
                 return JNI_TRUE;
             }

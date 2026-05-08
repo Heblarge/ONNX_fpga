@@ -49,19 +49,22 @@ static fpga_driver_t g_fpga;
 
 /**
  * 执行单条指令
+ * 与 Accelerator/InstJavaTODO.java 对齐
  */
 static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     fpga_instruction_t fpga_inst;
 
+    // 打印接收到的指令信息
+    LPRINTF("Exec: UID=%d, op=%d, transpose=%d, act=%d\n",
+            msg_inst->UID, msg_inst->matrixOperation,
+            msg_inst->doTranspose, msg_inst->activationFunction);
+    LPRINTF("     shapes: A=(%d,%d), B=(%d,%d), shifts=(%d,%d)\n",
+            msg_inst->input0Shape0, msg_inst->input0Shape1,
+            msg_inst->input1Shape0, msg_inst->input1Shape1,
+            msg_inst->shiftLeft_A, msg_inst->shiftLeft_B);
+
     // 转换指令格式
     fpga_convert_instruction(msg_inst, &fpga_inst);
-
-    LPRINTF("Exec: UID=%u, op=%u, shapes=(%u,%u)x(%u,%u), shifts=(%d,%d)\n",
-            fpga_inst.UID,
-            fpga_inst.matrixOperation,
-            fpga_inst.input0Shape0, fpga_inst.input0Shape1,
-            fpga_inst.input1Shape0, fpga_inst.input1Shape1,
-            fpga_inst.shiftLeft_A, fpga_inst.shiftLeft_B);
 
     // 发送到 FPGA
     if (fpga_send_instruction(&g_fpga, &fpga_inst) != 0) {

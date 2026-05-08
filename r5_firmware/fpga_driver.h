@@ -4,7 +4,7 @@
  * FPGA Accelerator Driver for R5 Firmware
  * Provides AXI4-Lite interface to configure the FPGA accelerator
  *
- * Merged from r5_bm_validation register definitions
+ * 指令格式与 Accelerator/InstJavaTODO.java 完全对齐
  */
 
 #ifndef FPGA_DRIVER_H
@@ -40,7 +40,7 @@ extern "C" {
 #define DDR_BASE             0x00000000  // XPAR_PSU_DDR_0_S_AXI_BASEADDR
 
 // ==================== 指令格式定义 ====================
-// 128-bit 紧凑指令格式 (从 r5_bm_validation/drivers/accelerator.c)
+// 与 Accelerator/InstJavaTODO.java 完全对齐
 
 // 矩阵操作类型
 #define MATRIX_OP_MATMUL      0
@@ -55,7 +55,34 @@ extern "C" {
 #define ACTIVATION_RELU      3
 #define ACTIVATION_NONE      4
 
-// ==================== 指令结构 (对应 InstJavaTODO) ====================
+// ==================== 指令结构 (对应 InstJavaTODO.java) ====================
+// Java: InstJavaTODO(int UID, String matrixOperation, int shiftLeft_AfterMatrixOperation,
+//                    boolean doTranspose, String activationFunction, int shiftLeft_AfterActivation,
+//                    int input0Address, int input1Address, int outputAddress,
+//                    int input0Shape0, int input0Shape1, int input1Shape1,
+//                    int shiftLeft_A, int shiftLeft_B)
+
+typedef struct {
+    int32_t  UID;                           // 唯一标识符
+    uint8_t  matrixOperation;               // 0=MatMul, 1=ElementAdd, 2=ElementMul, 3=ElementMax
+    int8_t   shiftLeft_AfterMatrixOperation;
+    uint8_t  doTranspose;                   // 0=false, 1=true
+    uint8_t  activationFunction;            // 0=Exp, 1=Log, 2=Softplus, 3=Relu, 4=None
+    int8_t   shiftLeft_AfterActivation;
+    int32_t  input0Address;                 // 输入矩阵A地址 (字索引)
+    int32_t  input1Address;                 // 输入矩阵B地址 (字索引)
+    int32_t  outputAddress;                 // 输出矩阵Z地址 (字索引)
+    int32_t  input0Shape0;                  // input0Shape[0] (行数)
+    int32_t  input0Shape1;                  // input0Shape[1] (列数)
+    int32_t  input1Shape0;                  // input1Shape[0] (行数，ElementWise时等于input0Shape0)
+    int32_t  input1Shape1;                  // input1Shape[1] (列数)
+    int8_t   shiftLeft_A;                   // 输入A左移位数
+    int8_t   shiftLeft_B;                   // 输入B左移位数
+    // 总共: 4+1+1+1+1+1+4+4+4+4+4+4+4+1+1 = 40字节
+} __attribute__((packed)) instruction_msg_t;
+
+// FPGA 128-bit 紧凑指令格式 (用于硬件)
+// 从 r5_bm_validation/drivers/accelerator.c 迁移
 typedef struct {
     uint32_t UID;                           // 位 [18:0] (19位)
     uint32_t matrixOperation;               // 位 [20:19] (2位)
@@ -72,23 +99,6 @@ typedef struct {
     // 总共 113 位，填充到 128 位 (16 字节)
     uint8_t  _padding[1];
 } __attribute__((packed)) fpga_instruction_t;
-
-// 验证程序中使用的简化指令结构 (用于与 Java 层通信)
-typedef struct {
-    uint32_t UID;
-    uint32_t matrixOperation;
-    int32_t  shiftLeft_AfterMatrixOperation;
-    uint8_t  doTranspose;
-    uint32_t activationFunction;
-    int32_t  shiftLeft_AfterActivation;
-    uint32_t input0Shape0;
-    uint32_t input0Shape1;
-    uint32_t input1Shape0;
-    uint32_t input1Shape1;
-    int32_t  shiftLeft_A;
-    int32_t  shiftLeft_B;
-    uint8_t  _padding[3];
-} __attribute__((packed)) instruction_msg_t;
 
 // ==================== FPGA 驱动句柄 ====================
 typedef struct {
