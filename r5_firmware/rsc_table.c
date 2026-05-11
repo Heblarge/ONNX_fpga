@@ -75,7 +75,7 @@ struct remote_resource_table __resource resources = {
 		.da =		(uint32_t)rsc_trace_buf,
 		.len =		sizeof(rsc_trace_buf),
 		.reserved =	0,
-		.name =		r5_trace",
+		.name =		"r5_trace",
 	},
 	/*
 	 * Tensor Memory Pool - 4个独立的10MB buffer用于Ping-Pong操作
@@ -86,8 +86,8 @@ struct remote_resource_table __resource resources = {
 	 *     #size-cells = <2>;
 	 *     ranges;
 	 *
-	 *     tensor_block0@3ed00000 {
-	 *         reg = <0x0 0x3ed00000 0x0 0x00a00000>;  // 10MB
+	 *     tensor_block0@3ed80000 {
+	 *         reg = <0x0 0x3ed80000 0x0 0x00a00000>;  // 10MB
 	 *         no-map;
 	 *     };
 	 *     tensor_block1@3f700000 {

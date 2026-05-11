@@ -46,7 +46,7 @@ static const struct {
     unsigned long phys_addr;
     size_t size;
 } SHM_CONFIG[MAX_SHM_BLOCKS] = {
-    {0x3ED00000UL, 0x00A00000},  // Block 0: 10MB
+    {0x3ED80000UL, 0x00A00000},  // Block 0: 10MB
     {0x3F700000UL, 0x00A00000},  // Block 1: 10MB
     {0x40100000UL, 0x00A00000},  // Block 2: 10MB
     {0x40B00000UL, 0x00A00000},  // Block 3: 10MB
