@@ -1,3 +1,0 @@
-*design* DebussyLib (btIdent Verdi_O-2018.09-SP2)
-Command arguments:  -elab  /root/onnx_spinal_project_new/simWorkspace/InstAxi4ToStream128/InstAxi4ToStream128.daidir/kdb  -simflow  -top  InstAxi4ToStream128 __simulation_def  -ssz  -ssv  -ssy  +disable_message+C00380+C00381  +disable_message+C00388+C00389  -SNPS_ELABCOM  -saveElab 
-Total	0 error(s),   0 warning(s)

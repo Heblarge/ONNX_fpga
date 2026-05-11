@@ -211,12 +211,14 @@ public class HWAcceleratedGemmReluV13 extends HWAcceleratedQuantizedOperator imp
                         false,
                         "relu",
                         0,
-                        0,
-                        0,
-                        0,
+                        0,  // bufferIdA (将在executeOnHardware中设置)
+                        0,  // bufferIdB
+                        0,  // bufferIdZ
                         TILE_M,
                         K,
-                        TILE_N,0,0);
+                        TILE_N,
+                        0,
+                        0);
 
                 long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
                 copyTileToResult(hardwareResult, tileResult, m_offset, n_offset, TILE_M, TILE_N);

@@ -12,10 +12,6 @@ public abstract class HWAcceleratedOperator implements Executable<INDArray> {
     public void preconditions(OperatorInputs<INDArray> operatorInputs) {
         for (InputField<INDArray> inputField : operatorInputs.getInputFields()) {
             TypeConstraint constraints = inputField.getConstraints();
-			/*Arrays.asList(constraints.getDataTypes()).contains(arg0)
-			for (DataType availableType : constraints.getDataTypes()) {
-				Arrays.
-			}*/
         }
     }
 

@@ -26,6 +26,7 @@ import org.onnx4j.Outputs;
 import org.onnx4j.Outputs.Output;
 import org.onnx4j.Tensor;
 import org.onnx4j.TensorManager;
+import org.onnx4j.SharedMemoryPool;
 import org.onnx4j.model.graph.exchanges.GraphInput;
 import org.onnx4j.model.graph.exchanges.GraphOutput;
 import org.slf4j.Logger;
@@ -50,11 +51,65 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 	// 日志记录器示例
 	private static Logger logger = LoggerFactory.getLogger(Session.class);
 
+	/* 共享内存池配置 */
+	private static SharedMemoryPool globalSharedMemoryPool = null;
+	private static boolean sharedMemoryEnabled = false;
+	private static final Object poolLock = new Object();
+
 	protected Backend<T_BK_TS> backend;// 后端计算引擎
 	protected Outputs outputs;// 模型输出结果集合
 	protected Map<String, T_BK_TS> intermediateOutputs;// 中间计算结果缓存（名称->后端张量）
 	protected TensorManager<T_BK_TS> intermediateTensorManager;// 中间张量管理器
 	protected TensorManager<Tensor> exchangeTensorManager;// 交换张量管理器（前端Tensor）
+
+	/**
+	 * 初始化全局共享内存池
+	 * 应在创建任何Session之前调用
+	 */
+	public static boolean initializeSharedMemoryPool() {
+		synchronized (poolLock) {
+			if (globalSharedMemoryPool != null) {
+				return true;
+			}
+			globalSharedMemoryPool = SharedMemoryPool.getInstance();
+			sharedMemoryEnabled = globalSharedMemoryPool.initialize();
+			if (sharedMemoryEnabled) {
+				logger.info("Shared memory pool initialized successfully");
+			} else {
+				logger.warn("Failed to initialize shared memory pool, falling back to regular allocation");
+			}
+			return sharedMemoryEnabled;
+		}
+	}
+
+	/**
+	 * 关闭全局共享内存池
+	 */
+	public static void shutdownSharedMemoryPool() {
+		synchronized (poolLock) {
+			if (globalSharedMemoryPool != null) {
+				globalSharedMemoryPool.close();
+				globalSharedMemoryPool = null;
+				sharedMemoryEnabled = false;
+				logger.info("Shared memory pool shutdown");
+			}
+		}
+	}
+
+	/**
+	 * 获取共享内存池实例
+	 */
+	public static SharedMemoryPool getSharedMemoryPool() {
+		return globalSharedMemoryPool;
+	}
+
+	/**
+	 * 是否启用共享内存
+	 */
+	public static boolean isSharedMemoryEnabled() {
+		return sharedMemoryEnabled && globalSharedMemoryPool != null && globalSharedMemoryPool.isInitialized();
+	}
+
 	/**
 	 * 构造函数，初始化会话
 	 *
@@ -113,7 +168,7 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 		return this.feed(name, tensor, true);
 	}
 
-	//输入数据，使用输入的张量名，根据输入决定是否autoAttach，以上三个函数最后都是调用的这个函数
+	//输入数据，使用输入的张量名，根据输入决定是否autoattach，以上三个函数最后都是调用的这个函数
 	public Session<T_BK_TS> feed(String name, Tensor tensor, boolean autoAttach) {
 		//获取计算图的输入
 		GraphInput graphInput = this.backend.getModel().getGraph().getInputs(name);
@@ -126,13 +181,21 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 						String.format("Shape or DataType is not equals to the input tensor named \"%s\" ", name));
 			}
 		}
+
+		// 如果启用了共享内存且当前tensor不是共享内存模式，则转换
+		Tensor feedTensor = tensor;
+		if (isSharedMemoryEnabled() && !tensor.isSharedMemory()) {
+			feedTensor = copyToSharedMemory(tensor);
+			logger.debug("Copied input tensor '{}' to shared memory", name);
+		}
+
 		//转换为后端原生数据类型T_BK_TS
-		T_BK_TS backendTensor = this.backend.toBackendTensor(this.intermediateTensorManager, tensor);
+		T_BK_TS backendTensor = this.backend.toBackendTensor(this.intermediateTensorManager, feedTensor);
 		//将输入作为中间结果存入一个map中，用name作为key
 		this.intermediateOutputs.put(name, backendTensor);
 		//默认会把输入的Tensor类型也存起来
 		if (autoAttach) {
-			this.exchangeTensorManager.attach(name, tensor);
+			this.exchangeTensorManager.attach(name, feedTensor);
 		}
 
 		return this;
@@ -154,7 +217,7 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 		Executor<T_BK_TS> executor = this.backend.getModel().getExecutor();
 		//递归执行推理
 		executor.execute(this, this.backend.getOpsets());
-// 处理输出：将后端张量转换回前端Tensor并封装为输出结果
+	// 处理输出：将后端张量转换回前端Tensor并封装为输出结果
 		for (GraphOutput graphOutput : this.backend.getModel().getGraph().getOutputs()) {
 			T_BK_TS backendTensor = this.intermediateOutputs.get(graphOutput.getName());//从中间结果获取所有名字和网络需要的输出一致的张量
 			Tensor tensor = this.backend.toNativeTensor(this.exchangeTensorManager, graphOutput.getName(),
@@ -162,15 +225,51 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
 			Output output = Output.wrap(graphOutput.getName(), tensor);//封装为输出对象并存入结果集
 			outputs.append(graphOutput.getName(), output);
 		}
+
+		// 打印共享内存统计
+		if (isSharedMemoryEnabled()) {
+			globalSharedMemoryPool.printStatistics();
+		}
+
 		return this;
 	}
+
+	/**
+	 * 将tensor复制到共享内存
+	 */
+	private Tensor copyToSharedMemory(Tensor source) {
+		long sizeBytes = source.getMemoryBytes();
+		SharedMemoryPool.Allocation alloc = globalSharedMemoryPool.allocate(sizeBytes);
+		if (alloc == null) {
+			logger.warn("Failed to allocate shared memory, using original tensor");
+			return source;
+		}
+
+		// 创建共享内存tensor
+		ByteBuffer sourceBuffer = source.getData();
+		ByteBuffer targetBuffer = globalSharedMemoryPool.mapBuffer(alloc.blockId, alloc.offset, (int)sizeBytes);
+		targetBuffer.put(sourceBuffer);
+		targetBuffer.flip();
+
+		return new Tensor(
+			source.getName(),
+			source.getDocString(),
+			source.getDataType(),
+			org.onnx4j.tensor.Shape.fromArray(source.getShape()),
+			alloc.physicalAddress,
+			alloc.blockId,
+			globalSharedMemoryPool,
+			alloc.offset
+		);
+	}
+
 	//获取中间张量管理器
 	public TensorManager<T_BK_TS> getTensorManager() {
 		return intermediateTensorManager;
 	}
 	//获取后端计算引擎
 	public Backend<T_BK_TS> getBackend() {
-		return this.backend;
+		return backend;
 	}
 	//按名称获取输出张量
 	public Tensor getOutput(String name) {
@@ -217,7 +316,8 @@ public abstract class Session<T_BK_TS> implements AutoCloseable {
         // 使用 backend 将后端张量转换为前端 Tensor
         return this.backend.toNativeTensor(this.exchangeTensorManager, name, backendTensor);
     }
-//实现close接口，以满足AutoClosable类
+
+	//实现close接口，以满足AutoClosable类
 	@Override
 	public void close() throws Exception {
 		this.intermediateTensorManager.close();

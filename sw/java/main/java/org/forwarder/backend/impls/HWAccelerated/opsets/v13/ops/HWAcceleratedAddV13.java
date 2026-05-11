@@ -28,6 +28,9 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
     private static final int HW_DIM_MULTIPLE = 16;
     private static final int MAX_HW_ELEMENTS = 512 * 512;
 
+    // Buffer分配计数器
+    private static int nextBufferId = 0;
+
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         AddInputsV13<INDArray> castedInputs = new AddInputsV13<>(node, inputs);
@@ -205,9 +208,9 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
                     false,
                     "none",
                     0,
-                    0,
-                    0,
-                    0,
+                    0,  // bufferIdA
+                    0,  // bufferIdB
+                    0,  // bufferIdZ
                     TILE_ROWS,
                     cols,
                     cols,
@@ -218,7 +221,7 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
             copyTileFromSource(tileA, fixedPointA, rowOffset, 0, TILE_ROWS, cols);
             copyTileFromSource(tileB, fixedPointB, rowOffset, 0, TILE_ROWS, cols);
 
-            long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+            long[][] tileResult = executeOnHardware(tileA, tileB, instruction, TILE_ROWS, cols);
 
             copyTileToResult(hardwareResult, tileResult, rowOffset, 0, TILE_ROWS, cols);
 
@@ -234,5 +237,96 @@ public class HWAcceleratedAddV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         return Nd4j.create(output, new long[]{rows, cols}, a.dataType());
+    }
+
+    // ==================== 真实硬件执行方法 ====================
+    /**
+     * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
+     * 使用预分配buffer池方案（与 R5 侧 g_buffer_pool 对齐）
+     */
+    private long[][] executeOnHardware(long[][] tileA, long[][] tileB, InstJavaTODO instruction,
+                                       int rows, int cols) {
+
+        System.out.println("[JNI-HW] Add: " + rows + "x" + cols);
+
+        // 1. 获取共享内存池
+        org.onnx4j.SharedMemoryPool pool = org.onnx4j.SharedMemoryPool.getInstance();
+        if (!pool.isInitialized()) {
+            throw new IllegalStateException("SharedMemoryPool not initialized");
+        }
+
+        // 2. 计算大小并分配固定 buffer（与 R5 侧对齐）
+        int sizeA = rows * cols * 4;
+        int sizeB = rows * cols * 4;
+        int sizeZ = rows * cols * 4;
+
+        int bufferIdA = pool.findNextFreeBuffer(nextBufferId);
+        if (bufferIdA < 0) {
+            throw new RuntimeException("No free buffer available for A");
+        }
+        org.onnx4j.SharedMemoryPool.BufferInfo infoA = pool.allocateBuffer(bufferIdA);
+
+        int bufferIdB = pool.findNextFreeBuffer(bufferIdA + 1);
+        if (bufferIdB < 0) {
+            pool.freeBuffer(bufferIdA);
+            throw new RuntimeException("No free buffer available for B");
+        }
+        org.onnx4j.SharedMemoryPool.BufferInfo infoB = pool.allocateBuffer(bufferIdB);
+
+        int bufferIdZ = pool.findNextFreeBuffer(bufferIdB + 1);
+        if (bufferIdZ < 0) {
+            pool.freeBuffer(bufferIdA);
+            pool.freeBuffer(bufferIdB);
+            throw new RuntimeException("No free buffer available for Z");
+        }
+        org.onnx4j.SharedMemoryPool.BufferInfo infoZ = pool.allocateBuffer(bufferIdZ);
+
+        nextBufferId = (bufferIdZ + 1) % 64;
+
+        try {
+            // 3. 写入数据（使用固定地址）
+            java.nio.ByteBuffer buffer = pool.mapBuffer(bufferIdA, sizeA);
+            buffer.order(java.nio.ByteOrder.nativeOrder());
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    buffer.putInt((int)tileA[i][j]);
+
+            buffer = pool.mapBuffer(bufferIdB, sizeB);
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    buffer.putInt((int)tileB[i][j]);
+
+            // 4. 设置bufferId
+            instruction.bufferIdA = bufferIdA;
+            instruction.bufferIdB = bufferIdB;
+            instruction.bufferIdZ = bufferIdZ;
+
+            // 5. 执行
+            org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI jni =
+                org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI.getInstance();
+
+            jni.syncToDevice(infoA.blockId, infoA.offsetInBlock, sizeA);
+            jni.syncToDevice(infoB.blockId, infoB.offsetInBlock, sizeB);
+
+            if (!jni.executeInstructions(new InstJavaTODO[]{instruction})) {
+                throw new RuntimeException("FPGA execution failed");
+            }
+
+            jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
+
+            // 6. 读取结果
+            buffer = pool.mapBuffer(bufferIdZ, sizeZ);
+            long[][] result = new long[rows][cols];
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    result[i][j] = buffer.getInt() & 0xFFFFFFFFL;
+
+            return result;
+        } finally {
+            // 7. 释放 buffer
+            pool.freeBuffer(bufferIdA);
+            pool.freeBuffer(bufferIdB);
+            pool.freeBuffer(bufferIdZ);
+        }
     }
 }

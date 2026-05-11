@@ -12,11 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "xil_printf.h"
+#include "xil_cache.h"
 #include <openamp/open_amp.h>
 #include <metal/alloc.h>
 #include <metal/log.h>
 #include "platform_info.h"
 #include "fpga_driver.h"
+#include "datamover_driver.h"
 
 #define RPMSG_SERVICE_NAME "rpmsg-openamp-demo-channel"
 #define SHUTDOWN_MSG 0xEF56A55A
@@ -37,19 +39,168 @@ typedef struct {
 // 指令数组最大长度
 #define MAX_INSTRUCTIONS 256
 
+// ==================== Buffer池定义 ====================
+// 预分配buffer池，每个buffer对应共享内存中的一个固定大小区域
+// 共享内存布局（需与rsc_table.c和Java保持一致）:
+// - Block 0: 0x3ED00000, 10MB
+// - Block 1: 0x3F700000, 10MB
+// - Block 2: 0x40100000, 10MB
+// - Block 3: 0x40B00000, 10MB
+//
+// 每个块划分为16个buffer，每个buffer最大640KB (可容纳512x512的int32矩阵)
+#define BUFFERS_PER_BLOCK  16
+#define BUFFER_MAX_SIZE    (640 * 1024)  // 640KB per buffer
+#define TOTAL_BUFFERS      (4 * BUFFERS_PER_BLOCK)  // 64个buffer
+
+typedef struct {
+    uint64_t shm_phys_addr;   // 共享内存物理地址
+    uint32_t size;            // buffer大小
+    uint32_t reserved;        // 对齐
+} buffer_info_t;
+
+// Buffer池映射表
+// 每个buffer相隔640KB (0xA0000)，与Java侧SharedMemoryPool对齐
+// 布局：每个Block (10MB) 包含 16 个 buffer (每个 640KB)
+static const buffer_info_t g_buffer_pool[TOTAL_BUFFERS] = {
+    // Block 0: 0x3ED00000
+    {0x3ED00000UL, BUFFER_MAX_SIZE, 0}, {0x3EDA0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3EE40000UL, BUFFER_MAX_SIZE, 0}, {0x3EEE0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3EF80000UL, BUFFER_MAX_SIZE, 0}, {0x3F020000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F0C0000UL, BUFFER_MAX_SIZE, 0}, {0x3F160000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F200000UL, BUFFER_MAX_SIZE, 0}, {0x3F2A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F340000UL, BUFFER_MAX_SIZE, 0}, {0x3F3E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F480000UL, BUFFER_MAX_SIZE, 0}, {0x3F520000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F5C0000UL, BUFFER_MAX_SIZE, 0}, {0x3F660000UL, BUFFER_MAX_SIZE, 0},
+    // Block 1: 0x3F700000
+    {0x3F700000UL, BUFFER_MAX_SIZE, 0}, {0x3F7A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F840000UL, BUFFER_MAX_SIZE, 0}, {0x3F8E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F980000UL, BUFFER_MAX_SIZE, 0}, {0x3FA20000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FAC0000UL, BUFFER_MAX_SIZE, 0}, {0x3FB60000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FC00000UL, BUFFER_MAX_SIZE, 0}, {0x3FCA0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FD40000UL, BUFFER_MAX_SIZE, 0}, {0x3FDE0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FE80000UL, BUFFER_MAX_SIZE, 0}, {0x3FF20000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FFC0000UL, BUFFER_MAX_SIZE, 0}, {0x40060000UL, BUFFER_MAX_SIZE, 0},
+    // Block 2: 0x40100000
+    {0x40100000UL, BUFFER_MAX_SIZE, 0}, {0x401A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40240000UL, BUFFER_MAX_SIZE, 0}, {0x402E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40380000UL, BUFFER_MAX_SIZE, 0}, {0x40420000UL, BUFFER_MAX_SIZE, 0},
+    {0x404C0000UL, BUFFER_MAX_SIZE, 0}, {0x40560000UL, BUFFER_MAX_SIZE, 0},
+    {0x40600000UL, BUFFER_MAX_SIZE, 0}, {0x406A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40740000UL, BUFFER_MAX_SIZE, 0}, {0x407E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40880000UL, BUFFER_MAX_SIZE, 0}, {0x40920000UL, BUFFER_MAX_SIZE, 0},
+    {0x409C0000UL, BUFFER_MAX_SIZE, 0}, {0x40A60000UL, BUFFER_MAX_SIZE, 0},
+    // Block 3: 0x40B00000
+    {0x40B00000UL, BUFFER_MAX_SIZE, 0}, {0x40BA0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40C40000UL, BUFFER_MAX_SIZE, 0}, {0x40CE0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40D80000UL, BUFFER_MAX_SIZE, 0}, {0x40E20000UL, BUFFER_MAX_SIZE, 0},
+    {0x40EC0000UL, BUFFER_MAX_SIZE, 0}, {0x40F60000UL, BUFFER_MAX_SIZE, 0},
+    {0x41000000UL, BUFFER_MAX_SIZE, 0}, {0x410A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x41140000UL, BUFFER_MAX_SIZE, 0}, {0x411E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x41280000UL, BUFFER_MAX_SIZE, 0}, {0x41320000UL, BUFFER_MAX_SIZE, 0},
+    {0x413C0000UL, BUFFER_MAX_SIZE, 0}, {0x41460000UL, BUFFER_MAX_SIZE, 0},
+};
+
 // ==================== 全局变量 ====================
 
 static struct rpmsg_endpoint g_lept;
 static fpga_driver_t g_fpga;
+static datamover_driver_t g_datamover;
+static bool g_datamover_initialized = false;
+
+// 共享内存 metal I/O region（由 platform_info.c 注册）
+// 用于正确访问 A53-R5 共享内存中的 buffer 状态标志
+extern struct metal_device *get_shared_mem_device(void);
 
 #define LPRINTF(fmt, ...) xil_printf("[R5] " fmt, ##__VA_ARGS__)
 #define LPERROR(fmt, ...) LPRINTF("ERROR: " fmt, ##__VA_ARGS__)
 
+// ==================== 缓冲区状态管理 ====================
+
+/**
+ * 获取缓冲区状态标志位的物理地址
+ * 标志位位于每个buffer的起始位置（前4字节）
+ */
+static uint64_t get_buffer_status_phys_addr(int bufferId) {
+    const buffer_info_t* info = get_buffer_info(bufferId);
+    if (info == NULL) {
+        return 0;
+    }
+    // 状态标志位于buffer起始位置
+    return info->shm_phys_addr;
+}
+
+/**
+ * 通过libmetal获取缓冲区状态的虚拟地址
+ * 将共享内存物理地址映射为虚拟地址
+ */
+static volatile uint32_t* get_buffer_status_virt_addr(int bufferId) {
+    uint64_t phys_addr = get_buffer_status_phys_addr(bufferId);
+    if (phys_addr == 0) {
+        return NULL;
+    }
+
+    // 对于 ZynqMP，R5 和 A53 共享相同的物理地址空间
+    // R5 可以直接访问物理地址（R5 是裸机，没有 MMU 虚拟地址转换）
+    // 因此物理地址可以直接用作指针
+    //
+    // 注意：如果使用 libmetal 的 metal_io_region，需要：
+    // 1. 在 platform_info.c 中注册共享内存为 metal 设备
+    // 2. 使用 metal_io_phys_to_virt() 进行转换
+    // 但在 R5 裸机环境中，直接使用物理地址是可行的
+    return (volatile uint32_t*)phys_addr;
+}
+
+/**
+ * 读取缓冲区状态
+ */
+static uint32_t read_buffer_status(int bufferId) {
+    volatile uint32_t* status_addr = get_buffer_status_virt_addr(bufferId);
+    if (status_addr == NULL) {
+        return BUFFER_STATUS_ERROR;
+    }
+
+    // 确保读取最新数据
+    Xil_DCacheInvalidateRange((uint32_t)status_addr, sizeof(uint32_t));
+    return *status_addr;
+}
+
+/**
+ * 设置缓冲区状态
+ */
+static void write_buffer_status(int bufferId, uint32_t status) {
+    volatile uint32_t* status_addr = get_buffer_status_virt_addr(bufferId);
+    if (status_addr == NULL) {
+        return;
+    }
+
+    *status_addr = status;
+    // 确保A53能看到状态更新
+    Xil_DCacheFlushRange((uint32_t)status_addr, sizeof(uint32_t));
+}
+
 // ==================== 指令处理 ====================
+
+/**
+ * 根据bufferId获取buffer信息
+ */
+static const buffer_info_t* get_buffer_info(int bufferId) {
+    if (bufferId < 0 || bufferId >= TOTAL_BUFFERS) {
+        LPERROR("Invalid bufferId: %d\n", bufferId);
+        return NULL;
+    }
+    return &g_buffer_pool[bufferId];
+}
 
 /**
  * 执行单条指令
  * 与 Accelerator/InstJavaTODO.java 对齐
+ *
+ * 流程：
+ * 1. 验证bufferId并获取共享内存地址
+ * 2. DataMover: 共享内存 → FPGA片上SRAM (sdpramA/B从地址0开始)
+ * 3. 发送指令到FPGA
+ * 4. 等待计算完成
+ * 5. DataMover: FPGA片上SRAM → 共享内存
  */
 static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     fpga_instruction_t fpga_inst;
@@ -63,20 +214,149 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
             msg_inst->input1Shape0, msg_inst->input1Shape1,
             msg_inst->shiftLeft_A, msg_inst->shiftLeft_B);
 
-    // 转换指令格式
+    // 0. 检查输入缓冲区状态
+    uint32_t statusA = read_buffer_status(msg_inst->bufferIdA);
+    uint32_t statusB = read_buffer_status(msg_inst->bufferIdB);
+    if (statusA != BUFFER_STATUS_READY) {
+        LPERROR("Buffer A not ready: id=%d, status=%d\n", msg_inst->bufferIdA, statusA);
+        return -1;
+    }
+    if (statusB != BUFFER_STATUS_READY) {
+        LPERROR("Buffer B not ready: id=%d, status=%d\n", msg_inst->bufferIdB, statusB);
+        return -1;
+    }
+
+    // 标记输入缓冲区为BUSY，输出缓冲区为BUSY
+    write_buffer_status(msg_inst->bufferIdA, BUFFER_STATUS_BUSY);
+    write_buffer_status(msg_inst->bufferIdB, BUFFER_STATUS_BUSY);
+    write_buffer_status(msg_inst->bufferIdZ, BUFFER_STATUS_BUSY);
+
+    // 1. 获取buffer信息
+    const buffer_info_t* bufA = get_buffer_info(msg_inst->bufferIdA);
+    const buffer_info_t* bufB = get_buffer_info(msg_inst->bufferIdB);
+    const buffer_info_t* bufZ = get_buffer_info(msg_inst->bufferIdZ);
+
+    if (bufA == NULL || bufB == NULL || bufZ == NULL) {
+        LPERROR("Invalid buffer IDs: A=%d, B=%d, Z=%d\n",
+                msg_inst->bufferIdA, msg_inst->bufferIdB, msg_inst->bufferIdZ);
+        return -1;
+    }
+
+    LPRINTF("     buffers: A[id=%d,PA=0x%lX], B[id=%d,PA=0x%lX], Z[id=%d,PA=0x%lX]\n",
+            msg_inst->bufferIdA, bufA->shm_phys_addr,
+            msg_inst->bufferIdB, bufB->shm_phys_addr,
+            msg_inst->bufferIdZ, bufZ->shm_phys_addr);
+
+    // 2. 计算数据大小
+    uint32_t sizeA = msg_inst->input0Shape0 * msg_inst->input0Shape1 * 4;  // int32 = 4字节
+    uint32_t sizeB = msg_inst->input1Shape0 * msg_inst->input1Shape1 * 4;
+    uint32_t sizeZ = msg_inst->input0Shape0 * msg_inst->input1Shape1 * 4;
+    uint32_t rowLenA = msg_inst->input0Shape1 * 4;
+    uint32_t rowLenB = msg_inst->input1Shape1 * 4;
+    uint32_t rowLenZ = msg_inst->input1Shape1 * 4;
+
+    // 3. DataMover: 共享内存 → FPGA SRAM
+    // FPGA片上SRAM地址 (从r5_bm_validation迁移)
+    const uint64_t BRAM0_BASE = 0xA0000000UL;  // sdpramA
+    const uint64_t BRAM1_BASE = 0xA0010000UL;  // sdpramB
+    const uint64_t BRAM2_BASE = 0xA0020000UL;  // sdpramZ (输出)
+
+    // Cache同步: Invalidate R5的cache，确保DataMover读取的是A53写入的最新数据
+    Xil_DCacheInvalidateRange(bufA->shm_phys_addr, sizeA);
+    Xil_DCacheInvalidateRange(bufB->shm_phys_addr, sizeB);
+
+    LPRINTF("     DataMover: shm→FPGA SRAM...\n");
+
+    // 搬运tileA: 共享内存 → sdpramA (从地址0开始)
+    if (dmdrv_transfer(&g_datamover, 0,  // DataMover 0
+                       bufA->shm_phys_addr, BRAM0_BASE,
+                       msg_inst->input0Shape0, rowLenA) != 0) {
+        LPERROR("Failed to transfer tileA\n");
+        return -1;
+    }
+    if (dmdrv_wait_complete(&g_datamover, 0) != 0) {
+        LPERROR("tileA transfer timeout\n");
+        return -1;
+    }
+
+    // 搬运tileB: 共享内存 → sdpramB (从地址0开始)
+    if (dmdrv_transfer(&g_datamover, 1,  // DataMover 1
+                       bufB->shm_phys_addr, BRAM1_BASE,
+                       msg_inst->input1Shape0, rowLenB) != 0) {
+        LPERROR("Failed to transfer tileB\n");
+        return -1;
+    }
+    if (dmdrv_wait_complete(&g_datamover, 1) != 0) {
+        LPERROR("tileB transfer timeout\n");
+        return -1;
+    }
+
+    LPRINTF("     DataMover: complete, now triggering FPGA...\n");
+
+    // 4. 动态配置 Cache 生命周期
+    // 根据矩阵大小计算所需的Cache生命周期
+    // Cache A 存储 input0 (M x K)，每行需要参与计算 N 个输出列
+    // Cache B 存储 input1 (K x N)，每列需要参与计算 M 个输出行
+    // systolicArraySideNum = 32，数据按32x32分块处理
+    //
+    // 估算公式（保守计算）：
+    // - cycle_a: Cache A 需要支持 (N / 32) 次重用，加上安全裕量
+    // - cycle_b: Cache B 需要支持 (M / 32) 次重用，加上安全裕量
+    //
+    uint32_t tile_count_n = (msg_inst->input1Shape1 + 31) / 32;  // 向上取整
+    uint32_t tile_count_m = (msg_inst->input0Shape0 + 31) / 32;  // 向上取整
+
+    // 基本周期数 + 安全裕量(50%) + 最小基准值
+    uint16_t cycle_a = (uint16_t)(tile_count_n * 3 / 2 + 10);
+    uint16_t cycle_b = (uint16_t)(tile_count_m * 3 / 2 + 10);
+
+    // 限制在合理范围内 (最小10，最大1000)
+    if (cycle_a < 10) cycle_a = 10;
+    if (cycle_a > 1000) cycle_a = 1000;
+    if (cycle_b < 10) cycle_b = 10;
+    if (cycle_b > 1000) cycle_b = 1000;
+
+    fpga_configure_cache(&g_fpga, cycle_a, cycle_b);
+
+    // 5. 转换指令格式并发送到FPGA
     fpga_convert_instruction(msg_inst, &fpga_inst);
 
-    // 发送到 FPGA
     if (fpga_send_instruction(&g_fpga, &fpga_inst) != 0) {
         LPERROR("Failed to send instruction to FPGA\n");
         return -1;
     }
 
-    // 等待完成
+    // 6. 等待FPGA完成
     if (fpga_wait_completion(&g_fpga, 1000) != 0) {
         LPERROR("Instruction timeout\n");
         return -1;
     }
+
+    LPRINTF("     FPGA computation complete\n");
+
+    // 7. DataMover: FPGA SRAM → 共享内存
+    LPRINTF("     DataMover: FPGA SRAM→shm...\n");
+
+    if (dmdrv_transfer(&g_datamover, 2,  // DataMover 2
+                       BRAM2_BASE, bufZ->shm_phys_addr,
+                       msg_inst->input0Shape0, rowLenZ) != 0) {
+        LPERROR("Failed to transfer result\n");
+        return -1;
+    }
+    if (dmdrv_wait_complete(&g_datamover, 2) != 0) {
+        LPERROR("result transfer timeout\n");
+        return -1;
+    }
+
+    // Cache同步: Flush R5的cache，确保A53读取时能看到DataMover写入的最新结果
+    Xil_DCacheFlushRange(bufZ->shm_phys_addr, sizeZ);
+
+    // 8. 更新缓冲区状态
+    write_buffer_status(msg_inst->bufferIdA, BUFFER_STATUS_FREE);  // 输入缓冲区可重用
+    write_buffer_status(msg_inst->bufferIdB, BUFFER_STATUS_FREE);
+    write_buffer_status(msg_inst->bufferIdZ, BUFFER_STATUS_DONE);   // 输出缓冲区完成
+
+    LPRINTF("     Instruction fully complete, bufferZ marked as DONE\n");
 
     return 0;
 }
@@ -111,8 +391,17 @@ static int handle_instructions_data(void *data, size_t len) {
             LPERROR("Failed to initialize FPGA driver\n");
             return -1;
         }
-        // 配置默认 Cache 生命周期
-        fpga_configure_cache(&g_fpga, 100, 100);
+        // Cache 生命周期将在执行每条指令时动态配置
+    }
+
+    // 初始化 DataMover (如果尚未初始化)
+    if (!g_datamover_initialized) {
+        if (dmdrv_init(&g_datamover) != 0) {
+            LPERROR("Failed to initialize DataMover driver\n");
+            return -1;
+        }
+        g_datamover_initialized = true;
+        LPRINTF("DataMover driver initialized\n");
     }
 
     // 执行每条指令

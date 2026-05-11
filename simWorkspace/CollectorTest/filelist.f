@@ -1,1 +1,0 @@
-/root/onnx_spinal_project_new/./simWorkspace/tmp/job_1/CollectorTest.v

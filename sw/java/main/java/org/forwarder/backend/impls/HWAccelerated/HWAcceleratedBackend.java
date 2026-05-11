@@ -1,81 +1,241 @@
 package org.forwarder.backend.impls.HWAccelerated;
 
-import java.util.Arrays;
-
 import org.forwarder.Backend;
 import org.forwarder.Model;
 import org.forwarder.Session;
-import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedSession;
-import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedDataTypeHelper;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI;
 import org.nd4j.linalg.api.buffer.DataBuffer;
 import org.nd4j.linalg.api.buffer.DataType;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.onnx4j.SharedMemoryPool;
 import org.onnx4j.Tensor;
 import org.onnx4j.TensorManager;
-import org.onnx4j.tensor.Shape;
-import org.onnx4j.tensor.TensorBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+/**
+ * 硬件加速器后端 - 共享内存方案
+ *
+ * 对外使用INDArray接口，内部数据存储在共享内存中
+ * 现有算子代码无需任何修改
+ */
 public class HWAcceleratedBackend extends Backend<INDArray> {
 
-    public static final String BACKEND_NAME = "HWAccelerated";
+	private static Logger logger = LoggerFactory.getLogger(HWAcceleratedBackend.class);
 
-    public HWAcceleratedBackend() {
-        super();
-    }
+	public static final String BACKEND_NAME = "HWAccelerated";
 
-    public HWAcceleratedBackend(Model model) {
-        super(model);
-    }
+	private static boolean jniInitialized = false;
+	private static final Object JNI_LOCK = new Object();
+	private static SharedMemoryPool sharedMemoryPool;
 
+	public HWAcceleratedBackend() {
+		super();
+	}
 
-    @Override
-    public String getName() {
-        return BACKEND_NAME;
-    }
+	public HWAcceleratedBackend(Model model) {
+		super(model);
+		initializeJNI();
+	}
 
-    @Override
-    public void disposeBackendTensor(INDArray backendTensor) {
-        if(backendTensor.closeable()){
-            backendTensor.close();
-        }
-    }
+	private static void initializeJNI() {
+		synchronized (JNI_LOCK) {
+			if (!jniInitialized) {
+				HWAcceleratorJNI jni = HWAcceleratorJNI.getInstance();
+				if (jni.initialize()) {
+					if (jni.initializeSharedMemory()) {
+						sharedMemoryPool = SharedMemoryPool.getInstance();
+						jniInitialized = true;
+						logger.info("HWAccelerated JNI and shared memory initialized");
+					}
+				}
+			}
+		}
+	}
 
-    @Override
-    public INDArray toBackendTensor(TensorManager<INDArray> tensorManager, org.onnx4j.Tensor onnx4jTensor) {
-        DataType backendDataType = HWAcceleratedDataTypeHelper.toHWAcceleratedDataType(onnx4jTensor.getDataType());
-        DataBuffer dataBuffer = Nd4j.createBuffer(onnx4jTensor.getData(), backendDataType, (int) onnx4jTensor.getElementSize());
-        int shape[] = Arrays.stream(onnx4jTensor.getShape()).mapToInt(i -> (int) i).toArray();
-        INDArray ndArray = Nd4j.create(dataBuffer, shape);
+	@Override
+	public String getName() {
+		return BACKEND_NAME;
+	}
 
-        //
-        // Attach to Onnx4j.TensorManager if the backend tensor had not been attached.
-        //
-        if (ndArray.isAttached() == false)
-            tensorManager.attach(onnx4jTensor.getName(), ndArray);
+	@Override
+	public void disposeBackendTensor(INDArray backendTensor) {
+		if (backendTensor != null && backendTensor.closeable()) {
+			backendTensor.close();
+		}
+	}
 
-        return ndArray;
-    }
+	@Override
+	public INDArray toBackendTensor(TensorManager<INDArray> tensorManager, Tensor onnx4jTensor) {
+		if (sharedMemoryPool == null || !sharedMemoryPool.isInitialized()) {
+			throw new IllegalStateException("Shared memory pool not initialized. Call Session.initializeSharedMemoryPool() first.");
+		}
 
-    @Override
-    public org.onnx4j.Tensor toNativeTensor(TensorManager<Tensor> tensorManager, String name, INDArray backendTensor) {
-        org.onnx4j.tensor.DataType onnx4jDataType = HWAcceleratedDataTypeHelper.toOnnx4jDataType(backendTensor.data().dataType());
-        TensorBuilder builder = TensorBuilder
-                .builder(onnx4jDataType, Shape.create(backendTensor.shape()), backendTensor.data().asNio())
-                .name(name)
-                .docString("Created from org.nd4j.linalg.api.ndarray.INDArray in HWAcceleratedBackend.toTensor()");
-        //
-        // Attach to Onnx4j.TensorManager if the backend tensor had not been attached.
-        //
-        if (backendTensor.isAttached() == false)
-            builder.manager(tensorManager);
+		long requiredBytes = onnx4jTensor.getMemoryBytes();
+		SharedMemoryPool.Allocation alloc = sharedMemoryPool.allocate(requiredBytes);
 
-        return builder.build();
-    }
+		if (alloc == null) {
+			throw new RuntimeException("Failed to allocate shared memory for tensor: " + onnx4jTensor.getName());
+		}
 
-    @Override
-    public Session<INDArray> newSession() {
-        return new HWAcceleratedSession(this);
-    }
+		// 复制数据到共享内存
+		java.nio.ByteBuffer srcBuffer = onnx4jTensor.getData();
+		java.nio.ByteBuffer dstBuffer = sharedMemoryPool.mapBuffer(alloc.blockId, alloc.offset, (int) requiredBytes);
+		dstBuffer.put(srcBuffer);
+		dstBuffer.flip();
 
+		// 同步到设备
+		HWAcceleratorJNI.getInstance().syncToDevice(alloc.blockId, alloc.offset, (int) requiredBytes);
+
+		// 创建包装共享内存的INDArray
+		DataType nd4jDataType = convertDataType(onnx4jTensor.getDataType());
+		DataBuffer dataBuffer = Nd4j.createBuffer(dstBuffer, nd4jDataType, (int) onnx4jTensor.getElementSize());
+
+		int[] shapeArray = new int[onnx4jTensor.getShape().length];
+		for (int i = 0; i < shapeArray.length; i++) {
+			shapeArray[i] = (int) onnx4jTensor.getShape()[i];
+		}
+
+		INDArray indArray = Nd4j.create(dataBuffer, shapeArray);
+		indArray = attachTrackingInfo(indArray, alloc.blockId, alloc.offset, alloc.physicalAddress);
+
+		tensorManager.attach(onnx4jTensor.getName(), indArray);
+
+		logger.debug("Converted tensor {} to shared memory INDArray: block={}, offset=0x{:X}",
+			onnx4jTensor.getName(), alloc.blockId, alloc.offset);
+
+		return indArray;
+	}
+
+	@Override
+	public Tensor toNativeTensor(TensorManager<Tensor> tensorManager, String name, INDArray backendTensor) {
+		if (sharedMemoryPool == null || !sharedMemoryPool.isInitialized()) {
+			throw new IllegalStateException("Shared memory pool not initialized");
+		}
+
+		// 从跟踪信息获取共享内存位置
+		SharedMemoryInfo info = getSharedMemoryInfo(backendTensor);
+
+		// 同步从设备
+		HWAcceleratorJNI.getInstance().syncFromDevice(info.blockId, info.offset, info.size);
+
+		// 创建Tensor引用共享内存
+		Tensor tensor = new Tensor(
+			name,
+			"",
+			convertToONNXDataType(backendTensor.data().dataType()),
+			org.onnx4j.tensor.Shape.create(backendTensor.shape()),
+			info.physicalAddress,
+			info.blockId,
+			sharedMemoryPool,
+			info.offset
+		);
+
+		return tensor;
+	}
+
+	@Override
+	public Session<INDArray> newSession() {
+		return new HWAcceleratedSession(this);
+	}
+
+	/**
+	 * 为INDArray附加共享内存跟踪信息
+	 */
+	private INDArray attachTrackingInfo(INDArray array, int blockId, int offset, long physicalAddress) {
+		// 使用ND4J的attach方法存储元数据
+		try {
+			array.setAttach(new SharedMemoryInfo(blockId, offset, array.length() * 4, physicalAddress));
+		} catch (Exception e) {
+			// 如果attach失败，使用备用方案
+		}
+		return array;
+	}
+
+	/**
+	 * 从INDArray获取共享内存信息
+	 */
+	public static SharedMemoryInfo getSharedMemoryInfo(INDArray array) {
+		Object attach = array.getAttach();
+		if (attach instanceof SharedMemoryInfo) {
+			return (SharedMemoryInfo) attach;
+		}
+		// 备用：从数组名称中解析（如果有的话）
+		return new SharedMemoryInfo(0, 0, array.length() * 4, 0);
+	}
+
+	/**
+	 * 转换ONNX数据类型到ND4J数据类型
+	 */
+	private DataType convertDataType(org.onnx4j.tensor.DataType onnxType) {
+		switch (onnxType) {
+			case FLOAT: return DataType.FLOAT;
+			case DOUBLE: return DataType.DOUBLE;
+			case INT32: return DataType.INT32;
+			case INT64: return DataType.INT64;
+			case INT8: return DataType.INT8;
+			case INT16: return DataType.INT16;
+			case UINT8: return DataType.UINT8;
+			case UINT16: return DataType.UINT16;
+			case UINT32: return DataType.UINT32;
+			case UINT64: return DataType.UINT64;
+			case BOOL: return DataType.BOOL;
+			default: return DataType.FLOAT;
+		}
+	}
+
+	/**
+	 * 转换ND4J数据类型到ONNX数据类型
+	 */
+	private org.onnx4j.tensor.DataType convertToONNXDataType(DataType nd4jType) {
+		switch (nd4jType) {
+			case FLOAT: return org.onnx4j.tensor.DataType.FLOAT;
+			case DOUBLE: return org.onnx4j.tensor.DataType.DOUBLE;
+			case INT32: return org.onnx4j.tensor.DataType.INT32;
+			case INT64: return org.onnx4j.tensor.DataType.INT64;
+			case INT8: return org.onnx4j.tensor.DataType.INT8;
+			case INT16: return org.onnx4j.tensor.DataType.INT16;
+			case UINT8: return org.onnx4j.tensor.DataType.UINT8;
+			case UINT16: return org.onnx4j.tensor.DataType.UINT16;
+			case UINT32: return org.onnx4j.tensor.DataType.UINT32;
+			case UINT64: return org.onnx4j.tensor.DataType.UINT64;
+			case BOOL: return org.onnx4j.tensor.DataType.BOOL;
+			default: return org.onnx4j.tensor.DataType.FLOAT;
+		}
+	}
+
+	public static SharedMemoryPool getSharedMemoryPool() {
+		return sharedMemoryPool;
+	}
+
+	public static boolean isInitialized() {
+		return jniInitialized;
+	}
+
+	/**
+	 * 共享内存信息（附加到INDArray）
+	 */
+	public static class SharedMemoryInfo {
+		public final int blockId;
+		public final int offset;
+		public final int size;
+		public final long physicalAddress;
+
+		public SharedMemoryInfo(int blockId, int offset, int size, long physicalAddress) {
+			this.blockId = blockId;
+			this.offset = offset;
+			this.size = size;
+			this.physicalAddress = physicalAddress;
+		}
+
+		public int getWordAddress() {
+			return offset / 4;
+		}
+
+		@Override
+		public String toString() {
+			return String.format("SharedMemoryInfo[block=%d, offset=0x%X, PA=0x%X]", blockId, offset, physicalAddress);
+		}
+	}
 }

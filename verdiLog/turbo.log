@@ -1,2 +1,0 @@
-Command Line: /opt/synopsys/verdi/Verdi_O-2018.09-SP2/platform/LINUXAMD64/bin/Novas -ssf /root/onnx_spinal_project_new/simWorkspace/WrapForFPGATest/null_WrapForFPGATest.fsdb
-uname(Linux EDA 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64)

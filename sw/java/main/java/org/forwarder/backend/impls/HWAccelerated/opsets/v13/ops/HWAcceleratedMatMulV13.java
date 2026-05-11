@@ -1,10 +1,10 @@
 package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
-import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
 import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
 import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedTracer;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -252,9 +252,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                         false,
                         "none",
                         0,
-                        0,
-                        0,
-                        0,
+                        0,  // bufferIdA (将在executeOnHardware中设置)
+                        0,  // bufferIdB
+                        0,  // bufferIdZ
                         TILE_M,
                         K,
                         TILE_N,
@@ -264,7 +264,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                 String tileIndex = String.format("M:%d, N:%d", m_idx, n_idx);
                 tracer.addTile(tileIndex, instruction);
 
-                long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+                // 直接调用JNI硬件执行
+                long[][] tileResult = executeOnHardware(tileA, tileB, instruction, TILE_M, K, TILE_N);
                 copyTileToResult(hardwareResult, tileResult, m_offset, n_offset, TILE_M, TILE_N);
 
                 n_offset += TILE_N;
@@ -284,6 +285,124 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         }
 
         return Nd4j.create(output, new long[]{rowsA, colsB}, a.dataType());
+    }
+
+    // ==================== 真实硬件执行方法 ====================
+    /**
+     * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
+     *
+     * 使用预分配buffer池方案：
+     * - 每个tile使用独立的bufferId
+     * - R5根据bufferId从预定义池中获取物理地址
+     */
+    private static int nextBufferId = 0;  // 简单的buffer分配计数器
+
+    private long[][] executeOnHardware(long[][] tileA, long[][] tileB, InstJavaTODO instruction,
+                                       int rowsA, int colsA, int colsB) {
+
+        System.out.println("[JNI-HW] Executing on hardware: " + rowsA + "x" + colsA + " * " + colsA + "x" + colsB);
+
+        // 1. 获取共享内存池
+        org.onnx4j.SharedMemoryPool pool = org.onnx4j.SharedMemoryPool.getInstance();
+        if (!pool.isInitialized()) {
+            throw new IllegalStateException("SharedMemoryPool not initialized. Call Session.initializeSharedMemoryPool() first.");
+        }
+
+        // 2. 计算所需内存大小
+        int sizeA = rowsA * colsA * 4;
+        int sizeB = colsA * colsB * 4;
+        int sizeZ = rowsA * colsB * 4;
+
+        // 3. 分配固定 buffer（与 R5 侧 g_buffer_pool 对齐）
+        // 使用同步查找可用的 buffer
+        int bufferIdA = pool.findNextFreeBuffer(nextBufferId);
+        if (bufferIdA < 0) {
+            throw new RuntimeException("No free buffer available for A");
+        }
+        org.onnx4j.SharedMemoryPool.BufferInfo infoA = pool.allocateBuffer(bufferIdA);
+
+        int bufferIdB = pool.findNextFreeBuffer(bufferIdA + 1);
+        if (bufferIdB < 0) {
+            pool.freeBuffer(bufferIdA);
+            throw new RuntimeException("No free buffer available for B");
+        }
+        org.onnx4j.SharedMemoryPool.BufferInfo infoB = pool.allocateBuffer(bufferIdB);
+
+        int bufferIdZ = pool.findNextFreeBuffer(bufferIdB + 1);
+        if (bufferIdZ < 0) {
+            pool.freeBuffer(bufferIdA);
+            pool.freeBuffer(bufferIdB);
+            throw new RuntimeException("No free buffer available for Z");
+        }
+        org.onnx4j.SharedMemoryPool.BufferInfo infoZ = pool.allocateBuffer(bufferIdZ);
+
+        // 更新下一个搜索起点
+        nextBufferId = (bufferIdZ + 1) % 64;
+
+        System.out.println("[JNI-HW] Allocated buffers: A[id=" + bufferIdA + ",block=" + infoA.blockId + ",off=0x" + Integer.toHexString(infoA.offsetInBlock) + "]" +
+                          ", B[id=" + bufferIdB + ",block=" + infoB.blockId + ",off=0x" + Integer.toHexString(infoB.offsetInBlock) + "]" +
+                          ", Z[id=" + bufferIdZ + ",block=" + infoZ.blockId + ",off=0x" + Integer.toHexString(infoZ.offsetInBlock) + "]");
+
+        try {
+            // 4. 写入tileA到共享内存（使用固定地址）
+            java.nio.ByteBuffer bufferA = pool.mapBuffer(bufferIdA, sizeA);
+            bufferA.order(java.nio.ByteOrder.nativeOrder());
+            for (int i = 0; i < rowsA; i++) {
+                for (int j = 0; j < colsA; j++) {
+                    bufferA.putInt((int)tileA[i][j]);
+                }
+            }
+
+            // 5. 写入tileB到共享内存
+            java.nio.ByteBuffer bufferB = pool.mapBuffer(bufferIdB, sizeB);
+            bufferB.order(java.nio.ByteOrder.nativeOrder());
+            for (int i = 0; i < colsA; i++) {
+                for (int j = 0; j < colsB; j++) {
+                    bufferB.putInt((int)tileB[i][j]);
+                }
+            }
+
+            // 6. 设置指令的bufferId
+            instruction.bufferIdA = bufferIdA;
+            instruction.bufferIdB = bufferIdB;
+            instruction.bufferIdZ = bufferIdZ;
+
+            System.out.println("[JNI-HW] Instruction bufferIds: A=" + bufferIdA + ", B=" + bufferIdB + ", Z=" + bufferIdZ);
+
+            // 7. 同步并执行
+            org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI jni =
+                org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI.getInstance();
+
+            jni.syncToDevice(infoA.blockId, infoA.offsetInBlock, sizeA);
+            jni.syncToDevice(infoB.blockId, infoB.offsetInBlock, sizeB);
+
+            boolean success = jni.executeInstructions(new InstJavaTODO[]{instruction});
+
+            if (!success) {
+                throw new RuntimeException("FPGA execution failed");
+            }
+
+            jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
+
+            // 8. 读取结果
+            java.nio.ByteBuffer bufferZ = pool.mapBuffer(bufferIdZ, sizeZ);
+            bufferZ.order(java.nio.ByteOrder.nativeOrder());
+            long[][] result = new long[rowsA][colsB];
+            for (int i = 0; i < rowsA; i++) {
+                for (int j = 0; j < colsB; j++) {
+                    result[i][j] = bufferZ.getInt() & 0xFFFFFFFFL;
+                }
+            }
+
+            System.out.println("[JNI-HW] Execution completed, result read back");
+
+            return result;
+        } finally {
+            // 9. 释放 buffer（无论成功或失败）
+            pool.freeBuffer(bufferIdA);
+            pool.freeBuffer(bufferIdB);
+            pool.freeBuffer(bufferIdZ);
+        }
     }
 
 }

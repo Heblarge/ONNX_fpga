@@ -1,60 +1,42 @@
 package org.forwarder.backend.impls.HWAccelerated;
 
-import java.util.UUID;
-
 import org.forwarder.Session;
-import org.forwarder.backend.impls.HWAccelerated.HWAcceleratedBackend;
-import org.nd4j.linalg.api.memory.MemoryWorkspace;
-import org.nd4j.linalg.api.memory.conf.WorkspaceConfiguration;
-import org.nd4j.linalg.api.memory.enums.AllocationPolicy;
-import org.nd4j.linalg.api.memory.enums.LocationPolicy;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+/**
+ * 硬件加速器会话
+ *
+ * 使用INDArray接口，内部数据在共享内存中
+ */
 public class HWAcceleratedSession extends Session<INDArray> {
 
-    public static final String ND4J_WORKSPACE_NAME_PREFIX = "forwarder-session-";
+	private static Logger logger = LoggerFactory.getLogger(HWAcceleratedSession.class);
 
-    public static org.forwarder.backend.impls.HWAccelerated.HWAcceleratedSession getSession() {
-        Session<?> sess = TL_SESSION.get();
-        if (sess == null)
-            throw new RuntimeException("No forwarder session binded in this thread");
+	public static HWAcceleratedSession getSession() {
+		Session<?> sess = TL_SESSION.get();
+		if (sess == null) {
+			throw new RuntimeException("No forwarder session binded in this thread");
+		}
 
-        if (org.forwarder.backend.impls.HWAccelerated.HWAcceleratedSession.class.isInstance(sess) == false)
-            throw new java.lang.ClassCastException("Session class type not match");
+		if (!HWAcceleratedSession.class.isInstance(sess)) {
+			throw new ClassCastException("Session class type not match, expected HWAcceleratedSession");
+		}
 
-        org.forwarder.backend.impls.HWAccelerated.HWAcceleratedSession HWAcceleratedSess = org.forwarder.backend.impls.HWAccelerated.HWAcceleratedSession.class.cast(sess);
-        return HWAcceleratedSess;
-    }
+		return HWAcceleratedSession.class.cast(sess);
+	}
 
-    private MemoryWorkspace workspace;
+	private final HWAcceleratedBackend backend;
 
-    public HWAcceleratedSession(HWAcceleratedBackend backend) {
-        super(backend);
+	public HWAcceleratedSession(HWAcceleratedBackend backend) {
+		super(backend);
+		this.backend = backend;
+		logger.debug("Created HWAcceleratedSession");
+	}
 
-        this.workspace = Nd4j.getWorkspaceManager().getAndActivateWorkspace(
-                WorkspaceConfiguration
-                        .builder()
-                        .initialSize(100*1024*1024)
-                        .maxSize(1024*1024*1024)
-                        .policyAllocation(AllocationPolicy.STRICT)
-                        .policyLocation(LocationPolicy.RAM)
-                        .build(),
-                ND4J_WORKSPACE_NAME_PREFIX + UUID.randomUUID());
-        if(backend!=null)
-        {this.workspace.enableDebug(backend.getModel().getConfig().isDebug());}
-    }
-
-    public MemoryWorkspace getMemoryWorkspace() {
-        return this.workspace;
-    }
-
-    @Override
-    public void close() throws Exception {
-        super.close();
-        workspace.destroyWorkspace();
-        workspace.close();
-        workspace = null;
-    }
-
+	@Override
+	public HWAcceleratedBackend getBackend() {
+		return backend;
+	}
 }
