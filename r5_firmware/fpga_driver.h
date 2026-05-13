@@ -55,6 +55,14 @@ extern "C" {
 #define ACTIVATION_RELU      3
 #define ACTIVATION_NONE      4
 
+// ==================== 缓冲区状态定义 ====================
+// 与 JNI 层 accelerator_jni.cpp 保持一致
+#define BUFFER_STATUS_FREE     0x00
+#define BUFFER_STATUS_READY    0x01  // A53已写入数据，等待R5处理
+#define BUFFER_STATUS_BUSY     0x02  // R5正在处理
+#define BUFFER_STATUS_DONE     0x03  // R5处理完成
+#define BUFFER_STATUS_ERROR    0xFF
+
 // ==================== 指令结构 (对应 InstJavaTODO.java) ====================
 // Java: InstJavaTODO(int UID, String matrixOperation, int shiftLeft_AfterMatrixOperation,
 //                    boolean doTranspose, String activationFunction, int shiftLeft_AfterActivation,
@@ -69,9 +77,9 @@ typedef struct {
     uint8_t  doTranspose;                   // 0=false, 1=true
     uint8_t  activationFunction;            // 0=Exp, 1=Log, 2=Softplus, 3=Relu, 4=None
     int8_t   shiftLeft_AfterActivation;
-    int32_t  input0Address;                 // 输入矩阵A地址 (字索引)
-    int32_t  input1Address;                 // 输入矩阵B地址 (字索引)
-    int32_t  outputAddress;                 // 输出矩阵Z地址 (字索引)
+    int32_t  bufferIdA;                     // 输入A的buffer索引 (0-63)
+    int32_t  bufferIdB;                     // 输入B的buffer索引 (0-63)
+    int32_t  bufferIdZ;                     // 输出Z的buffer索引 (0-63)
     int32_t  input0Shape0;                  // input0Shape[0] (行数)
     int32_t  input0Shape1;                  // input0Shape[1] (列数)
     int32_t  input1Shape0;                  // input1Shape[0] (行数，ElementWise时等于input0Shape0)

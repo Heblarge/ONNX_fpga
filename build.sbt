@@ -6,11 +6,11 @@ val nd4jVersion = "1.0.0-beta6"
 val tensorflowVersion = "1.15.0"
 
 // ==========================================
-// 1. 屏蔽原有业务代码编译（指向空目录）
+// 1. 主源码目录（只编译 Java，Scala 指向 dummy）
 // ==========================================
 Compile / scalaSource := baseDirectory.value / "src_dummy" / "scala"
-Compile / javaSource := baseDirectory.value / "src_dummy" / "java"
-Compile / resourceDirectory := baseDirectory.value / "src_dummy" / "resources"
+Compile / javaSource := baseDirectory.value / "sw" / "java" / "main" / "java"
+Compile / resourceDirectory := baseDirectory.value / "sw" / "java" / "main" / "resources"
 
 // ==========================================
 // 2. 保留测试路径（你将在这里写依赖加载测试类）
@@ -69,3 +69,26 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.2.18" % Test,
   "com.github.sbt" % "junit-interface" % "0.13.1" % Test
 )
+
+// ==========================================
+// 5. Assembly 配置（创建可执行 fat jar）
+// ==========================================
+assembly / assemblyJarName := "hw-accelerated-test.jar"
+
+assembly / assemblyMergeStrategy := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
+
+assembly / mainClass := Some("org.forwarder.demo.DL4JTest")
+
+// 在 Test 配置中也启用 assembly
+Test / assembly / assemblyJarName := "hw-accelerated-test.jar"
+Test / assembly / assemblyMergeStrategy := {
+  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case x => MergeStrategy.first
+}
+Test / assembly / mainClass := Some("org.forwarder.demo.DL4JTest")
+
+// 让 assembly 包含测试类
+Test / assembly / fullClasspath := (Test / fullClasspath).value

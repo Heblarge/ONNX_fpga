@@ -42,6 +42,10 @@ public class Shape {
 		return new Shape(shape);
 	}
 
+	public static Shape fromArray(long... shape) {
+		return new Shape(shape);
+	}
+
 	public static Shape create(List<Long> shape) {
 		return new Shape(Longs.toArray(shape));
 	}
@@ -56,6 +60,10 @@ public class Shape {
 			numElements *= numElementsInThisDim;
 		}
 		return numElements;
+	}
+
+	public long getTotalSize() {
+		return numElements();
 	}
 
 	public int dims() {

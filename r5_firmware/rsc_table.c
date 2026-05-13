@@ -18,7 +18,7 @@
 
 /* Place resource table in special ELF section */
 #define __section_t(S)          __attribute__((__section__(#S)))
-#define __resource              __section_t(.resource_table)
+#define __resource              __attribute__((__section__(".resource_table"), __aligned__(4)))
 
 #define RPMSG_VDEV_DFEATURES        (1 << VIRTIO_RPMSG_F_NS)
 
@@ -37,12 +37,6 @@
 #define RSC_TRACE_SZ (4*1024)
 #endif /* RSC_TRACE_SZ */
 static char rsc_trace_buf[RSC_TRACE_SZ];
-
-/* Tensor pool block names */
-static char tensor_block0_name[] = "tensor_block0";
-static char tensor_block1_name[] = "tensor_block1";
-static char tensor_block2_name[] = "tensor_block2";
-static char tensor_block3_name[] = "tensor_block3";
 
 struct remote_resource_table __resource resources = {
 	.version = 1,
@@ -86,20 +80,20 @@ struct remote_resource_table __resource resources = {
 	 *     #size-cells = <2>;
 	 *     ranges;
 	 *
-	 *     tensor_block0@3ed80000 {
-	 *         reg = <0x0 0x3ed80000 0x0 0x00a00000>;  // 10MB
+	 *     tensor_block0@3f100000 {
+	 *         reg = <0x0 0x3f100000 0x0 0x00a00000>;  // 10MB
 	 *         no-map;
 	 *     };
-	 *     tensor_block1@3f700000 {
-	 *         reg = <0x0 0x3f700000 0x0 0x00a00000>;  // 10MB
+	 *     tensor_block1@3fb00000 {
+	 *         reg = <0x0 0x3fb00000 0x0 0x00a00000>;  // 10MB
 	 *         no-map;
 	 *     };
-	 *     tensor_block2@40100000 {
-	 *         reg = <0x0 0x40100000 0x0 0x00a00000>;  // 10MB
+	 *     tensor_block2@40500000 {
+	 *         reg = <0x0 0x40500000 0x0 0x00a00000>;  // 10MB
 	 *         no-map;
 	 *     };
-	 *     tensor_block3@40b00000 {
-	 *         reg = <0x0 0x40b00000 0x0 0x00a00000>;  // 10MB
+	 *     tensor_block3@40f00000 {
+	 *         reg = <0x0 0x40f00000 0x0 0x00a00000>;  // 10MB
 	 *         no-map;
 	 *     };
 	 * };
@@ -111,7 +105,7 @@ struct remote_resource_table __resource resources = {
 		.len = TENSOR_BLOCK_SIZE,
 		.flags = 0,
 		.reserved = {0},
-		.name = tensor_block0_name,
+		.name = "tensor_block0",
 	},
 	.tensor_block1 = {
 		.type = RSC_CARVEOUT,
@@ -120,7 +114,7 @@ struct remote_resource_table __resource resources = {
 		.len = TENSOR_BLOCK_SIZE,
 		.flags = 0,
 		.reserved = {0},
-		.name = tensor_block1_name,
+		.name = "tensor_block1",
 	},
 	.tensor_block2 = {
 		.type = RSC_CARVEOUT,
@@ -129,7 +123,7 @@ struct remote_resource_table __resource resources = {
 		.len = TENSOR_BLOCK_SIZE,
 		.flags = 0,
 		.reserved = {0},
-		.name = tensor_block2_name,
+		.name = "tensor_block2",
 	},
 	.tensor_block3 = {
 		.type = RSC_CARVEOUT,
@@ -138,7 +132,7 @@ struct remote_resource_table __resource resources = {
 		.len = TENSOR_BLOCK_SIZE,
 		.flags = 0,
 		.reserved = {0},
-		.name = tensor_block3_name,
+		.name = "tensor_block3",
 	},
 };
 

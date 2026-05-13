@@ -123,9 +123,10 @@ void dmdrv_cleanup(datamover_driver_t* driver) {
         return;
     }
 
-    // 停止所有 Data Mover
+    // 禁用所有 Data Mover 的自动重启和中断
     for (int i = 0; i < 3; i++) {
-        XData_mover_Stop(driver->handles[i].instance);
+        XData_mover_DisableAutoRestart(driver->handles[i].instance);
+        XData_mover_InterruptGlobalDisable(driver->handles[i].instance);
     }
 
     driver->initialized = false;

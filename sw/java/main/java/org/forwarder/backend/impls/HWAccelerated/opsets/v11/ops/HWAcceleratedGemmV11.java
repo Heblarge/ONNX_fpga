@@ -68,13 +68,28 @@ public class HWAcceleratedGemmV11 extends HWAcceleratedOperator implements GemmV
                 0,
                 0
         );
-        int[][] fixedPointOutput = AcceleratorSimInterface.runRefOneInst(fixedPointA, fixedPointB, instruction);
+
+        // Convert int[][] to long[][] for the API
+        long[][] fixedPointALong = new long[rowsA][colsA];
+        long[][] fixedPointBLong = new long[colsA][colsB];
+        for (int i = 0; i < rowsA; i++) {
+            for (int j = 0; j < colsA; j++) {
+                fixedPointALong[i][j] = fixedPointA[i][j];
+            }
+        }
+        for (int i = 0; i < colsA; i++) {
+            for (int j = 0; j < colsB; j++) {
+                fixedPointBLong[i][j] = fixedPointB[i][j];
+            }
+        }
+
+        long[][] fixedPointOutputLong = AcceleratorSimInterface.runRefOneInst(fixedPointALong, fixedPointBLong, instruction);
 
         float[] Output = new float[rowsA * colsB];
         for (int i = 0; i < rowsA; i++) {
             for (int j = 0; j < colsB; j++) {
                 // 将定点数转换回浮点数
-                Output[i * colsB + j] = (float) (fixedPointOutput[i][j]);
+                Output[i * colsB + j] = (float) (fixedPointOutputLong[i][j]);
             }
         }
 

@@ -18,6 +18,7 @@
 #include <metal/sys.h>
 #include <metal/irq.h>
 #include "platform_info.h"
+#include "rsc_table.h"
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 
@@ -92,7 +93,6 @@ static int32_t app_gic_initialize(void)
  * c_pos - next rext record position
  * c_cnt - free running count of records to help sorting in case of overrun
  */
-extern char *get_rsc_trace_info(uint32_t *);
 static struct {
 	char * c_buf;
 	uint32_t c_len;

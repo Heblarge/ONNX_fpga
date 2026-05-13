@@ -141,68 +141,45 @@ public class HWAcceleratedBackend extends Backend<INDArray> {
 	}
 
 	/**
-	 * 为INDArray附加共享内存跟踪信息
+	 * 为INDArray附加共享内存跟踪信息（上板环境简化实现）
 	 */
 	private INDArray attachTrackingInfo(INDArray array, int blockId, int offset, long physicalAddress) {
-		// 使用ND4J的attach方法存储元数据
-		try {
-			array.setAttach(new SharedMemoryInfo(blockId, offset, array.length() * 4, physicalAddress));
-		} catch (Exception e) {
-			// 如果attach失败，使用备用方案
-		}
+		// 上板环境不需要 attach，直接返回原数组
 		return array;
 	}
 
 	/**
-	 * 从INDArray获取共享内存信息
+	 * 从INDArray获取共享内存信息（上板环境简化实现）
 	 */
 	public static SharedMemoryInfo getSharedMemoryInfo(INDArray array) {
-		Object attach = array.getAttach();
-		if (attach instanceof SharedMemoryInfo) {
-			return (SharedMemoryInfo) attach;
-		}
-		// 备用：从数组名称中解析（如果有的话）
-		return new SharedMemoryInfo(0, 0, array.length() * 4, 0);
+		// 上板环境返回默认值
+		return new SharedMemoryInfo(0, 0, (int)array.length() * 4, 0);
 	}
 
 	/**
 	 * 转换ONNX数据类型到ND4J数据类型
 	 */
 	private DataType convertDataType(org.onnx4j.tensor.DataType onnxType) {
-		switch (onnxType) {
-			case FLOAT: return DataType.FLOAT;
-			case DOUBLE: return DataType.DOUBLE;
-			case INT32: return DataType.INT32;
-			case INT64: return DataType.INT64;
-			case INT8: return DataType.INT8;
-			case INT16: return DataType.INT16;
-			case UINT8: return DataType.UINT8;
-			case UINT16: return DataType.UINT16;
-			case UINT32: return DataType.UINT32;
-			case UINT64: return DataType.UINT64;
-			case BOOL: return DataType.BOOL;
-			default: return DataType.FLOAT;
-		}
+		if (onnxType == org.onnx4j.tensor.DataType.FLOAT) return DataType.FLOAT;
+		if (onnxType == org.onnx4j.tensor.DataType.DOUBLE) return DataType.DOUBLE;
+		if (onnxType == org.onnx4j.tensor.DataType.INT32) return DataType.INT;
+		if (onnxType == org.onnx4j.tensor.DataType.INT64) return DataType.LONG;
+		if (onnxType == org.onnx4j.tensor.DataType.BOOL) return DataType.BOOL;
+		// 其他类型默认返回 FLOAT
+		return DataType.FLOAT;
 	}
 
 	/**
 	 * 转换ND4J数据类型到ONNX数据类型
 	 */
 	private org.onnx4j.tensor.DataType convertToONNXDataType(DataType nd4jType) {
-		switch (nd4jType) {
-			case FLOAT: return org.onnx4j.tensor.DataType.FLOAT;
-			case DOUBLE: return org.onnx4j.tensor.DataType.DOUBLE;
-			case INT32: return org.onnx4j.tensor.DataType.INT32;
-			case INT64: return org.onnx4j.tensor.DataType.INT64;
-			case INT8: return org.onnx4j.tensor.DataType.INT8;
-			case INT16: return org.onnx4j.tensor.DataType.INT16;
-			case UINT8: return org.onnx4j.tensor.DataType.UINT8;
-			case UINT16: return org.onnx4j.tensor.DataType.UINT16;
-			case UINT32: return org.onnx4j.tensor.DataType.UINT32;
-			case UINT64: return org.onnx4j.tensor.DataType.UINT64;
-			case BOOL: return org.onnx4j.tensor.DataType.BOOL;
-			default: return org.onnx4j.tensor.DataType.FLOAT;
-		}
+		if (nd4jType == DataType.FLOAT) return org.onnx4j.tensor.DataType.FLOAT;
+		if (nd4jType == DataType.DOUBLE) return org.onnx4j.tensor.DataType.DOUBLE;
+		if (nd4jType == DataType.INT) return org.onnx4j.tensor.DataType.INT32;
+		if (nd4jType == DataType.LONG) return org.onnx4j.tensor.DataType.INT64;
+		if (nd4jType == DataType.BOOL) return org.onnx4j.tensor.DataType.BOOL;
+		// 其他类型默认返回 FLOAT
+		return org.onnx4j.tensor.DataType.FLOAT;
 	}
 
 	public static SharedMemoryPool getSharedMemoryPool() {

@@ -31,10 +31,10 @@ import java.util.Map;
  * 管理多个预分配的共享内存块，用于A53-R5-FPGA之间的高效数据传递
  *
  * 内存布局 (需与rsc_table.c和设备树保持一致):
- * - Block 0: 0x3ED00000, 10MB
- * - Block 1: 0x3F700000, 10MB
- * - Block 2: 0x40100000, 10MB
- * - Block 3: 0x40B00000, 10MB
+ * - Block 0: 0x3F100000, 10MB
+ * - Block 1: 0x3FB00000, 10MB
+ * - Block 2: 0x40500000, 10MB
+ * - Block 3: 0x40F00000, 10MB
  */
 public class SharedMemoryPool implements AutoCloseable {
 
@@ -134,10 +134,10 @@ public class SharedMemoryPool implements AutoCloseable {
 
 	/* 默认配置 - 需与rsc_table.c保持一致 */
 	private static final long[] DEFAULT_ADDRESSES = {
-		0x3ED00000L,  /* Block 0 */
-		0x3F700000L,  /* Block 1 */
-		0x40100000L,  /* Block 2 */
-		0x40B00000L   /* Block 3 */
+		0x3F100000L,  /* Block 0 */
+		0x3FB00000L,  /* Block 1 */
+		0x40500000L,  /* Block 2 */
+		0x40F00000L   /* Block 3 */
 	};
 
 	private static final int[] DEFAULT_SIZES = {

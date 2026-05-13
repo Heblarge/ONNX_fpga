@@ -10,10 +10,10 @@
  * Instruction format aligned with r5_bm_validation/drivers/accelerator.c
  *
  * Shared Memory Layout (must match rsc_table.c):
- *   Block 0: 0x3ED00000, 10MB
- *   Block 1: 0x3F700000, 10MB
- *   Block 2: 0x40100000, 10MB
- *   Block 3: 0x40B00000, 10MB
+ *   Block 0: 0x3F100000, 10MB
+ *   Block 1: 0x3FB00000, 10MB
+ *   Block 2: 0x40500000, 10MB
+ *   Block 3: 0x40F00000, 10MB
  *
  * Compile: g++ -shared -fPIC -o libaccelerator_jni.so \
  *              -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux \
@@ -41,15 +41,15 @@
 #define MAX_SHM_BLOCKS 4
 #define MEM_DEV "/dev/mem"
 
-// 共享内存块配置 (与 rsc_table.c 保持一致)
+// 共享内存块配置 (与 r5_firmware/rsc_table.h 保持一致)
 static const struct {
     unsigned long phys_addr;
     size_t size;
 } SHM_CONFIG[MAX_SHM_BLOCKS] = {
-    {0x3ED80000UL, 0x00A00000},  // Block 0: 10MB
-    {0x3F700000UL, 0x00A00000},  // Block 1: 10MB
-    {0x40100000UL, 0x00A00000},  // Block 2: 10MB
-    {0x40B00000UL, 0x00A00000},  // Block 3: 10MB
+    {0x3F100000UL, 0x00A00000},  // Block 0: 10MB
+    {0x3FB00000UL, 0x00A00000},  // Block 1: 10MB
+    {0x40500000UL, 0x00A00000},  // Block 2: 10MB
+    {0x40F00000UL, 0x00A00000},  // Block 3: 10MB
 };
 
 // RPMsg 消息头

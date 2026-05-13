@@ -19,10 +19,10 @@ public class HWAcceleratorJNI {
 
 	/* 共享内存池配置 - 需与rsc_table.c保持一致 */
 	private static final long[] SHARED_MEM_ADDRESSES = {
-		0x3ED00000L,  /* Block 0: 10MB */
-		0x3F700000L,  /* Block 1: 10MB */
-		0x40100000L,  /* Block 2: 10MB */
-		0x40B00000L   /* Block 3: 10MB */
+		0x3F100000L,  /* Block 0: 10MB */
+		0x3FB00000L,  /* Block 1: 10MB */
+		0x40500000L,  /* Block 2: 10MB */
+		0x40F00000L   /* Block 3: 10MB */
 	};
 
 	private static final int[] SHARED_MEM_SIZES = {

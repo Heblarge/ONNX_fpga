@@ -42,14 +42,15 @@ typedef struct {
 // ==================== Buffer池定义 ====================
 // 预分配buffer池，每个buffer对应共享内存中的一个固定大小区域
 // 共享内存布局（需与rsc_table.c和Java保持一致）:
-// - Block 0: 0x3ED00000, 10MB
-// - Block 1: 0x3F700000, 10MB
-// - Block 2: 0x40100000, 10MB
-// - Block 3: 0x40B00000, 10MB
+// - Block 0: 0x3F100000, 10MB
+// - Block 1: 0x3FB00000, 10MB
+// - Block 2: 0x40500000, 10MB
+// - Block 3: 0x40F00000, 10MB
 //
 // 每个块划分为16个buffer，每个buffer最大640KB (可容纳512x512的int32矩阵)
 #define BUFFERS_PER_BLOCK  16
 #define BUFFER_MAX_SIZE    (640 * 1024)  // 640KB per buffer
+#define BUFFER_MAX_SIZE_HEX 0xA0000      // 640KB = 0xA0000
 #define TOTAL_BUFFERS      (4 * BUFFERS_PER_BLOCK)  // 64个buffer
 
 typedef struct {
@@ -62,42 +63,42 @@ typedef struct {
 // 每个buffer相隔640KB (0xA0000)，与Java侧SharedMemoryPool对齐
 // 布局：每个Block (10MB) 包含 16 个 buffer (每个 640KB)
 static const buffer_info_t g_buffer_pool[TOTAL_BUFFERS] = {
-    // Block 0: 0x3ED00000
-    {0x3ED00000UL, BUFFER_MAX_SIZE, 0}, {0x3EDA0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3EE40000UL, BUFFER_MAX_SIZE, 0}, {0x3EEE0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3EF80000UL, BUFFER_MAX_SIZE, 0}, {0x3F020000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F0C0000UL, BUFFER_MAX_SIZE, 0}, {0x3F160000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F200000UL, BUFFER_MAX_SIZE, 0}, {0x3F2A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F340000UL, BUFFER_MAX_SIZE, 0}, {0x3F3E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F480000UL, BUFFER_MAX_SIZE, 0}, {0x3F520000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F5C0000UL, BUFFER_MAX_SIZE, 0}, {0x3F660000UL, BUFFER_MAX_SIZE, 0},
-    // Block 1: 0x3F700000
-    {0x3F700000UL, BUFFER_MAX_SIZE, 0}, {0x3F7A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F840000UL, BUFFER_MAX_SIZE, 0}, {0x3F8E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F980000UL, BUFFER_MAX_SIZE, 0}, {0x3FA20000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FAC0000UL, BUFFER_MAX_SIZE, 0}, {0x3FB60000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FC00000UL, BUFFER_MAX_SIZE, 0}, {0x3FCA0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FD40000UL, BUFFER_MAX_SIZE, 0}, {0x3FDE0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FE80000UL, BUFFER_MAX_SIZE, 0}, {0x3FF20000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FFC0000UL, BUFFER_MAX_SIZE, 0}, {0x40060000UL, BUFFER_MAX_SIZE, 0},
-    // Block 2: 0x40100000
-    {0x40100000UL, BUFFER_MAX_SIZE, 0}, {0x401A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40240000UL, BUFFER_MAX_SIZE, 0}, {0x402E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40380000UL, BUFFER_MAX_SIZE, 0}, {0x40420000UL, BUFFER_MAX_SIZE, 0},
-    {0x404C0000UL, BUFFER_MAX_SIZE, 0}, {0x40560000UL, BUFFER_MAX_SIZE, 0},
-    {0x40600000UL, BUFFER_MAX_SIZE, 0}, {0x406A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40740000UL, BUFFER_MAX_SIZE, 0}, {0x407E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40880000UL, BUFFER_MAX_SIZE, 0}, {0x40920000UL, BUFFER_MAX_SIZE, 0},
-    {0x409C0000UL, BUFFER_MAX_SIZE, 0}, {0x40A60000UL, BUFFER_MAX_SIZE, 0},
-    // Block 3: 0x40B00000
-    {0x40B00000UL, BUFFER_MAX_SIZE, 0}, {0x40BA0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40C40000UL, BUFFER_MAX_SIZE, 0}, {0x40CE0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40D80000UL, BUFFER_MAX_SIZE, 0}, {0x40E20000UL, BUFFER_MAX_SIZE, 0},
-    {0x40EC0000UL, BUFFER_MAX_SIZE, 0}, {0x40F60000UL, BUFFER_MAX_SIZE, 0},
-    {0x41000000UL, BUFFER_MAX_SIZE, 0}, {0x410A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x41140000UL, BUFFER_MAX_SIZE, 0}, {0x411E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x41280000UL, BUFFER_MAX_SIZE, 0}, {0x41320000UL, BUFFER_MAX_SIZE, 0},
-    {0x413C0000UL, BUFFER_MAX_SIZE, 0}, {0x41460000UL, BUFFER_MAX_SIZE, 0},
+    // Block 0: 0x3F100000
+    {0x3F100000UL, BUFFER_MAX_SIZE, 0}, {0x3F1A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F240000UL, BUFFER_MAX_SIZE, 0}, {0x3F2E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F380000UL, BUFFER_MAX_SIZE, 0}, {0x3F420000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F4C0000UL, BUFFER_MAX_SIZE, 0}, {0x3F560000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F600000UL, BUFFER_MAX_SIZE, 0}, {0x3F6A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F740000UL, BUFFER_MAX_SIZE, 0}, {0x3F7E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F880000UL, BUFFER_MAX_SIZE, 0}, {0x3F920000UL, BUFFER_MAX_SIZE, 0},
+    {0x3F9C0000UL, BUFFER_MAX_SIZE, 0}, {0x3FA60000UL, BUFFER_MAX_SIZE, 0},
+    // Block 1: 0x3FB00000
+    {0x3FB00000UL, BUFFER_MAX_SIZE, 0}, {0x3FBA0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FC40000UL, BUFFER_MAX_SIZE, 0}, {0x3FCE0000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FD80000UL, BUFFER_MAX_SIZE, 0}, {0x3FE20000UL, BUFFER_MAX_SIZE, 0},
+    {0x3FEC0000UL, BUFFER_MAX_SIZE, 0}, {0x3FF60000UL, BUFFER_MAX_SIZE, 0},
+    {0x40000000UL, BUFFER_MAX_SIZE, 0}, {0x400A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40140000UL, BUFFER_MAX_SIZE, 0}, {0x401E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40280000UL, BUFFER_MAX_SIZE, 0}, {0x40320000UL, BUFFER_MAX_SIZE, 0},
+    {0x403C0000UL, BUFFER_MAX_SIZE, 0}, {0x40460000UL, BUFFER_MAX_SIZE, 0},
+    // Block 2: 0x40500000
+    {0x40500000UL, BUFFER_MAX_SIZE, 0}, {0x405A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40640000UL, BUFFER_MAX_SIZE, 0}, {0x406E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40780000UL, BUFFER_MAX_SIZE, 0}, {0x40820000UL, BUFFER_MAX_SIZE, 0},
+    {0x408C0000UL, BUFFER_MAX_SIZE, 0}, {0x40960000UL, BUFFER_MAX_SIZE, 0},
+    {0x40A00000UL, BUFFER_MAX_SIZE, 0}, {0x40AA0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40B40000UL, BUFFER_MAX_SIZE, 0}, {0x40BE0000UL, BUFFER_MAX_SIZE, 0},
+    {0x40C80000UL, BUFFER_MAX_SIZE, 0}, {0x40D20000UL, BUFFER_MAX_SIZE, 0},
+    {0x40DC0000UL, BUFFER_MAX_SIZE, 0}, {0x40E60000UL, BUFFER_MAX_SIZE, 0},
+    // Block 3: 0x40F00000
+    {0x40F00000UL, BUFFER_MAX_SIZE, 0}, {0x40FA0000UL, BUFFER_MAX_SIZE, 0},
+    {0x41040000UL, BUFFER_MAX_SIZE, 0}, {0x410E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x41180000UL, BUFFER_MAX_SIZE, 0}, {0x41220000UL, BUFFER_MAX_SIZE, 0},
+    {0x412C0000UL, BUFFER_MAX_SIZE, 0}, {0x41360000UL, BUFFER_MAX_SIZE, 0},
+    {0x41400000UL, BUFFER_MAX_SIZE, 0}, {0x414A0000UL, BUFFER_MAX_SIZE, 0},
+    {0x41540000UL, BUFFER_MAX_SIZE, 0}, {0x415E0000UL, BUFFER_MAX_SIZE, 0},
+    {0x41680000UL, BUFFER_MAX_SIZE, 0}, {0x41720000UL, BUFFER_MAX_SIZE, 0},
+    {0x417C0000UL, BUFFER_MAX_SIZE, 0}, {0x41860000UL, BUFFER_MAX_SIZE, 0},
 };
 
 // ==================== 全局变量 ====================
@@ -114,19 +115,22 @@ extern struct metal_device *get_shared_mem_device(void);
 #define LPRINTF(fmt, ...) xil_printf("[R5] " fmt, ##__VA_ARGS__)
 #define LPERROR(fmt, ...) LPRINTF("ERROR: " fmt, ##__VA_ARGS__)
 
+// ==================== 前向声明 ====================
+static const buffer_info_t* get_buffer_info(int bufferId);
+
 // ==================== 缓冲区状态管理 ====================
 
 /**
  * 获取缓冲区状态标志位的物理地址
  * 标志位位于每个buffer的起始位置（前4字节）
  */
-static uint64_t get_buffer_status_phys_addr(int bufferId) {
+static uint32_t get_buffer_status_phys_addr(int bufferId) {
     const buffer_info_t* info = get_buffer_info(bufferId);
     if (info == NULL) {
         return 0;
     }
     // 状态标志位于buffer起始位置
-    return info->shm_phys_addr;
+    return (uint32_t)info->shm_phys_addr;
 }
 
 /**
@@ -134,19 +138,13 @@ static uint64_t get_buffer_status_phys_addr(int bufferId) {
  * 将共享内存物理地址映射为虚拟地址
  */
 static volatile uint32_t* get_buffer_status_virt_addr(int bufferId) {
-    uint64_t phys_addr = get_buffer_status_phys_addr(bufferId);
+    uint32_t phys_addr = get_buffer_status_phys_addr(bufferId);
     if (phys_addr == 0) {
         return NULL;
     }
 
-    // 对于 ZynqMP，R5 和 A53 共享相同的物理地址空间
-    // R5 可以直接访问物理地址（R5 是裸机，没有 MMU 虚拟地址转换）
-    // 因此物理地址可以直接用作指针
-    //
-    // 注意：如果使用 libmetal 的 metal_io_region，需要：
-    // 1. 在 platform_info.c 中注册共享内存为 metal 设备
-    // 2. 使用 metal_io_phys_to_virt() 进行转换
-    // 但在 R5 裸机环境中，直接使用物理地址是可行的
+    // 对于 ZynqMP R5 (32位)，物理地址可以直接用作指针
+    // R5 是裸机环境，没有 MMU 虚拟地址转换
     return (volatile uint32_t*)phys_addr;
 }
 
@@ -257,9 +255,9 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     // 3. DataMover: 共享内存 → FPGA SRAM
     // FPGA片上SRAM地址 (从r5_bm_validation迁移)
-    const uint64_t BRAM0_BASE = 0xA0000000UL;  // sdpramA
-    const uint64_t BRAM1_BASE = 0xA0010000UL;  // sdpramB
-    const uint64_t BRAM2_BASE = 0xA0020000UL;  // sdpramZ (输出)
+    const uint64_t sdpramA_base = 0xA0000000UL;  // sdpramA
+    const uint64_t sdpramB_base = 0xA0010000UL;  // sdpramB
+    const uint64_t sdpramZ_base = 0xA0020000UL;  // sdpramZ (输出)
 
     // Cache同步: Invalidate R5的cache，确保DataMover读取的是A53写入的最新数据
     Xil_DCacheInvalidateRange(bufA->shm_phys_addr, sizeA);
@@ -269,7 +267,7 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     // 搬运tileA: 共享内存 → sdpramA (从地址0开始)
     if (dmdrv_transfer(&g_datamover, 0,  // DataMover 0
-                       bufA->shm_phys_addr, BRAM0_BASE,
+                       bufA->shm_phys_addr, sdpramA_base,
                        msg_inst->input0Shape0, rowLenA) != 0) {
         LPERROR("Failed to transfer tileA\n");
         return -1;
@@ -281,7 +279,7 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     // 搬运tileB: 共享内存 → sdpramB (从地址0开始)
     if (dmdrv_transfer(&g_datamover, 1,  // DataMover 1
-                       bufB->shm_phys_addr, BRAM1_BASE,
+                       bufB->shm_phys_addr, sdpramB_base,
                        msg_inst->input1Shape0, rowLenB) != 0) {
         LPERROR("Failed to transfer tileB\n");
         return -1;
@@ -338,7 +336,7 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     LPRINTF("     DataMover: FPGA SRAM→shm...\n");
 
     if (dmdrv_transfer(&g_datamover, 2,  // DataMover 2
-                       BRAM2_BASE, bufZ->shm_phys_addr,
+                       sdpramZ_base, bufZ->shm_phys_addr,
                        msg_inst->input0Shape0, rowLenZ) != 0) {
         LPERROR("Failed to transfer result\n");
         return -1;
