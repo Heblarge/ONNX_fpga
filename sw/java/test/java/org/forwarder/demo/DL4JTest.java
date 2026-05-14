@@ -6,9 +6,6 @@ import org.forwarder.Model;
 import org.forwarder.Backend;
 import org.forwarder.Session;
 
-import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.factory.Nd4j;
-import org.nd4j.linalg.api.buffer.DataType;
 import org.onnx4j.Tensor;
 import org.onnx4j.tensor.TensorBuilder;
 import org.onnx4j.prototypes.OnnxProto3.TensorProto;
@@ -80,14 +77,11 @@ public class DL4JTest {
             inputData[i] = 10000 + i * 1000;
         }
 
-        INDArray inputNd = Nd4j.create(inputData, Arrays.stream(inputShape).mapToInt(l -> (int) l).toArray())
-                .castTo(DataType.INT);
-
         System.out.println("Input data (first 10): " + Arrays.toString(Arrays.copyOf(inputData, Math.min(10, inputData.length))));
 
         try (Session<?> session = backend.newSession()) {
             // Feed 输入
-            Tensor inputTensor = buildInt32Tensor(model, firstInput.getName(), inputNd);
+            Tensor inputTensor = buildInt32Tensor(model, firstInput.getName(), inputData, inputShape);
             session.feed(inputTensor, false);
 
             // 执行推理
@@ -116,7 +110,8 @@ public class DL4JTest {
             int printCount = Math.min(outputSize, 20);
             System.out.println("Output data (first " + printCount + "):");
             for (int i = 0; i < printCount; i++) {
-                System.out.printf("  out[%d] = %d (0x%08X)%n", i, dataBuffer.getInt(), dataBuffer.getInt());
+                int val = dataBuffer.getInt();
+                System.out.printf("  out[%d] = %d (0x%08X)%n", i, val, val);
             }
 
             System.out.println("\n===== Test completed successfully! =====");
@@ -126,19 +121,19 @@ public class DL4JTest {
     }
 
     /**
-     * 构建 INT32 Tensor
+     * 构建 INT32 Tensor（不依赖 ND4J）
      */
-    private static Tensor buildInt32Tensor(Model model, String name, INDArray array) {
+    private static Tensor buildInt32Tensor(Model model, String name, int[] data, long[] shape) {
         TensorProto.Builder builder = TensorProto.newBuilder();
 
-        for (long dim : array.shape()) {
+        for (long dim : shape) {
             builder.addDims(dim);
         }
 
         builder.setDataType(TensorProto.DataType.INT32.getNumber());
 
-        ByteBuffer buffer = ByteBuffer.allocate((int) array.length() * 4).order(ByteOrder.LITTLE_ENDIAN);
-        buffer.asIntBuffer().put(array.dup('c').data().asInt());
+        ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        buffer.asIntBuffer().put(data);
 
         builder.setRawData(ByteString.copyFrom(buffer));
 
