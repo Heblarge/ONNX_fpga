@@ -2,7 +2,7 @@ ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.13.14"
 ThisBuild / organization := "org.example"
 
-val nd4jVersion = "1.0.0-beta6"
+val nd4jVersion = "1.0.0-beta7"
 val tensorflowVersion = "1.15.0"
 
 // ==========================================
