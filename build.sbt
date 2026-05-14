@@ -28,7 +28,7 @@ javacOptions ++= Seq("-encoding", "UTF-8", "-Xlint:unchecked", "-Xlint:deprecati
 Compile / doc / sources := Seq.empty
 
 // ND4J 和 TF 的老版本在高版本 JDK 上加载 .so 必须的反射放行参数
-javaOptions ++= Seq(
+val commonJavaOptions = Seq(
   "--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
   "--add-exports=java.base/jdk.internal.ref=ALL-UNNAMED",
   "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED",
@@ -42,7 +42,12 @@ javaOptions ++= Seq(
 val jniLibPath = sys.env.get("JNI_LIB_PATH")
   .orElse(sys.props.get("jni.lib.path"))
   .orElse(Some("/run/media/nvme0n1/accelerator/shared_object")) // 板子上的默认路径
-javaOptions ++= jniLibPath.map(p => s"-Djava.library.path=$p").toSeq
+
+val jniOption = jniLibPath.map(p => s"-Djava.library.path=$p").toSeq
+
+// 应用到 Compile 和 Test 配置
+Compile / javaOptions := commonJavaOptions ++ jniOption
+Test / javaOptions := commonJavaOptions ++ jniOption
 
 // ==========================================
 // 4. 纯净的混合推理依赖树（已剔除 SpinalHDL 和 CUDA）
