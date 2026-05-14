@@ -42,16 +42,15 @@ javaOptions ++= Seq(
 // 4. 纯净的混合推理依赖树（已剔除 SpinalHDL 和 CUDA）
 // ==========================================
 javacOptions ++= Seq("-encoding", "UTF-8")//用来支持中文注释
+
 libraryDependencies ++= Seq(
   // --- 模型解析层 ---
   "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
   "com.google.protobuf" % "protobuf-java" % "3.19.4",
 
-  // --- CPU 回退推理层 (混合模式所需) ---
-  // 注意：去掉了 nd4j-cuda，仅保留 native-platform (包含 ARM/x86 的纯 CPU c++ 库)
+  // --- HWAccelerated 后端只需要 ND4J API（数据结构），不需要原生计算引擎 ---
   "org.nd4j" % "nd4j-api" % nd4jVersion,
-  "org.nd4j" % "nd4j-native-platform" % nd4jVersion,
-  
+
   "org.tensorflow" % "tensorflow" % tensorflowVersion,
   "org.tensorflow" % "proto" % tensorflowVersion exclude("com.google.protobuf", "protobuf-java"),
 
