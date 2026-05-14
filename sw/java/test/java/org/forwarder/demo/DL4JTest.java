@@ -58,31 +58,31 @@ public class DL4JTest {
         System.out.println("Graph inputs: " + Arrays.toString(Arrays.stream(model.getGraph().getInputs()).map(i -> i.getName()).toArray()));
         System.out.println("Graph outputs: " + Arrays.toString(Arrays.stream(model.getGraph().getOutputs()).map(o -> o.getName()).toArray()));
 
-        // 获取第一个输入的形状
-        var firstInput = model.getGraph().getInputs()[0];
-        long[] inputShape = firstInput.getValueInfo().getShape().toArray();
-
-        int totalElements = 1;
-        for (long d : inputShape) totalElements *= (int) d;
-
-        System.out.println("\n===== Creating test input =====");
-        System.out.println("Input name: " + firstInput.getName());
-        System.out.println("Input shape: " + Arrays.toString(inputShape));
-        System.out.println("Total elements: " + totalElements);
-
-        // 创建 INT32 类型输入数据（固定点量化）
-        int[] inputData = new int[totalElements];
-        for (int i = 0; i < totalElements; i++) {
-            // 简单的递增序列，便于调试
-            inputData[i] = 10000 + i * 1000;
-        }
-
-        System.out.println("Input data (first 10): " + Arrays.toString(Arrays.copyOf(inputData, Math.min(10, inputData.length))));
-
         try (Session<?> session = backend.newSession()) {
-            // Feed 输入
-            Tensor inputTensor = buildInt32Tensor(model, firstInput.getName(), inputData, inputShape);
-            session.feed(inputTensor, false);
+            // 为所有输入创建测试数据
+            System.out.println("\n===== Creating test inputs =====");
+            for (var input : model.getGraph().getInputs()) {
+                long[] inputShape = input.getValueInfo().getShape().toArray();
+                int totalElements = 1;
+                for (long d : inputShape) totalElements *= (int) d;
+
+                System.out.println("Input name: " + input.getName());
+                System.out.println("Input shape: " + Arrays.toString(inputShape));
+                System.out.println("Total elements: " + totalElements);
+
+                // 创建 INT32 类型输入数据（固定点量化）
+                int[] inputData = new int[totalElements];
+                for (int i = 0; i < totalElements; i++) {
+                    inputData[i] = 10000 + i * 1000;
+                }
+
+                System.out.println("Input data (first 10): " + Arrays.toString(Arrays.copyOf(inputData, Math.min(10, inputData.length))));
+                System.out.println();
+
+                // Feed 输入
+                Tensor inputTensor = buildInt32Tensor(model, input.getName(), inputData, inputShape);
+                session.feed(inputTensor, false);
+            }
 
             // 执行推理
             System.out.println("\n===== Running inference... =====");
