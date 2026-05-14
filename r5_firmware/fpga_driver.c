@@ -232,15 +232,18 @@ int fpga_send_instruction(fpga_driver_t* driver, const fpga_instruction_t* inst)
 /**
  * 等待 FPGA 完成
  * 注意: 当前硬件可能没有状态寄存器，这里使用固定延迟
+ *
+ * TODO: 添加 FPGA 状态寄存器，改为轮询方式
  */
 int fpga_wait_completion(fpga_driver_t* driver, int timeout_us) {
     if (driver == NULL || !driver->initialized) {
         return -1;
     }
 
-    // 简单延迟等待 (根据实际计算时间调整)
-    // TODO: 如果硬件有状态寄存器，应该轮询状态
-    usleep_range(100, 200);  // 假设每次计算约 100-200us
+    // 简单延迟等待
+    // 根据矩阵大小估算：512x512 矩阵加法约需 1-5ms
+    // 这里使用保守估计 10ms
+    usleep_range(10000, 15000);  // 等待 10-15ms
 
     return 0;
 }
