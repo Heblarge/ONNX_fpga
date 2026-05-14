@@ -38,6 +38,12 @@ javaOptions ++= Seq(
   "--add-opens=java.base/java.nio=ALL-UNNAMED"
 )
 
+// 设置 JNI 库路径（从环境变量读取，或使用默认值）
+val jniLibPath = sys.env.get("JNI_LIB_PATH")
+  .orElse(sys.props.get("jni.lib.path"))
+  .orElse(Some("/run/media/nvme0n1/accelerator/shared_object")) // 板子上的默认路径
+javaOptions ++= jniLibPath.map(p => s"-Djava.library.path=$p").toSeq
+
 // ==========================================
 // 4. 纯净的混合推理依赖树（已剔除 SpinalHDL 和 CUDA）
 // ==========================================
