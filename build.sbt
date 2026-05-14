@@ -59,8 +59,8 @@ libraryDependencies ++= Seq(
   "com.microsoft.onnxruntime" % "onnxruntime" % "1.21.0",
   "com.google.protobuf" % "protobuf-java" % "3.19.4",
 
-  // --- HWAccelerated 后端只需要 ND4J API（数据结构），不需要原生计算引擎 ---
-  "org.nd4j" % "nd4j-api" % nd4jVersion,
+  // --- HWAccelerated 后端需要 ND4J API 和 Native Backend ---
+  "org.nd4j" % "nd4j-native" % nd4jVersion,
 
   "org.tensorflow" % "tensorflow" % tensorflowVersion,
   "org.tensorflow" % "proto" % tensorflowVersion exclude("com.google.protobuf", "protobuf-java"),
