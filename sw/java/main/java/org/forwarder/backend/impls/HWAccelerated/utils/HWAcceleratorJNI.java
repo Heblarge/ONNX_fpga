@@ -11,7 +11,10 @@ import Accelerator.InstJavaTODO;
  */
 public class HWAcceleratorJNI {
 
-	private static final String RPMSG_DEVICE = "virtio0.rpmsg-openamp-demo-channel.-1.1024";
+	// RPMsg 设备名 - 可通过环境变量或系统属性覆盖
+	private static final String RPMSG_DEVICE = System.getProperty("hwaccelerator.rpmsg.device",
+			System.getenv().getOrDefault("RPMSG_DEVICE", "virtio0.rpmsg-openamp-demo-channel.-1.1024"));
+
 	private static final int DEFAULT_TIMEOUT_MS = 5000;
 
 	private static HWAcceleratorJNI instance;
@@ -166,12 +169,13 @@ public class HWAcceleratorJNI {
 			return true;
 		}
 
+		System.out.println("[JNI] Initializing RPMsg: " + RPMSG_DEVICE);
 		boolean success = nativeInitialize(RPMSG_DEVICE);
 		if (success) {
 			initialized = true;
-			System.out.println("HWAcceleratorJNI initialized successfully");
+			System.out.println("[JNI] HWAcceleratorJNI initialized successfully");
 		} else {
-			System.err.println("Failed to initialize HWAcceleratorJNI");
+			System.err.println("[JNI] Failed to initialize HWAcceleratorJNI");
 		}
 		return success;
 	}
