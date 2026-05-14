@@ -60,7 +60,7 @@ libraryDependencies ++= Seq(
   "com.google.protobuf" % "protobuf-java" % "3.19.4",
 
   // --- HWAccelerated 后端需要 ND4J API 和 Native Backend ---
-  "org.nd4j" % "nd4j-native" % nd4jVersion,
+  "org.nd4j" % "nd4j-native-platform" % nd4jVersion,
 
   "org.tensorflow" % "tensorflow" % tensorflowVersion,
   "org.tensorflow" % "proto" % tensorflowVersion exclude("com.google.protobuf", "protobuf-java"),
