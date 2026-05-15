@@ -20,7 +20,7 @@ void DataMover0IntrHandler(void *CallbackRef) {
     u32 IrqStatus = XData_mover_InterruptGetStatus(InstancePtr);
     XData_mover_InterruptClear(InstancePtr, IrqStatus);
 
-    if (g_driver && g_driver->done0) {
+    if (g_driver) {
         if (IrqStatus & 0x1) g_driver->done0 = 1;
     }
 }
@@ -30,7 +30,7 @@ void DataMover1IntrHandler(void *CallbackRef) {
     u32 IrqStatus = XData_mover_InterruptGetStatus(InstancePtr);
     XData_mover_InterruptClear(InstancePtr, IrqStatus);
 
-    if (g_driver && g_driver->done1) {
+    if (g_driver) {
         if (IrqStatus & 0x1) g_driver->done1 = 1;
     }
 }
@@ -40,7 +40,7 @@ void DataMover2IntrHandler(void *CallbackRef) {
     u32 IrqStatus = XData_mover_InterruptGetStatus(InstancePtr);
     XData_mover_InterruptClear(InstancePtr, IrqStatus);
 
-    if (g_driver && g_driver->done2) {
+    if (g_driver) {
         if (IrqStatus & 0x1) g_driver->done2 = 1;
     }
 }

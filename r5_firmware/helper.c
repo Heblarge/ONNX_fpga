@@ -19,6 +19,7 @@
 #include <metal/irq.h>
 #include "platform_info.h"
 #include "rsc_table.h"
+#include "datamover_driver.h"
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 

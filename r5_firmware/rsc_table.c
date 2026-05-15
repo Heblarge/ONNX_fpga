@@ -31,7 +31,7 @@
 #define RING_RX                     0x3ED44000U
 #define VRING_SIZE                  256
 
-#define NUM_TABLE_ENTRIES           6  /* vdev + 2 vring + trace + 4 tensor blocks */
+#define NUM_TABLE_ENTRIES           7  /* vdev + 2 vring + trace + 4 tensor blocks + rpu_ddr */
 /* Trace buffer for the rsc_trace entry */
 #if !defined(RSC_TRACE_SZ)
 #define RSC_TRACE_SZ (4*1024)
@@ -48,6 +48,7 @@ struct remote_resource_table __resource resources = {
 	.offset[3] = offsetof(struct remote_resource_table, tensor_block1),
 	.offset[4] = offsetof(struct remote_resource_table, tensor_block2),
 	.offset[5] = offsetof(struct remote_resource_table, tensor_block3),
+	.offset[6] = offsetof(struct remote_resource_table, rpu_ddr),
 	/* Virtio device entry */
 	.rpmsg_vdev = {
 		.type =		RSC_VDEV,
@@ -133,6 +134,32 @@ struct remote_resource_table __resource resources = {
 		.flags = 0,
 		.reserved = {0},
 		.name = "tensor_block3",
+	},
+	/*
+	 * R5 私有 DDR - 存放固件代码和数据段
+	 *
+	 * 包含段：
+	 * - .text, .init, .fini (代码)
+	 * - .eh_frame, .eh_framehdr (异常处理)
+	 * - .gcc_except_table, .ARM.exidx (C++异常)
+	 * - .bss (未初始化数据)
+	 *
+	 * 对应设备树reserved-memory配置:
+	 * reserved-memory {
+	 *     rpu0_ddr_reserved: rpu0ddr@41900000 {
+	 *         no-map;
+	 *         reg = <0x0 0x41900000 0x0 0x00800000>;  // 8MB
+	 *     };
+	 * };
+	 */
+	.rpu_ddr = {
+		.type = RSC_CARVEOUT,
+		.da = RPU_DDR_PA,
+		.pa = RPU_DDR_PA,
+		.len = RPU_DDR_SIZE,
+		.flags = 0,
+		.reserved = {0},
+		.name = "rpu_ddr",
 	},
 };
 

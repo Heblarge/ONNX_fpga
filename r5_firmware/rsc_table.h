@@ -23,7 +23,7 @@
 extern "C" {
 #endif
 
-#define NO_RESOURCE_ENTRIES         6  /* vdev + 2 vring + trace + 4 tensor blocks */
+#define NO_RESOURCE_ENTRIES         7  /* vdev + 2 vring + trace + 4 tensor blocks + rpu_ddr */
 
 /* Tensor Memory Pool Configuration - 统一大小池，每块10MB */
 #define TENSOR_BLOCK_SIZE           0x00A00000UL    /* 10MB per block */
@@ -32,6 +32,10 @@ extern "C" {
 #define TENSOR_BLOCK_2_PA           0x40500000UL    /* Block 2: 0x40500000 */
 #define TENSOR_BLOCK_3_PA           0x40F00000UL    /* Block 3: 0x40F00000 */
 #define TENSOR_POOL_TOTAL_SIZE      0x02800000UL    /* Total: 40MB */
+
+/* R5 私有 DDR Configuration - 存放固件代码和数据段 */
+#define RPU_DDR_PA                  0x41900000UL    /* R5 DDR: 0x41900000 */
+#define RPU_DDR_SIZE                0x00800000UL    /* 8MB */
 
 /* Resource table for the given remote */
 struct remote_resource_table {
@@ -49,6 +53,8 @@ struct remote_resource_table {
 	struct fw_rsc_carveout tensor_block1;
 	struct fw_rsc_carveout tensor_block2;
 	struct fw_rsc_carveout tensor_block3;
+	/* R5 私有 DDR - 存放 .text, .data, .bss, .gcc_except_table 等段 */
+	struct fw_rsc_carveout rpu_ddr;
 }__attribute__((packed, aligned(4)));
 
 void *get_resource_table (uint32_t rsc_id, uint32_t *len);
