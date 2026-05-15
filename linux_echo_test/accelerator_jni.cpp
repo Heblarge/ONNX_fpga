@@ -105,6 +105,7 @@ static struct {
     // RPMsg 状态
     int ctrl_fd;       // 控制设备文件描述符
     int ept_fd;        // 端点设备文件描述符
+    int log_ept_fd;    // 日志端点设备文件描述符
     bool rpmsg_initialized;
 
     // 共享内存状态
@@ -115,6 +116,7 @@ static struct {
 } g_state = {
     .ctrl_fd = -1,
     .ept_fd = -1,
+    .log_ept_fd = -1,
     .rpmsg_initialized = false,
     .mem_fd = -1,
     .mmap_addrs = {NULL},
@@ -136,6 +138,48 @@ static struct {
 static void dcache_flush(void* addr, size_t size);
 static void dcache_invalidate(void* addr, size_t size);
 static volatile uint32_t* get_buffer_status_addr(int bufferId);
+
+// ========== 日志读取线程 ==========
+
+#define LOG_BUFFER_SIZE 4096
+
+static void* rpmsg_log_reader(void* arg) {
+    (void)arg;
+    char buffer[LOG_BUFFER_SIZE];
+    fd_set readfds;
+    struct timeval tv;
+
+    printf("[JNI] Log reader thread started (fd=%d)\n", g_state.log_ept_fd);
+
+    while (g_state.log_ept_fd >= 0) {
+        FD_ZERO(&readfds);
+        FD_SET(g_state.log_ept_fd, &readfds);
+        tv.tv_sec = 1;
+        tv.tv_usec = 0;
+
+        int ret = select(g_state.log_ept_fd + 1, &readfds, NULL, NULL, &tv);
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            perror("[JNI] Log reader select error");
+            break;
+        }
+
+        if (ret > 0 && FD_ISSET(g_state.log_ept_fd, &readfds)) {
+            ssize_t n = read(g_state.log_ept_fd, buffer, sizeof(buffer) - 1);
+            if (n > 0) {
+                buffer[n] = '\0';
+                printf("%s", buffer);  // 直接输出到stdout
+                fflush(stdout);
+            } else if (n < 0 && errno != EAGAIN) {
+                perror("[JNI] Log reader read error");
+                break;
+            }
+        }
+    }
+
+    printf("[JNI] Log reader thread exiting\n");
+    return NULL;
+}
 
 // ========== RPMsg 辅助函数 ==========
 
@@ -450,6 +494,39 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeInit
         return JNI_FALSE;
     }
 
+    // ========== 创建日志端点 ==========
+    struct rpmsg_endpoint_info log_eptinfo;
+    strcpy(log_eptinfo.name, "rpmsg-log-channel");
+    log_eptinfo.src = 0;
+    log_eptinfo.dst = 0x401;  // R5侧日志端点地址
+
+    if (rpmsg_create_ept(g_state.ctrl_fd, &log_eptinfo) != 0) {
+        fprintf(stderr, "[JNI] Warning: Failed to create log endpoint, R5 logs may not be visible\n");
+    } else {
+        // 查找日志端点设备路径
+        char log_ept_dev_name[16];
+        if (get_rpmsg_ept_dev_name(rpmsg_char_name, log_eptinfo.name, log_ept_dev_name)) {
+            sprintf(fpath, "/dev/%s", log_ept_dev_name);
+            g_state.log_ept_fd = open(fpath, O_RDWR | O_NONBLOCK);
+            if (g_state.log_ept_fd >= 0) {
+                printf("[JNI] Log endpoint opened: %s (fd=%d)\n", fpath, g_state.log_ept_fd);
+
+                // 启动日志读取线程
+                pthread_t log_tid;
+                if (pthread_create(&log_tid, NULL, rpmsg_log_reader, NULL) == 0) {
+                    pthread_detach(log_tid);
+                    printf("[JNI] Log reader thread started\n");
+                } else {
+                    perror("[JNI] Failed to create log reader thread");
+                    close(g_state.log_ept_fd);
+                    g_state.log_ept_fd = -1;
+                }
+            } else {
+                perror("[JNI] Failed to open log endpoint device");
+            }
+        }
+    }
+
     g_state.rpmsg_initialized = true;  // 【修复】initialized → rpmsg_initialized
     env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
 
@@ -465,6 +542,11 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeShut
     pthread_mutex_lock(&g_state.mutex);
 
     if (g_state.rpmsg_initialized) {
+        // 关闭日志端点
+        if (g_state.log_ept_fd >= 0) {
+            close(g_state.log_ept_fd);
+            g_state.log_ept_fd = -1;
+        }
         if (g_state.ept_fd >= 0) {
             close(g_state.ept_fd);
             g_state.ept_fd = -1;

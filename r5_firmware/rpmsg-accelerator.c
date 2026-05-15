@@ -11,16 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "xil_printf.h"
+#include <stdarg.h>
 #include "xil_cache.h"
 #include <openamp/open_amp.h>
-#include "xil_uart.h"
-
-// 确保STDOUT输出到正确的UART
-#ifdef STDOUT_BASEADDRESS
-#undef STDOUT_BASEADDRESS
-#endif
-#define STDOUT_BASEADDRESS 0xFF000000  // PSU_UART_0_BASEADDR
 #include <metal/alloc.h>
 #include <metal/log.h>
 #include "platform_info.h"
@@ -110,7 +103,8 @@ static const buffer_info_t g_buffer_pool[TOTAL_BUFFERS] = {
 
 // ==================== 全局变量 ====================
 
-static struct rpmsg_endpoint g_lept;
+static struct rpmsg_endpoint g_lept;        // 主通信端点
+static struct rpmsg_endpoint g_log_ept;     // 日志端点
 static fpga_driver_t g_fpga;
 datamover_driver_t g_datamover;
 static bool g_datamover_initialized = false;
@@ -119,7 +113,27 @@ static bool g_datamover_initialized = false;
 // 用于正确访问 A53-R5 共享内存中的 buffer 状态标志
 extern struct metal_device *get_shared_mem_device(void);
 
-#define LPRINTF(fmt, ...) xil_printf("[R5] " fmt, ##__VA_ARGS__)
+// ==================== 日志通道配置 ====================
+#define LOG_CHANNEL_NAME "rpmsg-log-channel"
+
+// RPMsg 日志输出函数
+static void rpmsg_log_print(const char *fmt, ...) {
+    char buffer[256];
+    va_list args;
+
+    if (!g_log_ept.rpdev) return;  // 日志端点未创建，跳过
+
+    va_start(args, fmt);
+    int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+
+    if (len > 0) {
+        rpmsg_send(&g_log_ept, buffer, len);
+    }
+}
+
+// 使用 RPMsg 日志的 LPRINTF
+#define LPRINTF(fmt, ...) rpmsg_log_print("[R5] " fmt, ##__VA_ARGS__)
 #define LPERROR(fmt, ...) LPRINTF("ERROR: " fmt, ##__VA_ARGS__)
 
 // ==================== 前向声明 ====================
@@ -518,6 +532,16 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
 
     LPRINTF("RPMsg accelerator endpoint created successfully (addr=%d, dst=%d)\n", g_lept.addr, g_lept.dest);
 
+    // 创建日志端点 (用于将R5日志发送到A53)
+    LPRINTF("Creating log endpoint...\n");
+    ret = rpmsg_create_ept(&g_log_ept, rdev, LOG_CHANNEL_NAME,
+                           0x401, RPMSG_ADDR_ANY, NULL, NULL);
+    if (ret != 0) {
+        LPRINTF("Warning: Failed to create log endpoint, logs may not be visible\n");
+    } else {
+        LPRINTF("Log endpoint created successfully (addr=%d)\n", g_log_ept.addr);
+    }
+
     // 等待远程处理器重置
     LPRINTF("Waiting for vdev reset...\n");
     ret = platform_poll_on_vdev_reset(&arg);
@@ -531,17 +555,7 @@ int main(int argc, char *argv[]) {
     struct rpmsg_device *rpdev;
     int32_t ret;
 
-    // 显式初始化UART (确保日志输出)
-    xil_printf("\n\n");  // 刷新输出
-    xil_printf("========================================\n");
-    xil_printf("Starting FPGA Accelerator R5 Firmware...\n");
-    xil_printf("========================================\n");
-
-    LPRINTF("LPRINTF test - if you see this, logging works!\n");
-
-    // 简单的启动延迟，确保UART输出被刷新
-    for (volatile int i = 0; i < 100000; i++);
-
+    // 初始化日志（需要在platform_init之后才能工作）
     /* Initialize platform */
     ret = platform_init(argc, argv, &platform);
     if (ret != 0) {
