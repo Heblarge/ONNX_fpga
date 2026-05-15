@@ -1,0 +1,70 @@
+09:42:43 **** Clean-only build of configuration Debug for project full_system_test_v0 ****
+make clean 
+rm -rf ./src/test/matrix_utils.o  ./src/drivers/accelerator.o ./src/drivers/datamover_wrapper.o ./src/drivers/sys_intr.o  ./src/config.o ./src/helloworld.o ./src/main.o ./src/platform.o ./src/test/matrix_utils.d  ./src/drivers/accelerator.d ./src/drivers/datamover_wrapper.d ./src/drivers/sys_intr.d  ./src/config.d ./src/helloworld.d ./src/main.d ./src/platform.d full_system_test_v0.elf.size  full_system_test_v0.elf
+ 
+09:42:44 **** Incremental Build of configuration Debug for project full_system_test_v0 ****
+make all 
+Building file: ../src/test/matrix_utils.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/test/matrix_utils.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/test/matrix_utils.d" -MT"src/test/matrix_utils.o" -o "src/test/matrix_utils.o" "../src/test/matrix_utils.c"
+Finished building: ../src/test/matrix_utils.c
+ 
+Building file: ../src/drivers/accelerator.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/drivers/accelerator.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/drivers/accelerator.d" -MT"src/drivers/accelerator.o" -o "src/drivers/accelerator.o" "../src/drivers/accelerator.c"
+Finished building: ../src/drivers/accelerator.c
+ 
+Building file: ../src/drivers/datamover_wrapper.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/drivers/datamover_wrapper.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/drivers/datamover_wrapper.d" -MT"src/drivers/datamover_wrapper.o" -o "src/drivers/datamover_wrapper.o" "../src/drivers/datamover_wrapper.c"
+Finished building: ../src/drivers/datamover_wrapper.c
+ 
+Building file: ../src/drivers/sys_intr.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/drivers/sys_intr.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/drivers/sys_intr.d" -MT"src/drivers/sys_intr.o" -o "src/drivers/sys_intr.o" "../src/drivers/sys_intr.c"
+Finished building: ../src/drivers/sys_intr.c
+ 
+Building file: ../src/helloworld.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/helloworld.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/helloworld.d" -MT"src/helloworld.o" -o "src/helloworld.o" "../src/helloworld.c"
+Finished building: ../src/helloworld.c
+ 
+Building file: ../src/main.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/main.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/main.d" -MT"src/main.o" -o "src/main.o" "../src/main.c"
+Finished building: ../src/main.c
+ 
+Building file: ../src/platform.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/platform.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/platform.d" -MT"src/platform.o" -o "src/platform.o" "../src/platform.c"
+Finished building: ../src/platform.c
+ 
+Building target: full_system_test_v0.elf
+Invoking: ARM v8 gcc linker
+aarch64-none-elf-gcc -Wl,-T -Wl,../src/lscript.ld -L/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bsplib/lib -o "full_system_test_v0.elf" ./src/test/matrix_utils.o  ./src/drivers/accelerator.o ./src/drivers/datamover_wrapper.o ./src/drivers/sys_intr.o  ./src/helloworld.o ./src/main.o ./src/platform.o   -Wl,--start-group,-lxil,-lgcc,-lc,--end-group
+Finished building target: full_system_test_v0.elf
+ 
+Invoking: ARM v8 Print Size
+aarch64-none-elf-size full_system_test_v0.elf  |tee "full_system_test_v0.elf.size"
+   text	   data	    bss	    dec	    hex	filename
+  49111	   3848	  37773	  90732	  1626c	full_system_test_v0.elf
+Finished building: full_system_test_v0.elf.size
+ 
+09:42:44 **** Incremental Build of configuration Debug for project full_system_test_v0_system ****
+make all 
+Generating bif file for the system project
+Executing command '::scw::generate_bif -xpfm /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/full_system_v0.xpfm -domains standalone_domain -bifpath /home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/Debug/system.bif' on XSCT
+
+****** Software Commandline Tool (XSCT) v2024.2.0
+  **** SW Build 5239620 on Fri Nov 08 16:21:51 MST 2024
+    ** Copyright 1986-2022 Xilinx, Inc. All Rights Reserved.
+    ** Copyright 2022-2024 Advanced Micro Devices, Inc. All Rights Reserved.
+
+
+Warning: XSCT is deprecated and will be removed in future releases.
+We recommend using the new Python command-line tool for project management and debugging:
+- Run "vitis -i" for interactive mode.
+- Run "vitis -s <script>" for script mode.
+sdcard_gen --xpfm /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/full_system_v0.xpfm --sys_config full_system_v0 --bif /home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/Debug/system.bif --bitstream /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit --elf /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf,psu_cortexa53_0
+creating BOOT.BIN using /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit
+Running /tools/Xilinx/Vitis/2024.2/bin/bootgen -arch zynqmp -image /home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/Debug/sd_card_temp/boot.bif -w -o i BOOT.BIN

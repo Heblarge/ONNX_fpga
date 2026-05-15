@@ -1,0 +1,8 @@
+AbstractTextEditor.Color.SelectionBackground=28,113,216
+AbstractTextEditor.Color.SelectionForeground=246,211,45
+eclipse.preferences.version=1
+linked.target.text.style=DASHED_BOX
+org.eclipse.jdt.internal.ui.javaeditor.NLSKeyHyperlinkDetector_stateMask=262144
+org.eclipse.jdt.internal.ui.propertiesfileeditor.PropertyKeyHyperlinkDetector_stateMask=262144
+overviewRuler_migration=migrated_3.1
+spellingEngine=org.eclipse.jdt.internal.ui.text.spelling.DefaultSpellingEngine

@@ -1,0 +1,1957 @@
+05:14:32 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+05:14:33 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+05:14:33 INFO  : Registering command handlers for Vitis TCF services
+05:14:34 INFO  : Platform repository initialization has completed.
+05:14:35 INFO  : XSCT server has started successfully.
+05:14:35 INFO  : plnx-install-location is set to ''
+05:14:35 INFO  : Successfully done setting XSCT server connection channel  
+05:14:35 INFO  : Successfully done query RDI_DATADIR 
+05:14:35 INFO  : Successfully done setting workspace for the tool. 
+05:17:40 INFO  : Result from executing command 'getProjects': full_system_v0
+05:17:40 INFO  : Result from executing command 'getPlatforms': xilinx_vck190_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+05:42:39 INFO  : Saving repository preferences.
+05:45:21 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+05:45:22 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+05:45:24 INFO  : Registering command handlers for Vitis TCF services
+05:45:24 INFO  : Platform repository initialization has completed.
+05:45:24 INFO  : XSCT server has started successfully.
+05:45:24 INFO  : plnx-install-location is set to ''
+05:45:24 INFO  : Successfully done setting XSCT server connection channel  
+05:45:24 INFO  : Successfully done query RDI_DATADIR 
+05:45:24 INFO  : Successfully done setting workspace for the tool. 
+06:08:34 ERROR : Failed to update hardware specification for project 'full_system_v0'.
+Reason: Failed to execute command 'platform config -updatehw {/home/zhou/Desktop/validation_1/vitis/new_system_v0_wrapper.xsa}'. Click on details for more information.
+06:11:47 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:11:47 INFO  : Result from executing command 'getProjects': RemoteSystemsTempFiles;full_system_test_v0;full_system_test_v0_system;full_system_v0
+06:11:47 ERROR : Failed to call write_mss 
+Reason: /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is not available in the current workspace
+use 'getprojects' command to see list of available projects in current workspace
+06:11:47 ERROR : Failed to update application flags from BSP for 'full_system_test_v0'. Reason: Failed to call write_mss 
+Reason: /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is not available in the current workspace
+use 'getprojects' command to see list of available projects in current workspace
+java.lang.RuntimeException: Failed to call write_mss 
+Reason: /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is not available in the current workspace
+use 'getprojects' command to see list of available projects in current workspace
+	at com.xilinx.sdk.xsdb.XsdbCommandUtils.handleResult(XsdbCommandUtils.java:389) ~[com.xilinx.sdk.xsdb_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdk.xsdb.XsdbCommandUtils.executeAndRespond(XsdbCommandUtils.java:327) ~[com.xilinx.sdk.xsdb_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdk.sw.SwPlatformUtils.createDefaultMss(SwPlatformUtils.java:72) ~[com.xilinx.sdk.sw_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdx.sdk.core.util.BspCreationHelper.generateMssFile(BspCreationHelper.java:46) ~[com.xilinx.sdx.sdk.core_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdx.sdk.core.util.BspCreationHelper.create(BspCreationHelper.java:38) ~[com.xilinx.sdx.sdk.core_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdx.sdk.core.build.SdkMakefileGenerationListener.createSwPlatform(SdkMakefileGenerationListener.java:150) ~[com.xilinx.sdx.sdk.core_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdx.sdk.core.build.SdkMakefileGenerationListener.syncAppFlags(SdkMakefileGenerationListener.java:82) [com.xilinx.sdx.sdk.core_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdx.sdk.core.build.SdkMakefileGenerationListener.preMakefileGeneration(SdkMakefileGenerationListener.java:48) [com.xilinx.sdx.sdk.core_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdk.managedbuilder.XilinxGnuMakefileGenerator.notifyPreMakefileGenerationListeners(XilinxGnuMakefileGenerator.java:91) [com.xilinx.sdk.managedbuilder_1.0.0.202411031917.jar:?]
+	at com.xilinx.sdk.managedbuilder.XilinxGnuMakefileGenerator.regenerateMakefiles(XilinxGnuMakefileGenerator.java:75) [com.xilinx.sdk.managedbuilder_1.0.0.202411031917.jar:?]
+	at org.eclipse.cdt.managedbuilder.internal.core.CommonBuilder.performMakefileGeneration(CommonBuilder.java:1006) [org.eclipse.cdt.managedbuilder.core_8.6.0.201802261533.jar:?]
+	at org.eclipse.cdt.managedbuilder.internal.core.CommonBuilder.performPrebuildGeneration(CommonBuilder.java:873) [org.eclipse.cdt.managedbuilder.core_8.6.0.201802261533.jar:?]
+	at org.eclipse.cdt.managedbuilder.internal.core.CommonBuilder.build(CommonBuilder.java:748) [org.eclipse.cdt.managedbuilder.core_8.6.0.201802261533.jar:?]
+	at org.eclipse.cdt.managedbuilder.internal.core.CommonBuilder.build(CommonBuilder.java:513) [org.eclipse.cdt.managedbuilder.core_8.6.0.201802261533.jar:?]
+	at org.eclipse.cdt.managedbuilder.internal.core.CommonBuilder.build(CommonBuilder.java:459) [org.eclipse.cdt.managedbuilder.core_8.6.0.201802261533.jar:?]
+	at org.eclipse.core.internal.events.BuildManager$2.run(BuildManager.java:832) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:45) [org.eclipse.equinox.common_3.11.0.v20200206-0817.jar:?]
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:220) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:263) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.events.BuildManager$1.run(BuildManager.java:316) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.runtime.SafeRunner.run(SafeRunner.java:45) [org.eclipse.equinox.common_3.11.0.v20200206-0817.jar:?]
+	at org.eclipse.core.internal.events.BuildManager.basicBuild(BuildManager.java:319) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.events.BuildManager.basicBuildLoop(BuildManager.java:371) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.events.BuildManager.build(BuildManager.java:392) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.resources.Workspace.buildInternal(Workspace.java:515) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.resources.Workspace.build(Workspace.java:412) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.ui.actions.BuildAction$1.runInWorkspace(BuildAction.java:291) [org.eclipse.ui.ide_3.17.0.v20200217-1511.jar:?]
+	at org.eclipse.core.internal.resources.InternalWorkspaceJob.run(InternalWorkspaceJob.java:42) [org.eclipse.core.resources_3.13.700.v20200209-1624.jar:?]
+	at org.eclipse.core.internal.jobs.Worker.run(Worker.java:63) [org.eclipse.core.jobs_3.10.700.v20200106-1020.jar:?]
+06:11:48 ERROR : Failed to compute checksum of hardware specification file used by project 'full_system_test_v0'
+06:11:48 INFO  : Result from executing command 'getProjects': RemoteSystemsTempFiles;full_system_test_v0;full_system_test_v0_system;full_system_v0
+06:11:48 ERROR : Failed to openhw "/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa"
+Reason: /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is not available in the current workspace
+use 'getprojects' command to see list of available projects in current workspace
+06:11:48 INFO  : Result from executing command 'getProjects': RemoteSystemsTempFiles;full_system_test_v0;full_system_test_v0_system;full_system_v0
+06:11:48 ERROR : Failed to openhw "/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa"
+Reason: /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is not available in the current workspace
+use 'getprojects' command to see list of available projects in current workspace
+06:11:48 INFO  : Result from executing command 'getProjects': RemoteSystemsTempFiles;full_system_test_v0;full_system_test_v0_system;full_system_v0
+06:11:48 ERROR : Failed to openhw "/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa"
+Reason: /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is not available in the current workspace
+use 'getprojects' command to see list of available projects in current workspace
+06:14:27 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+06:14:27 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+06:14:29 INFO  : Platform repository initialization has completed.
+06:14:29 INFO  : Registering command handlers for Vitis TCF services
+06:14:30 INFO  : XSCT server has started successfully.
+06:14:30 INFO  : Successfully done setting XSCT server connection channel  
+06:14:30 INFO  : plnx-install-location is set to ''
+06:14:30 INFO  : Successfully done query RDI_DATADIR 
+06:14:30 INFO  : Successfully done setting workspace for the tool. 
+06:15:48 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1593] Current Hardware Design is not set.
+ERROR: [Hsi 55-1593] Current Hardware Design is not set.
+
+06:15:48 ERROR : (XSDB Server)ERROR: [Hsi 55-1509] No active hardware design exist. set a hardware design first.
+
+06:15:49 ERROR : Failed to update hardware specification for project 'full_system_v0'.
+Reason: Failed to execute command 'platform config -updatehw {/home/zhou/Desktop/validation_1/vitis/new_system_v0_wrapper.xsa}'. Click on details for more information.
+06:17:23 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:24 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:24 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:24 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:24 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:26 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:26 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:27 ERROR : (XSDB Server)ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+ERROR: [Hsi 55-1460] Hardware Design gemm_v0_wrapper is not found
+
+06:17:29 INFO  : Result from executing command 'getProjects': full_system_v0
+06:17:29 INFO  : Result from executing command 'getPlatforms': xilinx_vck190_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+06:18:23 INFO  : Result from executing command 'getProjects': full_system_v0
+06:18:23 INFO  : Result from executing command 'getPlatforms': full_system_v0|/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/full_system_v0.xpfm;xilinx_vck190_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+06:18:51 INFO  : The hardware specification used by project 'full_system_test_v0' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+06:19:18 INFO  : The file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit' stored in project is removed.
+06:19:18 INFO  : The file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.mmi' stored in project is removed.
+06:19:18 INFO  : The updated bitstream files are copied from platform to folder '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream' in project 'full_system_test_v0'.
+06:19:19 INFO  : The file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/psinit/psu_init.tcl' stored in project is removed.
+06:19:19 INFO  : The updated ps init files are copied from platform to folder '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/psinit' in project 'full_system_test_v0'.
+06:19:29 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:23:49 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:23:51 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+06:27:14 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:27:15 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:27:15 INFO  : 'jtag frequency' command is executed.
+06:27:15 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:27:15 INFO  : Context for 'APU' is selected.
+06:27:15 INFO  : System reset is completed.
+06:27:18 INFO  : 'after 3000' command is executed.
+06:27:18 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:27:48 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:27:49 INFO  : Context for 'APU' is selected.
+06:27:49 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:27:49 INFO  : 'configparams force-mem-access 1' command is executed.
+06:27:49 INFO  : Context for 'APU' is selected.
+06:27:49 INFO  : Boot mode is read from the target.
+06:27:49 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:27:49 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:27:49 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:27:50 INFO  : 'set bp_27_49_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:27:52 INFO  : 'con -block -timeout 60' command is executed.
+06:27:52 INFO  : 'bpremove $bp_27_49_fsbl_bp' command is executed.
+06:27:52 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:27:52 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:27:52 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:27:52 INFO  : 'configparams force-mem-access 0' command is executed.
+06:27:52 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_27_49_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_27_49_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:27:52 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:27:52 INFO  : 'con' command is executed.
+06:27:52 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:27:52 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:33:17 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:33:19 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+06:33:28 INFO  : Disconnected from the channel tcfchan#3.
+06:33:28 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:33:28 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:33:28 INFO  : 'jtag frequency' command is executed.
+06:33:28 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:33:28 INFO  : Context for 'APU' is selected.
+06:33:28 INFO  : System reset is completed.
+06:33:31 INFO  : 'after 3000' command is executed.
+06:33:31 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:34:02 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:34:02 INFO  : Context for 'APU' is selected.
+06:34:02 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:34:02 INFO  : 'configparams force-mem-access 1' command is executed.
+06:34:02 INFO  : Context for 'APU' is selected.
+06:34:02 INFO  : Boot mode is read from the target.
+06:34:02 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:34:02 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:34:02 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:34:02 INFO  : 'set bp_34_2_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:34:04 INFO  : 'con -block -timeout 60' command is executed.
+06:34:04 INFO  : 'bpremove $bp_34_2_fsbl_bp' command is executed.
+06:34:04 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:34:04 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:34:05 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:34:05 INFO  : 'configparams force-mem-access 0' command is executed.
+06:34:05 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_34_2_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_34_2_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:34:05 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:34:05 INFO  : 'con' command is executed.
+06:34:05 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:34:05 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:41:53 INFO  : Disconnected from the channel tcfchan#5.
+06:41:53 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:41:53 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:41:53 INFO  : 'jtag frequency' command is executed.
+06:41:53 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:41:53 INFO  : Context for 'APU' is selected.
+06:41:53 INFO  : System reset is completed.
+06:41:56 INFO  : 'after 3000' command is executed.
+06:41:56 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:42:27 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:42:27 INFO  : Context for 'APU' is selected.
+06:42:27 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:42:27 INFO  : 'configparams force-mem-access 1' command is executed.
+06:42:27 INFO  : Context for 'APU' is selected.
+06:42:27 INFO  : Boot mode is read from the target.
+06:42:27 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:42:27 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:42:27 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:42:27 INFO  : 'set bp_42_27_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:42:30 INFO  : 'con -block -timeout 60' command is executed.
+06:42:30 INFO  : 'bpremove $bp_42_27_fsbl_bp' command is executed.
+06:42:30 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:42:30 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:42:30 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:42:30 INFO  : 'configparams force-mem-access 0' command is executed.
+06:42:30 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_42_27_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_42_27_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:42:30 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:42:30 INFO  : 'con' command is executed.
+06:42:30 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:42:30 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:42:51 INFO  : Disconnected from the channel tcfchan#6.
+06:42:51 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:42:51 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:42:51 INFO  : 'jtag frequency' command is executed.
+06:42:51 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:42:51 INFO  : Context for 'APU' is selected.
+06:42:52 INFO  : System reset is completed.
+06:42:55 INFO  : 'after 3000' command is executed.
+06:42:55 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:43:25 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:43:25 INFO  : Context for 'APU' is selected.
+06:43:25 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:43:25 INFO  : 'configparams force-mem-access 1' command is executed.
+06:43:25 INFO  : Context for 'APU' is selected.
+06:43:25 INFO  : Boot mode is read from the target.
+06:43:25 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:43:25 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:43:26 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:43:26 INFO  : 'set bp_43_26_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:43:28 INFO  : 'con -block -timeout 60' command is executed.
+06:43:28 INFO  : 'bpremove $bp_43_26_fsbl_bp' command is executed.
+06:43:28 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:43:28 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:43:28 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:43:28 INFO  : 'configparams force-mem-access 0' command is executed.
+06:43:28 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_43_26_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_43_26_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:43:28 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:43:28 INFO  : 'con' command is executed.
+06:43:28 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:43:28 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:48:21 INFO  : Disconnected from the channel tcfchan#7.
+06:48:21 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:48:21 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:48:21 INFO  : 'jtag frequency' command is executed.
+06:48:21 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:48:21 INFO  : Context for 'APU' is selected.
+06:48:21 INFO  : System reset is completed.
+06:48:24 INFO  : 'after 3000' command is executed.
+06:48:24 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:48:55 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:48:55 INFO  : Context for 'APU' is selected.
+06:48:55 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:48:55 INFO  : 'configparams force-mem-access 1' command is executed.
+06:48:55 INFO  : Context for 'APU' is selected.
+06:48:55 INFO  : Boot mode is read from the target.
+06:48:55 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:48:55 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:48:56 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:48:56 INFO  : 'set bp_48_56_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:48:58 INFO  : 'con -block -timeout 60' command is executed.
+06:48:58 INFO  : 'bpremove $bp_48_56_fsbl_bp' command is executed.
+06:48:58 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:48:58 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:48:58 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:48:58 INFO  : 'configparams force-mem-access 0' command is executed.
+06:48:58 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_48_56_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_48_56_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:48:58 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:48:58 INFO  : 'con' command is executed.
+06:48:58 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:48:58 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:49:52 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:49:55 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+06:50:12 INFO  : Disconnected from the channel tcfchan#8.
+06:50:12 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:50:12 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:50:12 INFO  : 'jtag frequency' command is executed.
+06:50:12 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:50:12 INFO  : Context for 'APU' is selected.
+06:50:13 INFO  : System reset is completed.
+06:50:16 INFO  : 'after 3000' command is executed.
+06:50:16 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:50:46 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:50:46 INFO  : Context for 'APU' is selected.
+06:50:46 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:50:46 INFO  : 'configparams force-mem-access 1' command is executed.
+06:50:46 INFO  : Context for 'APU' is selected.
+06:50:46 INFO  : Boot mode is read from the target.
+06:50:46 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:50:46 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:50:47 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:50:47 INFO  : 'set bp_50_47_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:50:49 INFO  : 'con -block -timeout 60' command is executed.
+06:50:49 INFO  : 'bpremove $bp_50_47_fsbl_bp' command is executed.
+06:50:49 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:50:49 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:50:49 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:50:49 INFO  : 'configparams force-mem-access 0' command is executed.
+06:50:49 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_50_47_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_50_47_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:50:49 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:50:49 INFO  : 'con' command is executed.
+06:50:49 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:50:49 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:55:09 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:56:24 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:56:26 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+06:56:34 INFO  : Disconnected from the channel tcfchan#10.
+06:56:34 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:56:34 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:56:34 INFO  : 'jtag frequency' command is executed.
+06:56:34 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:56:34 INFO  : Context for 'APU' is selected.
+06:56:35 INFO  : System reset is completed.
+06:56:38 INFO  : 'after 3000' command is executed.
+06:56:38 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:57:08 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:57:08 INFO  : Context for 'APU' is selected.
+06:57:08 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:57:08 INFO  : 'configparams force-mem-access 1' command is executed.
+06:57:08 INFO  : Context for 'APU' is selected.
+06:57:08 INFO  : Boot mode is read from the target.
+06:57:08 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:57:08 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:57:09 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:57:09 INFO  : 'set bp_57_9_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:57:11 INFO  : 'con -block -timeout 60' command is executed.
+06:57:11 INFO  : 'bpremove $bp_57_9_fsbl_bp' command is executed.
+06:57:11 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:57:11 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:57:11 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:57:11 INFO  : 'configparams force-mem-access 0' command is executed.
+06:57:11 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_57_9_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_57_9_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:57:11 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:57:11 INFO  : 'con' command is executed.
+06:57:11 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:57:11 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+07:01:57 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:01:59 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:02:57 INFO  : Disconnected from the channel tcfchan#12.
+07:02:57 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:02:57 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:02:57 INFO  : 'jtag frequency' command is executed.
+07:02:57 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:02:57 INFO  : Context for 'APU' is selected.
+07:02:57 INFO  : System reset is completed.
+07:03:00 INFO  : 'after 3000' command is executed.
+07:03:00 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+07:03:31 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+07:03:31 INFO  : Context for 'APU' is selected.
+07:03:31 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:03:31 INFO  : 'configparams force-mem-access 1' command is executed.
+07:03:31 INFO  : Context for 'APU' is selected.
+07:03:31 INFO  : Boot mode is read from the target.
+07:03:31 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:03:31 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:03:31 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:03:31 INFO  : 'set bp_3_31_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:03:33 INFO  : 'con -block -timeout 60' command is executed.
+07:03:33 INFO  : 'bpremove $bp_3_31_fsbl_bp' command is executed.
+07:03:33 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:03:33 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:03:34 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:03:34 INFO  : 'configparams force-mem-access 0' command is executed.
+07:03:34 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_3_31_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_3_31_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:03:34 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:03:34 INFO  : 'con' command is executed.
+07:03:34 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:03:34 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+07:05:45 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:05:47 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:05:58 INFO  : Disconnected from the channel tcfchan#14.
+07:05:58 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:05:58 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:05:58 INFO  : 'jtag frequency' command is executed.
+07:05:58 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:05:58 INFO  : Context for 'APU' is selected.
+07:05:58 INFO  : System reset is completed.
+07:06:01 INFO  : 'after 3000' command is executed.
+07:06:02 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+07:06:32 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+07:06:32 INFO  : Context for 'APU' is selected.
+07:06:32 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:06:32 INFO  : 'configparams force-mem-access 1' command is executed.
+07:06:32 INFO  : Context for 'APU' is selected.
+07:06:32 INFO  : Boot mode is read from the target.
+07:06:32 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:06:32 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:06:33 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:06:33 INFO  : 'set bp_6_33_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:06:35 INFO  : 'con -block -timeout 60' command is executed.
+07:06:35 INFO  : 'bpremove $bp_6_33_fsbl_bp' command is executed.
+07:06:35 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:06:35 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:06:35 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:06:35 INFO  : 'configparams force-mem-access 0' command is executed.
+07:06:35 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_6_33_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_6_33_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:06:35 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:06:35 INFO  : 'con' command is executed.
+07:06:35 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:06:35 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+07:09:08 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:09:10 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:09:22 INFO  : Disconnected from the channel tcfchan#16.
+07:09:22 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:09:23 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:09:23 INFO  : 'jtag frequency' command is executed.
+07:09:23 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:09:23 INFO  : Context for 'APU' is selected.
+07:09:23 INFO  : System reset is completed.
+07:09:26 INFO  : 'after 3000' command is executed.
+07:09:26 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+07:09:56 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+07:09:56 INFO  : Context for 'APU' is selected.
+07:09:56 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:09:56 INFO  : 'configparams force-mem-access 1' command is executed.
+07:09:56 INFO  : Context for 'APU' is selected.
+07:09:56 INFO  : Boot mode is read from the target.
+07:09:56 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:09:56 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:09:57 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:09:57 INFO  : 'set bp_9_57_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:09:59 INFO  : 'con -block -timeout 60' command is executed.
+07:09:59 INFO  : 'bpremove $bp_9_57_fsbl_bp' command is executed.
+07:09:59 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:09:59 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:09:59 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:09:59 INFO  : 'configparams force-mem-access 0' command is executed.
+07:09:59 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_9_57_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_9_57_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:09:59 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:09:59 INFO  : 'con' command is executed.
+07:09:59 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:09:59 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+07:23:46 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:23:48 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:23:56 INFO  : Disconnected from the channel tcfchan#18.
+07:23:57 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:23:57 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:23:57 INFO  : 'jtag frequency' command is executed.
+07:23:57 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:23:57 INFO  : Context for 'APU' is selected.
+07:23:57 INFO  : Cleared APU and A53 resets
+07:23:57 INFO  : Context for 'APU' is selected.
+07:23:58 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:23:58 INFO  : 'configparams force-mem-access 1' command is executed.
+07:23:58 INFO  : Context for 'APU' is selected.
+07:23:58 INFO  : Boot mode is read from the target.
+07:23:58 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:23:58 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:23:58 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:23:58 INFO  : 'set bp_23_58_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:24:00 INFO  : 'con -block -timeout 60' command is executed.
+07:24:00 INFO  : 'bpremove $bp_23_58_fsbl_bp' command is executed.
+07:24:00 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:24:00 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:24:01 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:24:01 INFO  : 'configparams force-mem-access 0' command is executed.
+07:24:01 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_23_58_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_23_58_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:24:01 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:24:01 INFO  : 'con' command is executed.
+07:24:01 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:24:01 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+07:24:28 INFO  : Disconnected from the channel tcfchan#20.
+07:24:28 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:24:28 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:24:28 INFO  : 'jtag frequency' command is executed.
+07:24:28 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:24:28 INFO  : Context for 'APU' is selected.
+07:24:28 INFO  : Cleared APU and A53 resets
+07:24:28 INFO  : Context for 'APU' is selected.
+07:24:28 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:24:28 INFO  : 'configparams force-mem-access 1' command is executed.
+07:24:28 INFO  : Context for 'APU' is selected.
+07:24:28 INFO  : Boot mode is read from the target.
+07:24:28 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:24:28 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:24:28 ERROR : Memory write error at 0xFFFC0000. Cannot flush CPU cache. Cannot read register r0. Cortex-A53 #1: EDITR not ready
+07:24:28 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+----------------End of Script----------------
+
+07:24:28 ERROR : Memory write error at 0xFFFC0000. Cannot flush CPU cache. Cannot read register r0. Cortex-A53 #1: EDITR not ready
+07:24:36 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:24:36 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:24:36 INFO  : 'jtag frequency' command is executed.
+07:24:36 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:24:36 INFO  : Context for 'APU' is selected.
+07:24:36 INFO  : Cleared APU and A53 resets
+07:24:36 INFO  : Context for 'APU' is selected.
+07:24:36 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:24:36 INFO  : 'configparams force-mem-access 1' command is executed.
+07:24:36 INFO  : Context for 'APU' is selected.
+07:24:36 INFO  : Boot mode is read from the target.
+07:24:36 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:24:37 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:24:37 ERROR : Memory write error at 0xFFFC0000. Cannot flush CPU cache. Cannot read register r0. Cortex-A53 #1: EDITR not ready
+07:24:37 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+----------------End of Script----------------
+
+07:24:37 ERROR : Memory write error at 0xFFFC0000. Cannot flush CPU cache. Cannot read register r0. Cortex-A53 #1: EDITR not ready
+07:24:50 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:24:50 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:24:50 INFO  : 'jtag frequency' command is executed.
+07:24:50 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:24:50 INFO  : Context for 'APU' is selected.
+07:24:50 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:24:50 INFO  : 'configparams force-mem-access 1' command is executed.
+07:24:50 INFO  : Context for 'APU' is selected.
+07:24:50 INFO  : Boot mode is read from the target.
+07:24:50 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:24:51 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:24:51 ERROR : Memory write error at 0xFFFC0000. Cannot flush CPU cache. Cannot read register r0. Cortex-A53 #1: EDITR not ready
+07:24:51 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+----------------End of Script----------------
+
+07:24:51 ERROR : Memory write error at 0xFFFC0000. Cannot flush CPU cache. Cannot read register r0. Cortex-A53 #1: EDITR not ready
+07:25:01 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:25:01 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:25:01 INFO  : 'jtag frequency' command is executed.
+07:25:01 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:25:01 INFO  : Context for 'APU' is selected.
+07:25:02 INFO  : System reset is completed.
+07:25:05 INFO  : 'after 3000' command is executed.
+07:25:05 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+07:25:35 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+07:25:35 INFO  : Context for 'APU' is selected.
+07:25:35 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:25:35 INFO  : 'configparams force-mem-access 1' command is executed.
+07:25:35 INFO  : Context for 'APU' is selected.
+07:25:35 INFO  : Boot mode is read from the target.
+07:25:35 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:25:35 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:25:36 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:25:36 INFO  : 'set bp_25_36_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:25:38 INFO  : 'con -block -timeout 60' command is executed.
+07:25:38 INFO  : 'bpremove $bp_25_36_fsbl_bp' command is executed.
+07:25:38 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:25:38 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:25:38 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:25:38 INFO  : 'configparams force-mem-access 0' command is executed.
+07:25:38 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_25_36_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_25_36_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:25:38 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:25:38 INFO  : 'con' command is executed.
+07:25:38 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:25:38 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+07:26:31 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:26:34 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:26:50 INFO  : Disconnected from the channel tcfchan#21.
+07:26:50 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:26:50 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:26:50 INFO  : 'jtag frequency' command is executed.
+07:26:50 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:26:50 INFO  : Context for 'APU' is selected.
+07:26:50 INFO  : System reset is completed.
+07:26:53 INFO  : 'after 3000' command is executed.
+07:26:53 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+07:27:24 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+07:27:24 INFO  : Context for 'APU' is selected.
+07:27:24 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:27:24 INFO  : 'configparams force-mem-access 1' command is executed.
+07:27:24 INFO  : Context for 'APU' is selected.
+07:27:24 INFO  : Boot mode is read from the target.
+07:27:24 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:27:24 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:27:24 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:27:24 INFO  : 'set bp_27_24_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:27:26 INFO  : 'con -block -timeout 60' command is executed.
+07:27:26 INFO  : 'bpremove $bp_27_24_fsbl_bp' command is executed.
+07:27:26 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:27:26 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:27:27 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:27:27 INFO  : 'configparams force-mem-access 0' command is executed.
+07:27:27 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_27_24_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_27_24_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:27:27 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:27:27 INFO  : 'con' command is executed.
+07:27:27 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:27:27 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+07:30:26 INFO  : Disconnected from the channel tcfchan#23.
+07:30:26 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:30:26 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:30:26 INFO  : 'jtag frequency' command is executed.
+07:30:26 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:30:26 INFO  : Context for 'APU' is selected.
+07:30:26 INFO  : Cleared APU and A53 resets
+07:30:26 INFO  : Context for 'APU' is selected.
+07:30:26 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:30:26 INFO  : 'configparams force-mem-access 1' command is executed.
+07:30:26 INFO  : Context for 'APU' is selected.
+07:30:26 INFO  : Boot mode is read from the target.
+07:30:26 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:30:26 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:30:27 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:30:27 INFO  : 'set bp_30_27_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:30:29 INFO  : 'con -block -timeout 60' command is executed.
+07:30:29 INFO  : 'bpremove $bp_30_27_fsbl_bp' command is executed.
+07:30:29 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:30:29 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:30:29 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:30:29 INFO  : 'configparams force-mem-access 0' command is executed.
+07:30:29 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_30_27_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_30_27_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:30:29 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:30:29 INFO  : 'con' command is executed.
+07:30:29 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:30:29 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+07:46:40 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:46:42 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:46:55 INFO  : Disconnected from the channel tcfchan#24.
+07:46:55 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:46:55 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:46:55 INFO  : 'jtag frequency' command is executed.
+07:46:55 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:46:55 INFO  : Context for 'APU' is selected.
+07:46:55 INFO  : Cleared APU and A53 resets
+07:46:55 INFO  : Context for 'APU' is selected.
+07:46:55 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:46:55 INFO  : 'configparams force-mem-access 1' command is executed.
+07:46:55 INFO  : Context for 'APU' is selected.
+07:46:55 INFO  : Boot mode is read from the target.
+07:46:55 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:46:55 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:46:56 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:46:56 INFO  : 'set bp_46_56_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:46:58 INFO  : 'con -block -timeout 60' command is executed.
+07:46:58 INFO  : 'bpremove $bp_46_56_fsbl_bp' command is executed.
+07:46:58 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:46:58 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:46:59 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:46:59 INFO  : 'configparams force-mem-access 0' command is executed.
+07:46:59 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_46_56_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_46_56_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:46:59 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:46:59 INFO  : 'con' command is executed.
+07:46:59 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:46:59 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+07:51:41 INFO  : Disconnected from the channel tcfchan#26.
+07:51:41 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+07:51:41 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+07:51:41 INFO  : 'jtag frequency' command is executed.
+07:51:41 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+07:51:41 INFO  : Context for 'APU' is selected.
+07:51:41 INFO  : Cleared APU and A53 resets
+07:51:41 INFO  : Context for 'APU' is selected.
+07:51:41 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+07:51:41 INFO  : 'configparams force-mem-access 1' command is executed.
+07:51:41 INFO  : Context for 'APU' is selected.
+07:51:41 INFO  : Boot mode is read from the target.
+07:51:41 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:51:41 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:51:42 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:51:42 INFO  : 'set bp_51_42_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+07:51:44 INFO  : 'con -block -timeout 60' command is executed.
+07:51:44 INFO  : 'bpremove $bp_51_42_fsbl_bp' command is executed.
+07:51:44 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:51:44 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+07:51:44 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+07:51:44 INFO  : 'configparams force-mem-access 0' command is executed.
+07:51:44 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_51_42_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_51_42_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+07:51:44 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+07:51:44 INFO  : 'con' command is executed.
+07:51:44 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+07:51:44 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+14:26:07 ERROR : (XSDB Server)Terminated
+
+06:12:13 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+06:12:14 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+06:12:15 INFO  : Registering command handlers for Vitis TCF services
+06:12:16 INFO  : Platform repository initialization has completed.
+06:12:16 INFO  : XSCT server has started successfully.
+06:12:16 INFO  : Successfully done setting XSCT server connection channel  
+06:12:16 INFO  : plnx-install-location is set to ''
+06:12:16 INFO  : Successfully done query RDI_DATADIR 
+06:12:16 INFO  : Successfully done setting workspace for the tool. 
+06:18:42 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+06:19:11 ERROR : (XSDB Server)ERROR: [Hsi 55-1571] The design file /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is already opened
+
+06:19:11 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+06:20:41 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:20:41 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:20:41 INFO  : 'jtag frequency' command is executed.
+06:20:41 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:20:41 INFO  : Context for 'APU' is selected.
+06:20:41 INFO  : Cleared APU and A53 resets
+06:20:41 INFO  : Context for 'APU' is selected.
+06:20:42 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:20:42 INFO  : 'configparams force-mem-access 1' command is executed.
+06:20:42 INFO  : Context for 'APU' is selected.
+06:20:42 INFO  : Boot mode is read from the target.
+06:20:42 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:20:42 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:20:42 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:20:42 INFO  : 'set bp_20_42_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:20:44 INFO  : 'con -block -timeout 60' command is executed.
+06:20:44 INFO  : 'bpremove $bp_20_42_fsbl_bp' command is executed.
+06:20:44 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:20:44 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:20:45 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:20:45 INFO  : 'configparams force-mem-access 0' command is executed.
+06:20:45 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_20_42_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_20_42_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:20:45 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:20:45 INFO  : 'con' command is executed.
+06:20:45 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:20:45 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+06:21:20 INFO  : Disconnected from the channel tcfchan#2.
+06:21:20 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:21:20 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:21:20 INFO  : 'jtag frequency' command is executed.
+06:21:20 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:21:20 INFO  : Context for 'APU' is selected.
+06:21:21 INFO  : Cleared APU and A53 resets
+06:21:21 INFO  : Context for 'APU' is selected.
+06:21:47 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:21:47 INFO  : 'configparams force-mem-access 1' command is executed.
+06:21:47 INFO  : Context for 'APU' is selected.
+06:21:47 INFO  : Boot mode is read from the target.
+06:21:47 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:21:47 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:21:47 ERROR : Memory write error at 0xFFFC0000. Cortex-A53 #0: EDITR not ready
+06:21:47 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+----------------End of Script----------------
+
+06:21:47 ERROR : Memory write error at 0xFFFC0000. Cortex-A53 #0: EDITR not ready
+06:21:53 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:21:53 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:21:53 INFO  : 'jtag frequency' command is executed.
+06:21:53 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:21:53 INFO  : Context for 'APU' is selected.
+06:21:53 INFO  : System reset is completed.
+06:21:56 INFO  : 'after 3000' command is executed.
+06:21:56 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:22:27 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:22:27 INFO  : Context for 'APU' is selected.
+06:22:27 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:22:27 INFO  : 'configparams force-mem-access 1' command is executed.
+06:22:27 INFO  : Context for 'APU' is selected.
+06:22:27 INFO  : Boot mode is read from the target.
+06:22:27 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:22:27 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:22:27 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:22:27 INFO  : 'set bp_22_27_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:22:29 INFO  : 'con -block -timeout 60' command is executed.
+06:22:29 INFO  : 'bpremove $bp_22_27_fsbl_bp' command is executed.
+06:22:29 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:22:29 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:22:30 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:22:30 INFO  : 'configparams force-mem-access 0' command is executed.
+06:22:30 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_22_27_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_22_27_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:22:30 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:22:30 INFO  : 'con' command is executed.
+06:22:30 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:22:30 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:29:05 INFO  : Disconnected from the channel tcfchan#3.
+06:29:06 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:29:06 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:29:06 INFO  : 'jtag frequency' command is executed.
+06:29:06 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:29:06 INFO  : Context for 'APU' is selected.
+06:29:06 INFO  : Cleared APU and A53 resets
+06:29:06 INFO  : Context for 'APU' is selected.
+06:29:33 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:29:33 INFO  : 'configparams force-mem-access 1' command is executed.
+06:29:33 INFO  : Context for 'APU' is selected.
+06:29:33 INFO  : Boot mode is read from the target.
+06:29:33 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:29:33 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:29:33 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:29:33 INFO  : 'set bp_29_33_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:29:35 INFO  : 'con -block -timeout 60' command is executed.
+06:29:35 INFO  : 'bpremove $bp_29_33_fsbl_bp' command is executed.
+06:29:35 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:29:36 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:29:36 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:29:36 INFO  : 'configparams force-mem-access 0' command is executed.
+06:29:36 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_29_33_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_29_33_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:29:36 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:29:36 INFO  : 'con' command is executed.
+06:29:36 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:29:36 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+06:30:10 INFO  : Disconnected from the channel tcfchan#4.
+06:30:11 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:30:11 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:30:11 INFO  : 'jtag frequency' command is executed.
+06:30:11 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:30:11 INFO  : Context for 'APU' is selected.
+06:30:11 INFO  : System reset is completed.
+06:30:14 INFO  : 'after 3000' command is executed.
+06:30:15 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+06:30:45 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit"
+06:30:45 INFO  : Context for 'APU' is selected.
+06:31:11 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:31:11 INFO  : 'configparams force-mem-access 1' command is executed.
+06:31:11 INFO  : Context for 'APU' is selected.
+06:31:11 INFO  : Boot mode is read from the target.
+06:31:11 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:31:12 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:31:12 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:31:12 INFO  : 'set bp_31_12_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:31:14 INFO  : 'con -block -timeout 60' command is executed.
+06:31:14 INFO  : 'bpremove $bp_31_12_fsbl_bp' command is executed.
+06:31:14 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:31:14 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:31:15 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:31:15 INFO  : 'configparams force-mem-access 0' command is executed.
+06:31:15 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_31_12_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_31_12_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:31:15 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:31:15 INFO  : 'con' command is executed.
+06:31:15 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:31:15 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+06:32:28 INFO  : Disconnected from the channel tcfchan#5.
+06:32:29 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+06:32:29 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+06:32:29 INFO  : 'jtag frequency' command is executed.
+06:32:29 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+06:32:29 INFO  : Context for 'APU' is selected.
+06:32:29 INFO  : Cleared APU and A53 resets
+06:32:29 INFO  : Context for 'APU' is selected.
+06:32:56 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa'.
+06:32:56 INFO  : 'configparams force-mem-access 1' command is executed.
+06:32:56 INFO  : Context for 'APU' is selected.
+06:32:56 INFO  : Boot mode is read from the target.
+06:32:56 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:32:56 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:32:57 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:32:57 INFO  : 'set bp_32_57_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+06:32:59 INFO  : 'con -block -timeout 60' command is executed.
+06:32:59 INFO  : 'bpremove $bp_32_57_fsbl_bp' command is executed.
+06:32:59 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:32:59 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+06:32:59 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+06:32:59 INFO  : 'configparams force-mem-access 0' command is executed.
+06:32:59 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_32_57_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_32_57_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+06:32:59 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+06:32:59 INFO  : 'con' command is executed.
+06:32:59 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+06:32:59 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+07:39:26 INFO  : Hardware specification for platform project 'full_system_v0' is updated.
+07:43:28 INFO  : Disconnected from the channel tcfchan#6.
+07:43:38 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+07:43:38 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+07:43:40 INFO  : Registering command handlers for Vitis TCF services
+07:43:40 INFO  : Platform repository initialization has completed.
+07:43:40 INFO  : XSCT server has started successfully.
+07:43:40 INFO  : plnx-install-location is set to ''
+07:43:40 INFO  : Successfully done setting XSCT server connection channel  
+07:43:40 INFO  : Successfully done setting workspace for the tool. 
+07:43:40 INFO  : Successfully done query RDI_DATADIR 
+07:44:20 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+07:44:49 ERROR : (XSDB Server)ERROR: [Hsi 55-1571] The design file /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is already opened
+
+07:44:49 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+07:53:46 INFO  : Saving repository preferences.
+07:53:46 INFO  : plnx-install-location is set to ''
+07:57:11 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+07:57:11 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+07:57:12 INFO  : Registering command handlers for Vitis TCF services
+07:57:13 INFO  : Platform repository initialization has completed.
+07:57:13 INFO  : XSCT server has started successfully.
+07:57:13 INFO  : plnx-install-location is set to ''
+07:57:13 INFO  : Successfully done setting XSCT server connection channel  
+07:57:13 INFO  : Successfully done query RDI_DATADIR 
+07:57:13 INFO  : Successfully done setting workspace for the tool. 
+08:09:02 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+08:09:31 ERROR : (XSDB Server)ERROR: [Hsi 55-1571] The design file /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v0_wrapper.xsa is already opened
+
+08:09:31 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+08:10:34 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+08:10:36 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+08:11:16 INFO  : Result from executing command 'getProjects': full_system_v0
+08:11:16 INFO  : Result from executing command 'getPlatforms': full_system_v0|/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/full_system_v0.xpfm;xilinx_vck190_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_202420_1/xilinx_vck190_base_202420_1.xpfm;xilinx_vck190_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vck190_base_dfx_202420_1/xilinx_vck190_base_dfx_202420_1.xpfm;xilinx_vek280_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vek280_base_202420_1/xilinx_vek280_base_202420_1.xpfm;xilinx_vmk180_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_vmk180_base_202420_1/xilinx_vmk180_base_202420_1.xpfm;xilinx_zcu102_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_202420_1/xilinx_zcu102_base_202420_1.xpfm;xilinx_zcu102_base_dfx_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu102_base_dfx_202420_1/xilinx_zcu102_base_dfx_202420_1.xpfm;xilinx_zcu104_base_202420_1|/tools/Xilinx/Vitis/2024.2/base_platforms/xilinx_zcu104_base_202420_1/xilinx_zcu104_base_202420_1.xpfm
+08:11:26 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+08:11:57 INFO  : The hardware specification used by project 'full_system_test_v0' is out of sync with the platform. Resource files extracted from the hardware specification will be updated.
+08:11:57 INFO  : The file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.bit' stored in project is removed.
+08:11:57 INFO  : The file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v0_wrapper.mmi' stored in project is removed.
+08:11:57 INFO  : The updated bitstream files are copied from platform to folder '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream' in project 'full_system_test_v0'.
+08:11:57 INFO  : The file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/psinit/psu_init.tcl' stored in project is removed.
+08:11:57 INFO  : The updated ps init files are copied from platform to folder '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/psinit' in project 'full_system_test_v0'.
+08:11:59 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+08:15:16 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+08:15:16 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+08:15:16 INFO  : 'jtag frequency' command is executed.
+08:15:16 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+08:15:16 INFO  : Context for 'APU' is selected.
+08:15:16 INFO  : Cleared APU and A53 resets
+08:15:16 INFO  : Context for 'APU' is selected.
+08:15:16 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+08:15:16 INFO  : 'configparams force-mem-access 1' command is executed.
+08:15:16 INFO  : Context for 'APU' is selected.
+08:15:16 INFO  : Boot mode is read from the target.
+08:15:16 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:15:16 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:15:17 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:15:17 INFO  : 'set bp_15_17_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+08:16:17 WARN  : Exit breakpoint of FSBL (XFsbl_Exit) is not hit within allocated wait time of '60' seconds.
+Note: To wait for a fixed amount of time specify the FSBL function as empty in launch configuration. Use 'IDE_FSBL_BP_HIT_WAIT_TIME' environment variable in launch configuration to modify the wait time (seconds).
+Reason: timeout: target has not halted
+08:16:17 INFO  : 'bpremove $bp_15_17_fsbl_bp' command is executed.
+08:16:21 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:16:21 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:16:21 ERROR : Memory write error at 0x0. Cortex-A53 #0: EDITR not ready
+08:16:21 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_15_17_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_15_17_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+----------------End of Script----------------
+
+08:16:21 ERROR : Memory write error at 0x0. Cortex-A53 #0: EDITR not ready
+08:16:32 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+08:16:32 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+08:16:32 INFO  : 'jtag frequency' command is executed.
+08:16:32 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+08:16:32 INFO  : Context for 'APU' is selected.
+08:16:32 INFO  : Cleared APU and A53 resets
+08:16:32 INFO  : Context for 'APU' is selected.
+08:16:32 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+08:16:32 INFO  : 'configparams force-mem-access 1' command is executed.
+08:16:32 INFO  : Context for 'APU' is selected.
+08:16:32 INFO  : Boot mode is read from the target.
+08:16:32 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:16:32 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:16:32 ERROR : Memory write error at 0xFFFC0000. Cannot read register sctlr_el3. Cannot read register r0. Cortex-A53 #0: EDITR not ready
+08:16:32 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+----------------End of Script----------------
+
+08:16:32 ERROR : Memory write error at 0xFFFC0000. Cannot read register sctlr_el3. Cannot read register r0. Cortex-A53 #0: EDITR not ready
+08:17:30 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+08:17:30 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+08:17:30 INFO  : 'jtag frequency' command is executed.
+08:17:30 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+08:17:30 INFO  : Context for 'APU' is selected.
+08:17:31 INFO  : Cleared APU and A53 resets
+08:17:31 INFO  : Context for 'APU' is selected.
+08:17:31 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+08:17:31 INFO  : 'configparams force-mem-access 1' command is executed.
+08:17:31 INFO  : Context for 'APU' is selected.
+08:17:31 INFO  : Boot mode is read from the target.
+08:17:31 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:17:31 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:17:31 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:17:31 INFO  : 'set bp_17_31_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+08:17:33 INFO  : 'con -block -timeout 60' command is executed.
+08:17:33 INFO  : 'bpremove $bp_17_31_fsbl_bp' command is executed.
+08:17:33 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:17:33 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:17:34 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:17:34 INFO  : 'configparams force-mem-access 0' command is executed.
+08:17:34 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_17_31_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_17_31_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+08:17:34 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:17:34 INFO  : 'con' command is executed.
+08:17:34 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+08:17:34 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+08:18:14 INFO  : Disconnected from the channel tcfchan#5.
+08:18:14 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+08:18:14 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+08:18:14 INFO  : 'jtag frequency' command is executed.
+08:18:14 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+08:18:14 INFO  : Context for 'APU' is selected.
+08:18:14 INFO  : Cleared APU and A53 resets
+08:18:14 INFO  : Context for 'APU' is selected.
+08:18:14 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+08:18:14 INFO  : 'configparams force-mem-access 1' command is executed.
+08:18:14 INFO  : Context for 'APU' is selected.
+08:18:14 INFO  : Boot mode is read from the target.
+08:18:14 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:18:14 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:18:15 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:18:15 INFO  : 'set bp_18_15_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+08:18:17 INFO  : 'con -block -timeout 60' command is executed.
+08:18:17 INFO  : 'bpremove $bp_18_15_fsbl_bp' command is executed.
+08:18:17 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:18:17 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:18:18 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:18:18 INFO  : 'configparams force-mem-access 0' command is executed.
+08:18:18 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_18_15_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_18_15_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+08:18:18 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:18:18 INFO  : 'con' command is executed.
+08:18:18 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+08:18:18 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+08:21:00 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+08:21:02 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+08:21:16 INFO  : Disconnected from the channel tcfchan#6.
+08:21:16 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+08:21:16 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+08:21:16 INFO  : 'jtag frequency' command is executed.
+08:21:16 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+08:21:16 INFO  : Context for 'APU' is selected.
+08:21:16 INFO  : Cleared APU and A53 resets
+08:21:16 INFO  : Context for 'APU' is selected.
+08:21:16 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+08:21:16 INFO  : 'configparams force-mem-access 1' command is executed.
+08:21:16 INFO  : Context for 'APU' is selected.
+08:21:16 INFO  : Boot mode is read from the target.
+08:21:16 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:21:16 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:21:17 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:21:17 INFO  : 'set bp_21_17_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+08:21:19 INFO  : 'con -block -timeout 60' command is executed.
+08:21:19 INFO  : 'bpremove $bp_21_17_fsbl_bp' command is executed.
+08:21:19 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:21:19 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:21:20 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:21:20 INFO  : 'configparams force-mem-access 0' command is executed.
+08:21:20 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_21_17_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_21_17_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+08:21:20 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:21:20 INFO  : 'con' command is executed.
+08:21:20 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+08:21:20 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+08:27:23 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+08:27:25 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+08:27:32 INFO  : Disconnected from the channel tcfchan#8.
+08:27:32 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+08:27:32 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+08:27:32 INFO  : 'jtag frequency' command is executed.
+08:27:32 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+08:27:32 INFO  : Context for 'APU' is selected.
+08:27:32 INFO  : Cleared APU and A53 resets
+08:27:32 INFO  : Context for 'APU' is selected.
+08:27:32 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+08:27:32 INFO  : 'configparams force-mem-access 1' command is executed.
+08:27:32 INFO  : Context for 'APU' is selected.
+08:27:32 INFO  : Boot mode is read from the target.
+08:27:32 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:27:32 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:27:33 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:27:33 INFO  : 'set bp_27_33_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+08:27:35 INFO  : 'con -block -timeout 60' command is executed.
+08:27:35 INFO  : 'bpremove $bp_27_33_fsbl_bp' command is executed.
+08:27:35 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:27:35 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+08:27:35 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+08:27:35 INFO  : 'configparams force-mem-access 0' command is executed.
+08:27:35 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_27_33_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_27_33_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+08:27:35 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+08:27:35 INFO  : 'con' command is executed.
+08:27:35 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+08:27:35 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+09:02:14 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:03:53 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:05:03 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:22:37 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:22:54 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:23:14 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:23:16 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+09:23:43 INFO  : Disconnected from the channel tcfchan#10.
+09:23:43 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+09:23:44 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+09:23:44 INFO  : 'jtag frequency' command is executed.
+09:23:44 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+09:23:44 INFO  : Context for 'APU' is selected.
+09:23:44 INFO  : Cleared APU and A53 resets
+09:23:44 INFO  : Context for 'APU' is selected.
+09:23:44 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+09:23:44 INFO  : 'configparams force-mem-access 1' command is executed.
+09:23:44 INFO  : Context for 'APU' is selected.
+09:23:44 INFO  : Boot mode is read from the target.
+09:23:44 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+09:23:44 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+09:23:45 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+09:23:45 INFO  : 'set bp_23_45_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+09:23:47 INFO  : 'con -block -timeout 60' command is executed.
+09:23:47 INFO  : 'bpremove $bp_23_45_fsbl_bp' command is executed.
+09:23:47 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+09:23:47 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+09:23:47 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+09:23:47 INFO  : 'configparams force-mem-access 0' command is executed.
+09:23:47 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+reset_apu
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_23_45_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_23_45_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+09:23:47 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+09:23:47 INFO  : 'con' command is executed.
+09:23:47 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+09:23:47 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_1_standalone.tcl'
+09:42:44 INFO  : Checking for BSP changes to sync application flags for project 'full_system_test_v0'...
+09:42:46 ERROR : (XSDB Server)readelf: Error: '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/fsbl.elf': No such file
+
+10:12:24 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+10:12:25 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+10:12:25 INFO  : 'jtag frequency' command is executed.
+10:12:25 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+10:12:25 INFO  : Context for 'APU' is selected.
+10:12:25 INFO  : System reset is completed.
+10:12:28 INFO  : 'after 3000' command is executed.
+10:12:28 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+10:12:31 ERROR : 'fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit' is cancelled.
+10:12:31 ERROR : Exception occured while running Program Device.
+java.lang.RuntimeException: 'fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit' is cancelled.
+10:12:31 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+----------------End of Script----------------
+
+10:12:31 ERROR : 'fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit' is cancelled.
+10:13:01 INFO  : Disconnected from the channel tcfchan#12.
+10:13:02 INFO  : Connected to target on host '127.0.0.1' and port '3121'.
+10:13:02 INFO  : Jtag cable 'Digilent JTAG-HS1 210512180081' is selected.
+10:13:02 INFO  : 'jtag frequency' command is executed.
+10:13:02 INFO  : Sourcing of '/tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl' is done.
+10:13:02 INFO  : Context for 'APU' is selected.
+10:13:02 INFO  : System reset is completed.
+10:13:05 INFO  : 'after 3000' command is executed.
+10:13:05 INFO  : 'targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}' command is executed.
+10:13:35 INFO  : Device configured successfully with "/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit"
+10:13:35 INFO  : Context for 'APU' is selected.
+10:13:35 INFO  : Hardware design and registers information is loaded from '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa'.
+10:13:35 INFO  : 'configparams force-mem-access 1' command is executed.
+10:13:36 INFO  : Context for 'APU' is selected.
+10:13:36 INFO  : Boot mode is read from the target.
+10:13:36 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+10:13:36 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+10:13:36 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf' is downloaded to processor 'psu_cortexa53_0'.
+10:13:36 INFO  : 'set bp_13_36_fsbl_bp [bpadd -addr &XFsbl_Exit]' command is executed.
+10:13:38 INFO  : 'con -block -timeout 60' command is executed.
+10:13:38 INFO  : 'bpremove $bp_13_36_fsbl_bp' command is executed.
+10:13:38 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+10:13:38 INFO  : Processor reset is completed for 'psu_cortexa53_0'.
+10:13:39 INFO  : The application '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf' is downloaded to processor 'psu_cortexa53_0'.
+10:13:39 INFO  : 'configparams force-mem-access 0' command is executed.
+10:13:39 INFO  : ----------------XSDB Script----------------
+connect -url tcp:127.0.0.1:3121
+source /tools/Xilinx/Vitis/2024.2/scripts/vitis/util/zynqmp_utils.tcl
+targets -set -nocase -filter {name =~"APU*"}
+rst -system
+after 3000
+targets -set -filter {jtag_cable_name =~ "Digilent JTAG-HS1 210512180081" && level==0 && jtag_device_ctx=="jsn-JTAG-HS1-210512180081-14758093-0"}
+fpga -file /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/_ide/bitstream/new_system_v1_wrapper.bit
+targets -set -nocase -filter {name =~"APU*"}
+loadhw -hw /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/hw/new_system_v1_wrapper.xsa -mem-ranges [list {0x80000000 0xbfffffff} {0x400000000 0x5ffffffff} {0x1000000000 0x7fffffffff}] -regs
+configparams force-mem-access 1
+targets -set -nocase -filter {name =~"APU*"}
+set mode [expr [mrd -value 0xFF5E0200] & 0xf]
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/boot/fsbl.elf
+set bp_13_36_fsbl_bp [bpadd -addr &XFsbl_Exit]
+con -block -timeout 60
+bpremove $bp_13_36_fsbl_bp
+targets -set -nocase -filter {name =~ "*A53*#0"}
+rst -processor
+dow /home/zhou/Desktop/validation_1/vitis/full_system_test_v0/Debug/full_system_test_v0.elf
+configparams force-mem-access 0
+----------------End of Script----------------
+
+10:13:39 INFO  : Context for processor 'psu_cortexa53_0' is selected.
+10:13:39 INFO  : 'con' command is executed.
+10:13:39 INFO  : ----------------XSDB Script (After Launch)----------------
+targets -set -nocase -filter {name =~ "*A53*#0"}
+con
+----------------End of Script----------------
+
+10:13:39 INFO  : Launch script is exported to file '/home/zhou/Desktop/validation_1/vitis/full_system_test_v0_system/_ide/scripts/systemdebugger_full_system_test_v0_system_standalone.tcl'
+10:18:32 INFO  : Disconnected from the channel tcfchan#14.
+06:32:49 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+06:32:49 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+06:32:51 INFO  : Registering command handlers for Vitis TCF services
+06:32:51 INFO  : Platform repository initialization has completed.
+06:32:51 INFO  : XSCT server has started successfully.
+06:32:51 INFO  : Successfully done setting XSCT server connection channel  
+06:32:51 INFO  : plnx-install-location is set to ''
+06:32:52 INFO  : Successfully done setting workspace for the tool. 
+06:32:52 INFO  : Successfully done query RDI_DATADIR 
+13:13:18 DEBUG : Logs will be stored at '/home/zhou/Desktop/validation_1/vitis/IDE.log'.
+13:13:19 INFO  : Launching XSCT server: xsct -n  -interactive /home/zhou/Desktop/validation_1/vitis/temp_xsdb_launch_script.tcl
+13:13:20 INFO  : Registering command handlers for Vitis TCF services
+13:13:20 INFO  : Platform repository initialization has completed.
+13:13:21 INFO  : XSCT server has started successfully.
+13:13:21 INFO  : plnx-install-location is set to ''
+13:13:21 INFO  : Successfully done setting XSCT server connection channel  
+13:13:21 INFO  : Successfully done query RDI_DATADIR 
+13:13:21 INFO  : Successfully done setting workspace for the tool. 

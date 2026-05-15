@@ -1,0 +1,51 @@
+09:42:44 **** Incremental Build of configuration Debug for project full_system_test_v0 ****
+make all 
+Building file: ../src/test/matrix_utils.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/test/matrix_utils.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/test/matrix_utils.d" -MT"src/test/matrix_utils.o" -o "src/test/matrix_utils.o" "../src/test/matrix_utils.c"
+Finished building: ../src/test/matrix_utils.c
+ 
+Building file: ../src/drivers/accelerator.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/drivers/accelerator.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/drivers/accelerator.d" -MT"src/drivers/accelerator.o" -o "src/drivers/accelerator.o" "../src/drivers/accelerator.c"
+Finished building: ../src/drivers/accelerator.c
+ 
+Building file: ../src/drivers/datamover_wrapper.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/drivers/datamover_wrapper.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/drivers/datamover_wrapper.d" -MT"src/drivers/datamover_wrapper.o" -o "src/drivers/datamover_wrapper.o" "../src/drivers/datamover_wrapper.c"
+Finished building: ../src/drivers/datamover_wrapper.c
+ 
+Building file: ../src/drivers/sys_intr.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/drivers/sys_intr.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/drivers/sys_intr.d" -MT"src/drivers/sys_intr.o" -o "src/drivers/sys_intr.o" "../src/drivers/sys_intr.c"
+Finished building: ../src/drivers/sys_intr.c
+ 
+Building file: ../src/helloworld.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/helloworld.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/helloworld.d" -MT"src/helloworld.o" -o "src/helloworld.o" "../src/helloworld.c"
+Finished building: ../src/helloworld.c
+ 
+Building file: ../src/main.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/main.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/main.d" -MT"src/main.o" -o "src/main.o" "../src/main.c"
+Finished building: ../src/main.c
+ 
+Building file: ../src/platform.c
+Invoking: ARM v8 gcc compiler
+aarch64-none-elf-gcc -Wall -O0 -g3 -c -fmessage-length=0 -MT"src/platform.o" -I/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bspinclude/include -MMD -MP -MF"src/platform.d" -MT"src/platform.o" -o "src/platform.o" "../src/platform.c"
+Finished building: ../src/platform.c
+ 
+Building target: full_system_test_v0.elf
+Invoking: ARM v8 gcc linker
+aarch64-none-elf-gcc -Wl,-T -Wl,../src/lscript.ld -L/home/zhou/Desktop/validation_1/vitis/full_system_v0/export/full_system_v0/sw/full_system_v0/standalone_domain/bsplib/lib -o "full_system_test_v0.elf" ./src/test/matrix_utils.o  ./src/drivers/accelerator.o ./src/drivers/datamover_wrapper.o ./src/drivers/sys_intr.o  ./src/helloworld.o ./src/main.o ./src/platform.o   -Wl,--start-group,-lxil,-lgcc,-lc,--end-group
+Finished building target: full_system_test_v0.elf
+ 
+Invoking: ARM v8 Print Size
+aarch64-none-elf-size full_system_test_v0.elf  |tee "full_system_test_v0.elf.size"
+   text	   data	    bss	    dec	    hex	filename
+  49111	   3848	  37773	  90732	  1626c	full_system_test_v0.elf
+Finished building: full_system_test_v0.elf.size
+ 
+
+09:42:44 Build Finished (took 474ms)
+
