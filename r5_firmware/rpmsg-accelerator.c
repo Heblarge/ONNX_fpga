@@ -121,7 +121,7 @@ static void rpmsg_log_print(const char *fmt, ...) {
     char buffer[256];
     va_list args;
 
-    if (!g_log_ept.rpdev) return;  // 日志端点未创建，跳过
+    if (!g_log_ept.rdev) return;  // 日志端点未创建，跳过
 
     va_start(args, fmt);
     int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
@@ -530,7 +530,7 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
         return -1;
     }
 
-    LPRINTF("RPMsg accelerator endpoint created successfully (addr=%d, dst=%d)\n", g_lept.addr, g_lept.dest);
+    LPRINTF("RPMsg accelerator endpoint created successfully (addr=%d)\n", g_lept.addr);
 
     // 创建日志端点 (用于将R5日志发送到A53)
     LPRINTF("Creating log endpoint...\n");
