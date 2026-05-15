@@ -233,6 +233,11 @@ int fpga_send_instruction(fpga_driver_t* driver, const fpga_instruction_t* inst)
  * 等待 FPGA 完成
  * 注意: 当前硬件可能没有状态寄存器，这里使用固定延迟
  *
+ * 等待时间计算：
+ * - 32x32 矩阵约需 500us（裸机测试验证）
+ * - 512x512 矩阵计算量是 32x32 的 256 倍
+ * - 保守估计：500us * 256 * 2 (安全裕量) = 256ms
+ *
  * TODO: 添加 FPGA 状态寄存器，改为轮询方式
  */
 int fpga_wait_completion(fpga_driver_t* driver, int timeout_us) {
@@ -240,10 +245,12 @@ int fpga_wait_completion(fpga_driver_t* driver, int timeout_us) {
         return -1;
     }
 
+    // 使用传入的超时时间，如果为0则使用默认值
+    // 默认等待 200ms，足以应对 512x512 矩阵
+    int wait_time = (timeout_us > 0) ? timeout_us : 200000;
+
     // 简单延迟等待
-    // 根据矩阵大小估算：512x512 矩阵加法约需 1-5ms
-    // 这里使用保守估计 10ms
-    usleep_range(10000, 15000);  // 等待 10-15ms
+    usleep_range(wait_time, wait_time + 5000);
 
     return 0;
 }

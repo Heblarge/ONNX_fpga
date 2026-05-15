@@ -53,16 +53,8 @@ static int32_t app_gic_initialize(void)
 		return XST_FAILURE;
 	}
 
-	/* Only associate interrupt needed to this CPU */
-	for (int_id = 32U; int_id<XSCUGIC_MAX_NUM_INTR_INPUTS;int_id=int_id+4U) {
-		target_cpu = XScuGic_DistReadReg(&xInterruptController,
-						XSCUGIC_SPI_TARGET_OFFSET_CALC(int_id));
-		/* Remove current CPU from interrupt target register */
-		target_cpu &= ~mask_cpu_id;
-		XScuGic_DistWriteReg(&xInterruptController,
-					XSCUGIC_SPI_TARGET_OFFSET_CALC(int_id), target_cpu);
-	}
-	XScuGic_InterruptMaptoCpu(&xInterruptController, XPAR_CPU_ID, IPI_IRQ_VECT_ID);
+	// 注意：不要修改中断目标寄存器，这会阻止其他中断到达 CPU
+	// 裸机测试代码中没有这部分，所以我们移除它
 
 	/*
 	 * Register the interrupt handler to the hardware interrupt handling
@@ -83,6 +75,9 @@ static int32_t app_gic_initialize(void)
 	XScuGic_Connect(&xInterruptController, IPI_IRQ_VECT_ID,
 			(Xil_ExceptionHandler)&metal_xlnx_irq_isr,
 			(void *)IPI_IRQ_VECT_ID);
+
+	/* Enable IPI interrupt for RPMsg communication */
+	XScuGic_Enable(&xInterruptController, IPI_IRQ_VECT_ID);
 
 	return 0;
 }

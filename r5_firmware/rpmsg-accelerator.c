@@ -14,6 +14,13 @@
 #include "xil_printf.h"
 #include "xil_cache.h"
 #include <openamp/open_amp.h>
+#include "xil_uart.h"
+
+// 确保STDOUT输出到正确的UART
+#ifdef STDOUT_BASEADDRESS
+#undef STDOUT_BASEADDRESS
+#endif
+#define STDOUT_BASEADDRESS 0xFF000000  // PSU_UART_0_BASEADDR
 #include <metal/alloc.h>
 #include <metal/log.h>
 #include "platform_info.h"
@@ -266,8 +273,9 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     LPRINTF("     DataMover: shm→FPGA SRAM...\n");
 
     // 搬运tileA: 共享内存 → sdpramA (从地址0开始)
+    // 注意：源地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 0,  // DataMover 0
-                       bufA->shm_phys_addr, sdpramA_base,
+                       bufA->shm_phys_addr + 64, sdpramA_base,
                        msg_inst->input0Shape0, rowLenA) != 0) {
         LPERROR("Failed to transfer tileA\n");
         return -1;
@@ -278,8 +286,9 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     }
 
     // 搬运tileB: 共享内存 → sdpramB (从地址0开始)
+    // 注意：源地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 1,  // DataMover 1
-                       bufB->shm_phys_addr, sdpramB_base,
+                       bufB->shm_phys_addr + 64, sdpramB_base,
                        msg_inst->input1Shape0, rowLenB) != 0) {
         LPERROR("Failed to transfer tileB\n");
         return -1;
@@ -325,8 +334,16 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     }
 
     // 6. 等待FPGA完成
-    if (fpga_wait_completion(&g_fpga, 1000) != 0) {
-        LPERROR("Instruction timeout\n");
+    // 根据矩阵大小动态计算等待时间
+    // 32x32 约 500us, 512x512 约 128ms (256倍)，使用安全裕量
+    uint32_t fpga_wait_us = 500 * (msg_inst->input0Shape0 / 32) * (msg_inst->input1Shape1 / 32);
+    if (fpga_wait_us < 500) fpga_wait_us = 500;       // 最小 500us
+    if (fpga_wait_us > 500000) fpga_wait_us = 500000; // 最大 500ms
+
+    LPRINTF("     Waiting for FPGA (wait_us=%u)...\n", fpga_wait_us);
+
+    if (fpga_wait_completion(&g_fpga, fpga_wait_us) != 0) {
+        LPERROR("Instruction timeout after %u us\n", fpga_wait_us);
         return -1;
     }
 
@@ -335,8 +352,9 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     // 7. DataMover: FPGA SRAM → 共享内存
     LPRINTF("     DataMover: FPGA SRAM→shm...\n");
 
+    // 注意：目标地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 2,  // DataMover 2
-                       sdpramZ_base, bufZ->shm_phys_addr,
+                       sdpramZ_base, bufZ->shm_phys_addr + 64,
                        msg_inst->input0Shape0, rowLenZ) != 0) {
         LPERROR("Failed to transfer result\n");
         return -1;
@@ -371,7 +389,7 @@ static int handle_instructions_data(void *data, size_t len) {
         return -1;
     }
 
-    LPRINTF("Received %u instructions\n", count);
+    LPRINTF("Received %u instructions (len=%zu)\n", count, len);
 
     // 检查消息长度
     size_t expected_size = sizeof(rpmsg_header_t) + count * sizeof(instruction_msg_t);
@@ -403,14 +421,23 @@ static int handle_instructions_data(void *data, size_t len) {
     }
 
     // 执行每条指令
+    int failed_count = 0;
     for (uint32_t i = 0; i < count; i++) {
         if (execute_single_instruction(&instructions[i]) != 0) {
             LPERROR("Failed to execute instruction %u\n", i);
+            failed_count++;
             // 继续执行后续指令
         }
     }
 
-    LPRINTF("All instructions completed\n");
+    LPRINTF("All instructions completed (failed=%d)\n", failed_count);
+
+    // 如果有任何指令失败，返回错误
+    if (failed_count > 0) {
+        LPERROR("Returning error due to %d failed instructions\n", failed_count);
+        return -1;
+    }
+
     return 0;
 }
 
@@ -427,6 +454,8 @@ static int rpmsg_endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len,
         return RPMSG_SUCCESS;
     }
 
+    LPRINTF("RPMsg callback: len=%zu, src=%u\n", len, src);
+
     /* 解析消息头 */
     if (len < sizeof(rpmsg_header_t)) {
         LPERROR("Message too short: %zu\n", len);
@@ -434,6 +463,7 @@ static int rpmsg_endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len,
     }
 
     rpmsg_header_t* header = (rpmsg_header_t*)data;
+    LPRINTF("RPMsg cmd=0x%x, count=%u\n", header->cmd, header->count);
 
     switch (header->cmd) {
         case RPMSG_CMD_INSTRUCTIONS_DATA:
@@ -441,12 +471,13 @@ static int rpmsg_endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len,
             if (handle_instructions_data(data, len) == 0) {
                 // 发送完成通知
                 uint32_t response = RPMSG_CMD_COMPLETION;
-                rpmsg_send(ept, &response, sizeof(response));
-                LPRINTF("Sent completion notification\n");
+                int ret = rpmsg_send(ept, &response, sizeof(response));
+                LPRINTF("Sent completion notification (ret=%d)\n", ret);
             } else {
                 // 发送错误通知
                 uint32_t response = RPMSG_CMD_ERROR;
                 rpmsg_send(ept, &response, sizeof(response));
+                LPRINTF("Sent error notification\n");
             }
             break;
 
@@ -485,10 +516,12 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
         return -1;
     }
 
-    LPRINTF("RPMsg accelerator endpoint created successfully\n");
+    LPRINTF("RPMsg accelerator endpoint created successfully (addr=%d, dst=%d)\n", g_lept.addr, g_lept.dest);
 
     // 等待远程处理器重置
+    LPRINTF("Waiting for vdev reset...\n");
     ret = platform_poll_on_vdev_reset(&arg);
+    LPRINTF("Vdev reset complete (ret=%d)\n", ret);
 
     return ret;
 }
@@ -498,7 +531,16 @@ int main(int argc, char *argv[]) {
     struct rpmsg_device *rpdev;
     int32_t ret;
 
-    LPRINTF("Starting FPGA Accelerator R5 Firmware...\n");
+    // 显式初始化UART (确保日志输出)
+    xil_printf("\n\n");  // 刷新输出
+    xil_printf("========================================\n");
+    xil_printf("Starting FPGA Accelerator R5 Firmware...\n");
+    xil_printf("========================================\n");
+
+    LPRINTF("LPRINTF test - if you see this, logging works!\n");
+
+    // 简单的启动延迟，确保UART输出被刷新
+    for (volatile int i = 0; i < 100000; i++);
 
     /* Initialize platform */
     ret = platform_init(argc, argv, &platform);
@@ -508,10 +550,13 @@ int main(int argc, char *argv[]) {
         while (1) ;
     }
 
+    LPRINTF("Platform initialized successfully\n");
+
     /*
      * 主循环：处理 RPMsg 通信
      */
     while (1) {
+        LPRINTF("Creating RPMsg virtio device...\n");
         rpdev = platform_create_rpmsg_vdev(platform, 0,
                                            VIRTIO_DEV_DEVICE,
                                            NULL, NULL);
@@ -521,8 +566,13 @@ int main(int argc, char *argv[]) {
             while (1) ;
         }
 
-        app(rpdev, platform);
+        LPRINTF("RPMsg virtio device created\n");
+
+        ret = app(rpdev, platform);
+        LPRINTF("App returned with ret=%d\n", ret);
+
         platform_release_rpmsg_vdev(rpdev, platform);
+        LPRINTF("RPMsg virtio device released\n");
     }
 
     /* Never reach here. */

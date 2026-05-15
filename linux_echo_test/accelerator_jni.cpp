@@ -266,8 +266,14 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     // 形状字段
     instNative->input0Shape0 = getIntField(env, instJava, "input0Shape0");
     instNative->input0Shape1 = getIntField(env, instJava, "input0Shape1");
-    // input1Shape0 (ROWB) 自动等于 input0Shape1 (COLA) - MatMul矩阵乘法定律
-    instNative->input1Shape0 = instNative->input0Shape1;
+    // input1Shape0 (ROWB) - 对于 ElementWise 操作等于 input0Shape0，对于 MatMul 等于 input0Shape1
+    // 检查操作类型来判断
+    uint8_t matOp = instNative->matrixOperation;
+    if (matOp == 1 || matOp == 2 || matOp == 3) {  // ElementWise: Add, Mul, Max
+        instNative->input1Shape0 = instNative->input0Shape0;  // 形状相同
+    } else {  // MatMul
+        instNative->input1Shape0 = instNative->input0Shape1;  // ROWB = COLA
+    }
     instNative->input1Shape1 = getIntField(env, instJava, "input1Shape1");
 
     // 移位字段
