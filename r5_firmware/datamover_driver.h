@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "xparameters.h"
+#include "xscugic.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +25,11 @@ extern "C" {
 #define DATA_MOVER_0_DEV_ID  XPAR_XDATA_MOVER_0_DEVICE_ID
 #define DATA_MOVER_1_DEV_ID  XPAR_XDATA_MOVER_1_DEVICE_ID
 #define DATA_MOVER_2_DEV_ID  XPAR_XDATA_MOVER_2_DEVICE_ID
+
+// Data Mover 中断 ID (从 vitis/full_system_test_v0/src/config.h 迁移)
+#define DATA_MOVER_0_INTR_ID  XPAR_FABRIC_DATA_MOVER_0_INTERRUPT_INTR
+#define DATA_MOVER_1_INTR_ID  XPAR_FABRIC_DATA_MOVER_1_INTERRUPT_INTR
+#define DATA_MOVER_2_INTR_ID  XPAR_FABRIC_DATA_MOVER_2_INTERRUPT_INTR
 
 // 超时计数
 #define TIMEOUT_COUNT       100000000
@@ -96,5 +103,8 @@ void DataMover2IntrHandler(void *CallbackRef);
 #ifdef __cplusplus
 }
 #endif
+
+// 外部 GIC 实例 (在 helper.c 中定义)
+extern XScuGic xInterruptController;
 
 #endif // DATAMOVER_DRIVER_H

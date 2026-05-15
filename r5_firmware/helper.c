@@ -23,7 +23,7 @@
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 
-static XScuGic xInterruptController;
+XScuGic xInterruptController;  // 改为全局，供 DataMover 驱动使用
 
 /* Interrupt Controller setup */
 static int32_t app_gic_initialize(void)

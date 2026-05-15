@@ -105,7 +105,7 @@ static const buffer_info_t g_buffer_pool[TOTAL_BUFFERS] = {
 
 static struct rpmsg_endpoint g_lept;
 static fpga_driver_t g_fpga;
-static datamover_driver_t g_datamover;
+datamover_driver_t g_datamover;
 static bool g_datamover_initialized = false;
 
 // 共享内存 metal I/O region（由 platform_info.c 注册）

@@ -110,6 +110,27 @@ int dmdrv_init(datamover_driver_t* driver) {
         return -1;
     }
 
+    // 注册 DataMover 中断到 GIC (从 vitis/full_system_test_v0/src/drivers/sys_intr.c 迁移)
+    xil_printf("[DM] Registering interrupts...\r\n");
+
+    // 连接 DataMover0 中断
+    XScuGic_Connect(&xInterruptController, DATA_MOVER_0_INTR_ID,
+                    (Xil_ExceptionHandler)DataMover0IntrHandler, &driver->dm0);
+    // 连接 DataMover1 中断
+    XScuGic_Connect(&xInterruptController, DATA_MOVER_1_INTR_ID,
+                    (Xil_ExceptionHandler)DataMover1IntrHandler, &driver->dm1);
+    // 连接 DataMover2 中断
+    XScuGic_Connect(&xInterruptController, DATA_MOVER_2_INTR_ID,
+                    (Xil_ExceptionHandler)DataMover2IntrHandler, &driver->dm2);
+
+    // 使能 DataMover 中断
+    XScuGic_Enable(&xInterruptController, DATA_MOVER_0_INTR_ID);
+    XScuGic_Enable(&xInterruptController, DATA_MOVER_1_INTR_ID);
+    XScuGic_Enable(&xInterruptController, DATA_MOVER_2_INTR_ID);
+
+    xil_printf("[DM] Interrupts registered: DM0=%d, DM1=%d, DM2=%d\r\n",
+            DATA_MOVER_0_INTR_ID, DATA_MOVER_1_INTR_ID, DATA_MOVER_2_INTR_ID);
+
     driver->initialized = true;
     xil_printf("[DM] All Data Movers initialized\n");
     return 0;
@@ -122,6 +143,16 @@ void dmdrv_cleanup(datamover_driver_t* driver) {
     if (driver == NULL) {
         return;
     }
+
+    // 禁用 DataMover 中断
+    XScuGic_Disable(&xInterruptController, DATA_MOVER_0_INTR_ID);
+    XScuGic_Disable(&xInterruptController, DATA_MOVER_1_INTR_ID);
+    XScuGic_Disable(&xInterruptController, DATA_MOVER_2_INTR_ID);
+
+    // 断开 DataMover 中断
+    XScuGic_Disconnect(&xInterruptController, DATA_MOVER_0_INTR_ID);
+    XScuGic_Disconnect(&xInterruptController, DATA_MOVER_1_INTR_ID);
+    XScuGic_Disconnect(&xInterruptController, DATA_MOVER_2_INTR_ID);
 
     // 禁用所有 Data Mover 的自动重启和中断
     for (int i = 0; i < 3; i++) {
