@@ -8,7 +8,13 @@
 #include "datamover_driver.h"
 #include "xil_printf.h"
 #include "xscugic.h"
+#include <metal/log.h>
+#include <metal/sys.h>
 #include <stdlib.h>
+
+// 日志宏 - 使用 libmetal，通过 RPMsg 发送到 A53
+#define DM_LOG(fmt, ...) ML_INFO(fmt, ##__VA_ARGS__)
+#define DM_ERR(fmt, ...) ML_ERR(fmt, ##__VA_ARGS__)
 
 // 全局驱动实例 (用于中断处理回调)
 static datamover_driver_t* g_driver = NULL;
@@ -54,16 +60,16 @@ static int init_one_datamover(XData_mover *InstancePtr, u16 DeviceId, const char
     int Status;
     XData_mover_Config *Config;
 
-    xil_printf("[DM] Initializing %s...\r\n", name);
+    DM_LOG("[DM] Initializing %s...\r\n", name);
     Config = XData_mover_LookupConfig(DeviceId);
     if (NULL == Config) {
-        xil_printf("[DM] Lookup config failed for %s\r\n", name);
+        DM_ERR("[DM] Lookup config failed for %s\r\n", name);
         return XST_FAILURE;
     }
 
     Status = XData_mover_CfgInitialize(InstancePtr, Config);
     if (Status != XST_SUCCESS) {
-        xil_printf("[DM] CfgInitialize failed for %s\r\n", name);
+        DM_ERR("[DM] CfgInitialize failed for %s\r\n", name);
         return XST_FAILURE;
     }
 
@@ -71,7 +77,7 @@ static int init_one_datamover(XData_mover *InstancePtr, u16 DeviceId, const char
     XData_mover_InterruptGlobalEnable(InstancePtr);
     XData_mover_InterruptEnable(InstancePtr, 0x3);
 
-    xil_printf("[DM] %s initialized successfully\r\n", name);
+    DM_LOG("[DM] %s initialized successfully\r\n", name);
     return XST_SUCCESS;
 }
 
@@ -111,7 +117,7 @@ int dmdrv_init(datamover_driver_t* driver) {
     }
 
     // 注册 DataMover 中断到 GIC (从 vitis/full_system_test_v0/src/drivers/sys_intr.c 迁移)
-    xil_printf("[DM] Registering interrupts...\r\n");
+    DM_LOG("[DM] Registering interrupts...\r\n");
 
     // 连接 DataMover0 中断
     XScuGic_Connect(&xInterruptController, DATA_MOVER_0_INTR_ID,
@@ -128,11 +134,11 @@ int dmdrv_init(datamover_driver_t* driver) {
     XScuGic_Enable(&xInterruptController, DATA_MOVER_1_INTR_ID);
     XScuGic_Enable(&xInterruptController, DATA_MOVER_2_INTR_ID);
 
-    xil_printf("[DM] Interrupts registered: DM0=%d, DM1=%d, DM2=%d\r\n",
+    DM_LOG("[DM] Interrupts registered: DM0=%d, DM1=%d, DM2=%d\r\n",
             DATA_MOVER_0_INTR_ID, DATA_MOVER_1_INTR_ID, DATA_MOVER_2_INTR_ID);
 
     driver->initialized = true;
-    xil_printf("[DM] All Data Movers initialized\n");
+    DM_LOG("[DM] All Data Movers initialized\n");
     return 0;
 }
 
@@ -162,7 +168,7 @@ void dmdrv_cleanup(datamover_driver_t* driver) {
 
     driver->initialized = false;
     g_driver = NULL;
-    xil_printf("[DM] Data Mover driver cleaned up\n");
+    DM_LOG("[DM] Data Mover driver cleaned up\n");
 }
 
 /**
@@ -172,12 +178,12 @@ int dmdrv_transfer(datamover_driver_t* driver, int index,
                    uint64_t src_addr, uint64_t dst_addr,
                    uint32_t rows, uint32_t row_len) {
     if (driver == NULL || !driver->initialized) {
-        xil_printf("[DM] ERROR: Driver not initialized\n");
+        DM_ERR("[DM] ERROR: Driver not initialized\n");
         return -1;
     }
 
     if (index < 0 || index >= 3) {
-        xil_printf("[DM] ERROR: Invalid index %d\n", index);
+        DM_ERR("[DM] ERROR: Invalid index %d\n", index);
         return -1;
     }
 
@@ -189,7 +195,7 @@ int dmdrv_transfer(datamover_driver_t* driver, int index,
     u32 timeout = TIMEOUT_COUNT;
     while (!XData_mover_IsReady(instance) && timeout--) {
         if (timeout == 0) {
-            xil_printf("[DM] ERROR: %s not ready\r\n", name);
+            DM_ERR("[DM] ERROR: %s not ready\r\n", name);
             return XST_FAILURE;
         }
     }
@@ -210,7 +216,7 @@ int dmdrv_transfer(datamover_driver_t* driver, int index,
     // 启动传输
     XData_mover_Start(instance);
 
-    xil_printf("[DM] %s: 0x%llx -> 0x%llx (%dx%d bytes)\r\n",
+    DM_LOG("[DM] %s: 0x%llx -> 0x%llx (%dx%d bytes)\r\n",
                name, src_addr, dst_addr, rows, row_len);
 
     return 0;
@@ -234,15 +240,15 @@ int dmdrv_wait_complete(datamover_driver_t* driver, int index) {
     u32 timeout = TIMEOUT_COUNT;
     while (!(*done_flag) && timeout--) {
         if (timeout % 10000000 == 0) {
-            xil_printf("[DM] %s still in progress...\r\n", name);
+            DM_LOG("[DM] %s still in progress...\r\n", name);
         }
     }
 
     if (!(*done_flag)) {
-        xil_printf("[DM] ERROR: %s timeout\r\n", name);
+        DM_ERR("[DM] ERROR: %s timeout\r\n", name);
         return XST_FAILURE;
     }
 
-    xil_printf("[DM] %s completed\r\n", name);
+    DM_LOG("[DM] %s completed\r\n", name);
     return 0;
 }

@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include "xil_cache.h"
+#include "xil_printf.h"
 #include <openamp/open_amp.h>
 #include <metal/alloc.h>
 #include <metal/log.h>
@@ -29,12 +30,34 @@
 #define RPMSG_CMD_INSTRUCTIONS_DATA 0x02   // 直接发送指令数据
 #define RPMSG_CMD_COMPLETION          0x03  // 计算完成
 #define RPMSG_CMD_ERROR               0x04  // 错误通知
+#define RPMSG_CMD_LOG                 0x01  // 日志消息
+extern char *get_rsc_trace_info(uint32_t *len);
 
+/* Global trace buffer offset - shared by all trace_print calls */
+static uint32_t trace_offset = 0;
+
+void trace_print(const char *msg) {
+    uint32_t len;
+    char *buf = get_rsc_trace_info(&len);
+    if (!buf) return;
+    uint32_t start = trace_offset;
+    while (*msg && trace_offset < len - 1) {
+        buf[trace_offset++] = *msg++;
+    }
+    buf[trace_offset] = '\0';
+    Xil_DCacheFlushRange((UINTPTR)(buf + start), trace_offset - start + 1);
+}
 // RPMsg 消息头
 typedef struct {
     uint32_t cmd;       // 命令类型
     uint32_t count;     // 指令数量
 } __attribute__((packed)) rpmsg_header_t;
+
+// 日志消息结构（带前缀标识）
+typedef struct {
+    uint32_t cmd;       // RPMSG_CMD_LOG
+    char log_text[240]; // 日志文本（限制在240字节以内，保证总长度<=256）
+} __attribute__((packed)) rpmsg_log_message_t;
 
 // 指令数组最大长度
 #define MAX_INSTRUCTIONS 256
@@ -104,7 +127,6 @@ static const buffer_info_t g_buffer_pool[TOTAL_BUFFERS] = {
 // ==================== 全局变量 ====================
 
 static struct rpmsg_endpoint g_lept;        // 主通信端点
-static struct rpmsg_endpoint g_log_ept;     // 日志端点
 static fpga_driver_t g_fpga;
 datamover_driver_t g_datamover;
 static bool g_datamover_initialized = false;
@@ -113,28 +135,44 @@ static bool g_datamover_initialized = false;
 // 用于正确访问 A53-R5 共享内存中的 buffer 状态标志
 extern struct metal_device *get_shared_mem_device(void);
 
-// ==================== 日志通道配置 ====================
-#define LOG_CHANNEL_NAME "rpmsg-log-channel"
-
-// RPMsg 日志输出函数
-static void rpmsg_log_print(const char *fmt, ...) {
-    char buffer[256];
+// ==================== Metal Log Handler ====================
+/**
+ * 自定义 libmetal log handler，通过主 RPMsg 通道发送日志到 A53
+ */
+static void metal_rpmsg_log_handler(enum metal_log_level level,
+                                    const char *format, ...) {
+    rpmsg_log_message_t log_msg;
     va_list args;
+    static int call_count = 0;
+    static int send_count = 0;
 
-    if (!g_log_ept.rdev) return;  // 日志端点未创建，跳过
+    call_count++;
 
-    va_start(args, fmt);
-    int len = vsnprintf(buffer, sizeof(buffer), fmt, args);
+    // 检查端点是否已创建
+    if (!g_lept.rdev) {
+        return;  // 端点未就绪，丢弃日志
+    }
+
+    log_msg.cmd = RPMSG_CMD_LOG;
+
+    // 格式化日志文本
+    va_start(args, format);
+    int len = vsnprintf(log_msg.log_text, sizeof(log_msg.log_text), format, args);
     va_end(args);
 
-    if (len > 0) {
-        rpmsg_send(&g_log_ept, buffer, len);
+    if (len > 0 && len < (int)sizeof(log_msg.log_text)) {
+        // 发送日志消息
+        int ret = rpmsg_send(&g_lept, &log_msg, sizeof(uint32_t) + len + 1);
+        if (ret == 0) {
+            send_count++;
+        }
     }
 }
 
-// 使用 RPMsg 日志的 LPRINTF
-#define LPRINTF(fmt, ...) rpmsg_log_print("[R5] " fmt, ##__VA_ARGS__)
-#define LPERROR(fmt, ...) LPRINTF("ERROR: " fmt, ##__VA_ARGS__)
+// 日志宏定义 - 使用 libmetal 的 log 宏
+// 这些宏会调用 metal_rpmsg_log_handler（如果已注册）
+#define LPRINTF(fmt, ...) metal_info(fmt, ##__VA_ARGS__)
+#define LPERROR(fmt, ...) metal_err(fmt, ##__VA_ARGS__)
 
 // ==================== 前向声明 ====================
 static const buffer_info_t* get_buffer_info(int bufferId);
@@ -462,6 +500,16 @@ static int rpmsg_endpoint_cb(struct rpmsg_endpoint *ept, void *data, size_t len,
     (void)priv;
     (void)src;
 
+    // 测试消息：收到 0xFFFFFFFF 时发送日志响应
+    if (len == sizeof(uint32_t) && *(uint32_t *)data == 0xFFFFFFFF) {
+        rpmsg_log_message_t test_log;
+        test_log.cmd = RPMSG_CMD_LOG;
+        snprintf(test_log.log_text, sizeof(test_log.log_text),
+                 "[R5] PONG - RPMsg communication is working!\n");
+        rpmsg_send(ept, &test_log, sizeof(uint32_t) + strlen(test_log.log_text) + 1);
+        return RPMSG_SUCCESS;
+    }
+
     /* 检查关闭消息 */
     if (*(uint32_t *)data == SHUTDOWN_MSG) {
         LPRINTF("Shutdown message received\n");
@@ -518,7 +566,7 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
     arg.rpdev = rdev;
     arg.rproc = priv;
 
-    LPRINTF("Creating rpmsg endpoint\n");
+    xil_printf("[R5] Creating rpmsg endpoint\n");
 
     // 创建 RPMsg 端点
     ret = rpmsg_create_ept(&g_lept, rdev, ept_name,
@@ -526,21 +574,17 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
                            &rpmsg_endpoint_cb,
                            &rpmsg_service_unbind);
     if (ret != 0) {
-        LPERROR("Failed to create endpoint\n");
+        xil_printf("[R5] ERROR: Failed to create endpoint\n");
         return -1;
     }
 
-    LPRINTF("RPMsg accelerator endpoint created successfully (addr=%d)\n", g_lept.addr);
+    xil_printf("[R5] RPMsg accelerator endpoint created successfully (addr=%d)\n", g_lept.addr);
 
-    // 创建日志端点 (用于将R5日志发送到A53)
-    LPRINTF("Creating log endpoint...\n");
-    ret = rpmsg_create_ept(&g_log_ept, rdev, LOG_CHANNEL_NAME,
-                           0x401, RPMSG_ADDR_ANY, NULL, NULL);
-    if (ret != 0) {
-        LPRINTF("Warning: Failed to create log endpoint, logs may not be visible\n");
-    } else {
-        LPRINTF("Log endpoint created successfully (addr=%d)\n", g_log_ept.addr);
-    }
+    // 注册自定义 metal log handler，将日志通过 RPMsg 发送到 A53
+    metal_set_log_handler(metal_rpmsg_log_handler);
+    metal_set_log_level(METAL_LOG_DEBUG);
+
+    xil_printf("[R5] Metal log handler registered\n");
 
     // 等待远程处理器重置
     LPRINTF("Waiting for vdev reset...\n");
@@ -551,42 +595,50 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
 }
 
 int main(int argc, char *argv[]) {
+    /* FIRST LINE: Direct physical address write, no dependencies */
+    volatile char *tbuf = (volatile char *)0x41914dac;
+    tbuf[0] = 'M';
+    tbuf[1] = '\0';
+    Xil_DCacheFlushRange((UINTPTR)tbuf, 2);
+
     void *platform = NULL;
     struct rpmsg_device *rpdev;
     int32_t ret;
+    uint32_t tlen;
+    char *tb;
 
-    // 初始化日志（需要在platform_init之后才能工作）
     /* Initialize platform */
     ret = platform_init(argc, argv, &platform);
     if (ret != 0) {
-        LPERROR("Failed to initialize platform\n");
+        xil_printf("[R5] ERROR: Failed to initialize platform\n");
         platform_cleanup(platform);
         while (1) ;
     }
 
-    LPRINTF("Platform initialized successfully\n");
+    xil_printf("[R5] Platform initialized successfully\n");
 
     /*
      * 主循环：处理 RPMsg 通信
      */
     while (1) {
-        LPRINTF("Creating RPMsg virtio device...\n");
+    	trace_print(">> before create_virtio\n");
         rpdev = platform_create_rpmsg_vdev(platform, 0,
                                            VIRTIO_DEV_DEVICE,
                                            NULL, NULL);
+        trace_print(">> after create_virtio\n");
         if (!rpdev) {
-            LPERROR("Failed to create rpmsg virtio device\n");
+        	LPRINTF("[R5] ERROR: Failed to create rpmsg virtio device\n");
             platform_cleanup(platform);
             while (1) ;
         }
 
-        LPRINTF("RPMsg virtio device created\n");
+        xil_printf("[R5] RPMsg virtio device created\n");
 
         ret = app(rpdev, platform);
-        LPRINTF("App returned with ret=%d\n", ret);
+        xil_printf("[R5] App returned with ret=%d\n", ret);
 
         platform_release_rpmsg_vdev(rpdev, platform);
-        LPRINTF("RPMsg virtio device released\n");
+        xil_printf("[R5] RPMsg virtio device released\n");
     }
 
     /* Never reach here. */

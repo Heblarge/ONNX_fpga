@@ -8,8 +8,14 @@
 #include "fpga_driver.h"
 #include "xil_io.h"
 #include "xil_printf.h"
+#include <metal/log.h>
+#include <metal/sys.h>
 #include <string.h>
 #include <unistd.h>
+
+// 日志宏 - 使用 libmetal，通过 RPMsg 发送到 A53
+#define FPGA_LOG(fmt, ...) ML_INFO(fmt, ##__VA_ARGS__)
+#define FPGA_ERR(fmt, ...) ML_ERR(fmt, ##__VA_ARGS__)
 
 #define usleep_range(us_min, us_max) usleep((us_min + us_max) / 2)
 
@@ -47,17 +53,17 @@ int fpga_init(fpga_driver_t* driver) {
     driver->cache_base = (volatile uint32_t*)CACHE_CTRL;
 
     if (driver->instr_base == NULL) {
-        xil_printf("[FPGA] ERROR: Failed to map instruction registers\n");
+        FPGA_ERR("[FPGA] ERROR: Failed to map instruction registers\n");
         return -1;
     }
 
     if (driver->cache_base == NULL) {
-        xil_printf("[FPGA] ERROR: Failed to map cache controller\n");
+        FPGA_ERR("[FPGA] ERROR: Failed to map cache controller\n");
         return -1;
     }
 
     driver->initialized = true;
-    xil_printf("[FPGA] Driver initialized: instr=0x%08x, cache=0x%08x\n",
+    FPGA_LOG("[FPGA] Driver initialized: instr=0x%08x, cache=0x%08x\n",
                INSTR_BASEADDR, CACHE_CTRL);
     return 0;
 }
@@ -74,7 +80,7 @@ void fpga_cleanup(fpga_driver_t* driver) {
         fpga_reset(driver);
         driver->initialized = false;
     }
-    xil_printf("[FPGA] Driver cleaned up\n");
+    FPGA_LOG("[FPGA] Driver cleaned up\n");
 }
 
 /**
@@ -152,7 +158,7 @@ void fpga_write_instruction(volatile uint32_t *base, uint8_t *cmd) {
     // 触发指令执行
     Xil_Out32((uintptr_t)base + INSTR_FIRE_OFFSET, 0x1);
 
-    xil_printf("[FPGA] Instruction written and fired\n");
+    FPGA_LOG("[FPGA] Instruction written and fired\n");
 }
 
 /**
@@ -166,7 +172,7 @@ void fpga_configure_cache(fpga_driver_t* driver, uint16_t cycle_a, uint16_t cycl
     Xil_Out32((uintptr_t)driver->cache_base + CACHE_A_LIFECYCLE_OFFSET, cycle_a);
     Xil_Out32((uintptr_t)driver->cache_base + CACHE_B_LIFECYCLE_OFFSET, cycle_b);
 
-    xil_printf("[FPGA] Cache configured: A=%u cycles, B=%u cycles\n", cycle_a, cycle_b);
+    FPGA_LOG("[FPGA] Cache configured: A=%u cycles, B=%u cycles\n", cycle_a, cycle_b);
 }
 
 /**
@@ -189,7 +195,7 @@ void fpga_convert_instruction(const instruction_msg_t* msg, fpga_instruction_t* 
     inst->shiftLeft_B = msg->shiftLeft_B;
 
     // 打印调试信息
-    xil_printf("[FPGA] Convert: UID=%d, op=%d, shapes=(%d,%d)x(%d,%d), shifts=(%d,%d)\n",
+    FPGA_LOG("[FPGA] Convert: UID=%d, op=%d, shapes=(%d,%d)x(%d,%d), shifts=(%d,%d)\n",
                inst->UID, inst->matrixOperation,
                inst->input0Shape0, inst->input0Shape1,
                inst->input1Shape0, inst->input1Shape1,
@@ -201,7 +207,7 @@ void fpga_convert_instruction(const instruction_msg_t* msg, fpga_instruction_t* 
  */
 int fpga_send_instruction(fpga_driver_t* driver, const fpga_instruction_t* inst) {
     if (driver == NULL || !driver->initialized || inst == NULL) {
-        xil_printf("[FPGA] ERROR: Invalid driver or instruction\n");
+        FPGA_ERR("[FPGA] ERROR: Invalid driver or instruction\n");
         return -1;
     }
 
@@ -263,7 +269,7 @@ void fpga_reset(fpga_driver_t* driver) {
         return;
     }
 
-    xil_printf("[FPGA] Resetting...\n");
+    FPGA_LOG("[FPGA] Resetting...\n");
 
     // 触发复位 (如果有复位寄存器)
     // Xil_Out32((uintptr_t)driver->instr_base + INSTR_FIRE_OFFSET, 0x0);

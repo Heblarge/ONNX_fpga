@@ -58,10 +58,19 @@ typedef struct {
     uint32_t count;     // 指令数量
 } __attribute__((packed)) rpmsg_header_t;
 
+// 日志消息结构（与 R5 侧保持一致）
+typedef struct {
+    uint32_t cmd;       // RPMSG_CMD_LOG
+    char log_text[240]; // 日志文本
+} __attribute__((packed)) rpmsg_log_message_t;
+
 #define MAX_INSTRUCTIONS 256  // 单次发送最大指令数
 
 // RPMsg 命令 (使用 rpmsg_comm.h 中的定义)
+#define RPMSG_CMD_LOG                 0x01  // 日志消息
 #define RPMSG_CMD_INSTRUCTIONS_DATA 0x02  // 直接发送指令数据
+#define RPMSG_CMD_COMPLETION          0x03  // 计算完成
+#define RPMSG_CMD_ERROR               0x04  // 错误通知
 #define RPMSG_CMD_QUERY_STATUS      0x05  // 查询状态
 #define RPMSG_CMD_WRITE_DDR         0x06  // 写入 DDR
 #define RPMSG_CMD_READ_DDR          0x07  // 读取 DDR
@@ -105,7 +114,6 @@ static struct {
     // RPMsg 状态
     int ctrl_fd;       // 控制设备文件描述符
     int ept_fd;        // 端点设备文件描述符
-    int log_ept_fd;    // 日志端点设备文件描述符
     bool rpmsg_initialized;
 
     // 共享内存状态
@@ -113,15 +121,28 @@ static struct {
     void* mmap_addrs[MAX_SHM_BLOCKS];   // mmap 后的虚拟地址
     bool shm_initialized;
     pthread_mutex_t mutex;
+
+    // 日志读取线程
+    pthread_t log_thread;
+    bool log_thread_running;
+
+    // 完成状态（由 log_reader_thread 设置，nativeWaitForCompletion 等待）
+    volatile int completion_result;  // 0=pending, 1=success, -1=error
+    pthread_mutex_t completion_mutex;
+    pthread_cond_t completion_cond;
 } g_state = {
     .ctrl_fd = -1,
     .ept_fd = -1,
-    .log_ept_fd = -1,
     .rpmsg_initialized = false,
     .mem_fd = -1,
     .mmap_addrs = {NULL},
     .shm_initialized = false,
-    .mutex = PTHREAD_MUTEX_INITIALIZER
+    .mutex = PTHREAD_MUTEX_INITIALIZER,
+    .log_thread = 0,
+    .log_thread_running = false,
+    .completion_result = 0,
+    .completion_mutex = PTHREAD_MUTEX_INITIALIZER,
+    .completion_cond = PTHREAD_COND_INITIALIZER
 };
 
 // ========== 缓冲区状态定义 ==========
@@ -139,41 +160,51 @@ static void dcache_flush(void* addr, size_t size);
 static void dcache_invalidate(void* addr, size_t size);
 static volatile uint32_t* get_buffer_status_addr(int bufferId);
 
-// ========== 日志读取线程 ==========
+// ========== RPMsg 辅助函数 ==========
 
-#define LOG_BUFFER_SIZE 4096
-
-static void* rpmsg_log_reader(void* arg) {
+/**
+ * 日志读取线程 - 唯一的 RPMsg 读取点
+ * - 处理 LOG 消息：直接打印
+ * - 处理 COMPLETION/ERROR 消息：存入全局变量并通知等待线程
+ */
+static void* log_reader_thread(void* arg) {
     (void)arg;
-    char buffer[LOG_BUFFER_SIZE];
-    fd_set readfds;
-    struct timeval tv;
+    uint8_t buf[512];
 
-    printf("[JNI] Log reader thread started (fd=%d)\n", g_state.log_ept_fd);
+    printf("[JNI] Log reader thread started\n");
+    fflush(stdout);
 
-    while (g_state.log_ept_fd >= 0) {
-        FD_ZERO(&readfds);
-        FD_SET(g_state.log_ept_fd, &readfds);
-        tv.tv_sec = 1;
-        tv.tv_usec = 0;
+    while (g_state.log_thread_running && g_state.ept_fd >= 0) {
+        struct pollfd pfd = {g_state.ept_fd, POLLIN, 0};
+        if (poll(&pfd, 1, 500) <= 0) continue;
 
-        int ret = select(g_state.log_ept_fd + 1, &readfds, NULL, NULL, &tv);
-        if (ret < 0) {
-            if (errno == EINTR) continue;
-            perror("[JNI] Log reader select error");
-            break;
-        }
+        ssize_t n = read(g_state.ept_fd, buf, sizeof(buf) - 1);
+        if (n < (ssize_t)sizeof(uint32_t)) continue;
 
-        if (ret > 0 && FD_ISSET(g_state.log_ept_fd, &readfds)) {
-            ssize_t n = read(g_state.log_ept_fd, buffer, sizeof(buffer) - 1);
-            if (n > 0) {
-                buffer[n] = '\0';
-                printf("%s", buffer);  // 直接输出到stdout
-                fflush(stdout);
-            } else if (n < 0 && errno != EAGAIN) {
-                perror("[JNI] Log reader read error");
-                break;
-            }
+        buf[n] = '\0';
+        uint32_t cmd = *(uint32_t*)buf;
+
+        if (cmd == RPMSG_CMD_LOG && n > (ssize_t)sizeof(uint32_t)) {
+            char* log_text = (char*)(buf + sizeof(uint32_t));
+            printf("[R5] %s", log_text);
+            fflush(stdout);
+
+        } else if (cmd == RPMSG_CMD_COMPLETION) {
+            pthread_mutex_lock(&g_state.completion_mutex);
+            g_state.completion_result = 1;
+            pthread_cond_signal(&g_state.completion_cond);
+            pthread_mutex_unlock(&g_state.completion_mutex);
+            printf("[JNI] Received completion notification\n");
+
+        } else if (cmd == RPMSG_CMD_ERROR) {
+            pthread_mutex_lock(&g_state.completion_mutex);
+            g_state.completion_result = -1;
+            pthread_cond_signal(&g_state.completion_cond);
+            pthread_mutex_unlock(&g_state.completion_mutex);
+            fprintf(stderr, "[JNI] Received error notification from R5\n");
+
+        } else {
+            printf("[JNI] Log reader: unknown cmd 0x%x, len=%zd\n", cmd, n);
         }
     }
 
@@ -181,35 +212,33 @@ static void* rpmsg_log_reader(void* arg) {
     return NULL;
 }
 
-// ========== RPMsg 辅助函数 ==========
-
 static int rpmsg_create_ept(int rpfd, struct rpmsg_endpoint_info *eptinfo) {
     return ioctl(rpfd, RPMSG_CREATE_EPT_IOCTL, eptinfo);
 }
 
-static char* get_rpmsg_ept_dev_name(const char* rpmsg_char_name,
-                                     const char* ept_name,
+static char* get_rpmsg_ept_dev_name(const char* ept_name,
                                      char* ept_dev_name) {
     char sys_rpmsg_ept_name_path[128];
     char svc_name[64];
-    char *sys_rpmsg_path = "/sys/class/rpmsg";
+    const char *sys_rpmsg_path = "/sys/class/rpmsg";
     FILE *fp;
     int i;
     int ept_name_len;
 
     for (i = 0; i < 128; i++) {
-        sprintf(sys_rpmsg_ept_name_path, "%s/%s/rpmsg%d/name",
-                sys_rpmsg_path, rpmsg_char_name, i);
+        // 直接在 /sys/class/rpmsg/ 下查找 rpmsgX 设备
+        sprintf(sys_rpmsg_ept_name_path, "%s/rpmsg%d/name", sys_rpmsg_path, i);
         if (access(sys_rpmsg_ept_name_path, F_OK) < 0)
             continue;
         fp = fopen(sys_rpmsg_ept_name_path, "r");
         if (!fp) continue;
         fgets(svc_name, sizeof(svc_name), fp);
         fclose(fp);
+        // 移除换行符
+        svc_name[strcspn(svc_name, "\n")] = 0;
         ept_name_len = strlen(ept_name);
-        if (ept_name_len > sizeof(svc_name))
-            ept_name_len = sizeof(svc_name);
-        if (!strncmp(svc_name, ept_name, ept_name_len)) {
+        if (strlen(svc_name) >= ept_name_len &&
+            !strncmp(svc_name, ept_name, ept_name_len)) {
             sprintf(ept_dev_name, "rpmsg%d", i);
             return ept_dev_name;
         }
@@ -266,8 +295,8 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     instNative->UID = getIntField(env, instJava, "UID");
 
     // 转换 matrixOperation (String → uint8_t)
-    jstring matOp = getStringField(env, instJava, "matrixOperation");
-    const char* matOpStr = getStringUTFChars(env, matOp);
+    jstring matOpStrObj = getStringField(env, instJava, "matrixOperation");
+    const char* matOpStr = getStringUTFChars(env, matOpStrObj);
     if (strcmp(matOpStr, "matmul") == 0) {
         instNative->matrixOperation = 0;
     } else if (strcmp(matOpStr, "elementadd") == 0) {
@@ -279,7 +308,7 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     } else {
         instNative->matrixOperation = 0;
     }
-    releaseStringUTFChars(env, matOp, matOpStr);
+    releaseStringUTFChars(env, matOpStrObj, matOpStr);
 
     instNative->shiftLeft_AfterMatrixOperation = (int8_t)getIntField(env, instJava, "shiftLeft_AfterMatrixOperation");
     instNative->doTranspose = (uint8_t)getBooleanField(env, instJava, "doTranspose");
@@ -403,59 +432,26 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeInit
         return JNI_TRUE;
     }
 
-    const char* rpmsg_dev = env->GetStringUTFChars(rpmsgDevice, NULL);
+    // 禁用 stdout 缓冲，确保日志立即输出
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
+    (void)rpmsgDevice;  // 参数未使用，直接从 /dev/rpmsg_ctrl0 打开
+
     char fpath[256];
-    char rpmsg_char_name[16];
-    const char *RPMSG_BUS_SYS = "/sys/bus/rpmsg";
 
-    printf("[JNI] Initializing RPMsg: %s\n", rpmsg_dev);
+    printf("[JNI] Initializing RPMsg via rpmsg_ctrl0\n");
+    fflush(stdout);
 
-    // 检查设备是否存在
-    sprintf(fpath, "%s/devices/%s", RPMSG_BUS_SYS, rpmsg_dev);
-    if (access(fpath, F_OK)) {
-        fprintf(stderr, "[JNI] RPMsg device not found: %s\n", fpath);
-        env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
+    // 直接打开 rpmsg_ctrl 设备（端点会在 ioctl 创建后自动出现）
+    g_state.ctrl_fd = open("/dev/rpmsg_ctrl0", O_RDWR | O_NONBLOCK);
+    if (g_state.ctrl_fd < 0) {
+        perror("[JNI] Failed to open /dev/rpmsg_ctrl0");
         pthread_mutex_unlock(&g_state.mutex);
         return JNI_FALSE;
     }
-
-    // 查找控制设备
-    DIR *dir;
-    struct dirent *ent;
-    sprintf(fpath, "%s/devices/%s/rpmsg", RPMSG_BUS_SYS, rpmsg_dev);
-    dir = opendir(fpath);
-    if (dir == NULL) {
-        fprintf(stderr, "[JNI] Failed to open rpmsg directory\n");
-        env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
-        pthread_mutex_unlock(&g_state.mutex);
-        return JNI_FALSE;
-    }
-
-    bool found = false;
-    while ((ent = readdir(dir)) != NULL) {
-        if (!strncmp(ent->d_name, "rpmsg_ctrl", strlen("rpmsg_ctrl"))) {
-            sprintf(fpath, "/dev/%s", ent->d_name);
-            g_state.ctrl_fd = open(fpath, O_RDWR | O_NONBLOCK);
-            if (g_state.ctrl_fd < 0) {
-                fprintf(stderr, "[JNI] Failed to open rpmsg ctrl device\n");
-                closedir(dir);
-                env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
-                pthread_mutex_unlock(&g_state.mutex);
-                return JNI_FALSE;
-            }
-            sprintf(rpmsg_char_name, "%s", ent->d_name);
-            found = true;
-            break;
-        }
-    }
-    closedir(dir);
-
-    if (!found) {
-        fprintf(stderr, "[JNI] rpmsg_ctrl device not found\n");
-        env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
-        pthread_mutex_unlock(&g_state.mutex);
-        return JNI_FALSE;
-    }
+    printf("[JNI] Opened /dev/rpmsg_ctrl0 (fd=%d)\n", g_state.ctrl_fd);
+    fflush(stdout);
 
     // 创建端点
     struct rpmsg_endpoint_info eptinfo;
@@ -467,18 +463,16 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeInit
         fprintf(stderr, "[JNI] Failed to create RPMsg endpoint\n");
         close(g_state.ctrl_fd);
         g_state.ctrl_fd = -1;
-        env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
         pthread_mutex_unlock(&g_state.mutex);
         return JNI_FALSE;
     }
 
     // 获取端点设备路径
     char ept_dev_name[16];
-    if (!get_rpmsg_ept_dev_name(rpmsg_char_name, eptinfo.name, ept_dev_name)) {
+    if (!get_rpmsg_ept_dev_name(eptinfo.name, ept_dev_name)) {
         fprintf(stderr, "[JNI] Failed to get endpoint device name\n");
         close(g_state.ctrl_fd);
         g_state.ctrl_fd = -1;
-        env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
         pthread_mutex_unlock(&g_state.mutex);
         return JNI_FALSE;
     }
@@ -489,48 +483,23 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeInit
         perror("[JNI] Failed to open rpmsg endpoint device");
         close(g_state.ctrl_fd);
         g_state.ctrl_fd = -1;
-        env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
         pthread_mutex_unlock(&g_state.mutex);
         return JNI_FALSE;
     }
 
-    // ========== 创建日志端点 ==========
-    struct rpmsg_endpoint_info log_eptinfo;
-    strcpy(log_eptinfo.name, "rpmsg-log-channel");
-    log_eptinfo.src = 0;
-    log_eptinfo.dst = 0x401;  // R5侧日志端点地址
-
-    if (rpmsg_create_ept(g_state.ctrl_fd, &log_eptinfo) != 0) {
-        fprintf(stderr, "[JNI] Warning: Failed to create log endpoint, R5 logs may not be visible\n");
-    } else {
-        // 查找日志端点设备路径
-        char log_ept_dev_name[16];
-        if (get_rpmsg_ept_dev_name(rpmsg_char_name, log_eptinfo.name, log_ept_dev_name)) {
-            sprintf(fpath, "/dev/%s", log_ept_dev_name);
-            g_state.log_ept_fd = open(fpath, O_RDWR | O_NONBLOCK);
-            if (g_state.log_ept_fd >= 0) {
-                printf("[JNI] Log endpoint opened: %s (fd=%d)\n", fpath, g_state.log_ept_fd);
-
-                // 启动日志读取线程
-                pthread_t log_tid;
-                if (pthread_create(&log_tid, NULL, rpmsg_log_reader, NULL) == 0) {
-                    pthread_detach(log_tid);
-                    printf("[JNI] Log reader thread started\n");
-                } else {
-                    perror("[JNI] Failed to create log reader thread");
-                    close(g_state.log_ept_fd);
-                    g_state.log_ept_fd = -1;
-                }
-            } else {
-                perror("[JNI] Failed to open log endpoint device");
-            }
-        }
-    }
-
-    g_state.rpmsg_initialized = true;  // 【修复】initialized → rpmsg_initialized
-    env->ReleaseStringUTFChars(rpmsgDevice, rpmsg_dev);
+    g_state.rpmsg_initialized = true;
 
     printf("[JNI] RPMsg initialized: ctrl=%d, ept=%d\n", g_state.ctrl_fd, g_state.ept_fd);
+
+    // 启动日志读取线程
+    g_state.log_thread_running = true;
+    if (pthread_create(&g_state.log_thread, NULL, log_reader_thread, NULL) == 0) {
+        printf("[JNI] Log reader thread started\n");
+    } else {
+        perror("[JNI] Failed to create log reader thread");
+        g_state.log_thread_running = false;
+    }
+
     pthread_mutex_unlock(&g_state.mutex);
     return JNI_TRUE;
 }
@@ -541,12 +510,16 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeShut
 
     pthread_mutex_lock(&g_state.mutex);
 
+    // 停止日志读取线程
+    if (g_state.log_thread_running) {
+        g_state.log_thread_running = false;
+        pthread_mutex_unlock(&g_state.mutex);  // 解锁以允许线程退出
+        pthread_join(g_state.log_thread, NULL);
+        pthread_mutex_lock(&g_state.mutex);
+        printf("[JNI] Log reader thread stopped\n");
+    }
+
     if (g_state.rpmsg_initialized) {
-        // 关闭日志端点
-        if (g_state.log_ept_fd >= 0) {
-            close(g_state.log_ept_fd);
-            g_state.log_ept_fd = -1;
-        }
         if (g_state.ept_fd >= 0) {
             close(g_state.ept_fd);
             g_state.ept_fd = -1;
@@ -555,7 +528,7 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeShut
             close(g_state.ctrl_fd);
             g_state.ctrl_fd = -1;
         }
-        g_state.rpmsg_initialized = false;  // 【修复】initialized → rpmsg_initialized
+        g_state.rpmsg_initialized = false;
     }
 
     pthread_mutex_unlock(&g_state.mutex);
@@ -571,6 +544,17 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeSend
     }
 
     pthread_mutex_lock(&g_state.mutex);
+
+    // 首次发送时，先发送测试消息确认 R5 已准备好
+    static int first_send = 1;
+    if (first_send) {
+        uint32_t test_msg = 0xFFFFFFFF;
+        ssize_t test_sent = write(g_state.ept_fd, &test_msg, sizeof(test_msg));
+        printf("[JNI] First send: test message 0x%x (%zd bytes)\n", test_msg, test_sent);
+        fflush(stdout);
+        usleep(50000);  // 等待 50ms 让 R5 处理
+        first_send = 0;
+    }
 
     jint actualCount = (count < MAX_INSTRUCTIONS) ? count : MAX_INSTRUCTIONS;
 
@@ -631,38 +615,37 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeWaitForCompletion(
     JNIEnv* env, jobject thiz, jint timeoutMs) {
 
-    if (!g_state.rpmsg_initialized || g_state.ept_fd < 0) {  // 【修复】initialized → rpmsg_initialized
+    if (!g_state.rpmsg_initialized || g_state.ept_fd < 0) {
         return JNI_FALSE;
     }
 
-    struct pollfd pfd;
-    pfd.fd = g_state.ept_fd;
-    pfd.events = POLLIN;
-    pfd.revents = 0;
-
-    int elapsed = 0;
-    const int pollInterval = 10;  // 10ms
-
-    while (elapsed < timeoutMs) {
-        int ret = poll(&pfd, 1, pollInterval);
-        if (ret < 0) {
-            fprintf(stderr, "[JNI] Poll failed: %s\n", strerror(errno));
-            return JNI_FALSE;
-        }
-        if (ret > 0 && (pfd.revents & POLLIN)) {
-            // 读取响应
-            uint32_t response;
-            ssize_t n = read(g_state.ept_fd, &response, sizeof(response));
-            if (n == sizeof(response) && response == 0x03) {  // RPMSG_CMD_COMPLETION
-                printf("[JNI] Received completion notification\n");
-                return JNI_TRUE;
-            }
-        }
-        elapsed += pollInterval;
+    // 计算超时时间
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    ts.tv_sec += timeoutMs / 1000;
+    ts.tv_nsec += (timeoutMs % 1000) * 1000000;
+    if (ts.tv_nsec >= 1000000000) {
+        ts.tv_sec++;
+        ts.tv_nsec -= 1000000000;
     }
 
-    fprintf(stderr, "[JNI] Timeout waiting for completion\n");
-    return JNI_FALSE;
+    pthread_mutex_lock(&g_state.completion_mutex);
+    g_state.completion_result = 0;  // 重置状态
+
+    while (g_state.completion_result == 0) {
+        int ret = pthread_cond_timedwait(&g_state.completion_cond,
+                                         &g_state.completion_mutex, &ts);
+        if (ret == ETIMEDOUT) {
+            pthread_mutex_unlock(&g_state.completion_mutex);
+            fprintf(stderr, "[JNI] Timeout waiting for completion\n");
+            return JNI_FALSE;
+        }
+    }
+
+    int result = g_state.completion_result;
+    pthread_mutex_unlock(&g_state.completion_mutex);
+
+    return result == 1 ? JNI_TRUE : JNI_FALSE;
 }
 
 /**

@@ -31,7 +31,7 @@ static char* get_rpmsg_ept_dev_name(const char* rpmsg_char_name,
                                      char* ept_dev_name) {
     char sys_rpmsg_ept_name_path[128];
     char svc_name[64];
-    char *sys_rpmsg_path = "/sys/class/rpmsg";
+    const char *sys_rpmsg_path = "/sys/class/rpmsg";
     FILE *fp;
     int i;
     int ept_name_len;

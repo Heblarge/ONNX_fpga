@@ -32,7 +32,8 @@
 #ifndef RPMSG_NO_IPI
 #define _rproc_wait() __asm volatile("wfi")
 #endif /* !RPMSG_NO_IPI */
-
+extern char *get_rsc_trace_info(uint32_t *len);
+extern void trace_print(const char *msg);  /* Defined in rpmsg-accelerator.c */
 /* Polling information used by remoteproc operations.
  */
 static metal_phys_addr_t poll_phys_addr = POLL_BASE_ADDR;
@@ -79,6 +80,9 @@ extern const struct remoteproc_ops zynqmp_r5_a53_proc_ops;
 /* RPMsg virtio shared buffer pool */
 static struct rpmsg_virtio_shm_pool shpool;
 
+/* RPMsg virtio device - static allocation to avoid use-after-free */
+static struct rpmsg_virtio_device rpmsg_vdev_inst;
+
 static struct remoteproc *
 platform_create_proc(uint32_t proc_index, uint32_t rsc_index)
 {
@@ -86,10 +90,15 @@ platform_create_proc(uint32_t proc_index, uint32_t rsc_index)
 	uint32_t rsc_size;
 	int32_t ret;
 	metal_phys_addr_t pa;
+	uint32_t tlen;
+	char *tbuf;
 
 	(void) proc_index;
 	rsc_table = get_resource_table(rsc_index, &rsc_size);
 	ML_INFO("rsc_table, rsc_size = %#x, %#x\r\n", rsc_table, rsc_size);
+
+	/* Get trace buffer for debugging */
+	tbuf = get_rsc_trace_info(&tlen);
 
 	/* Register IPI device */
 	if (metal_register_generic_device(&kick_device))
@@ -120,9 +129,18 @@ platform_create_proc(uint32_t proc_index, uint32_t rsc_index)
 				NULL, SHARED_MEM_SIZE,
 				NORM_NSHARED_NCACHE|PRIV_RW_USER_RW,
 				NULL);
-
+	/* Mark: before set_rsc_table */
+	if (tbuf) {
+		memcpy(tbuf, "A\0", 2);
+		Xil_DCacheFlushRange((UINTPTR)tbuf, 2);
+	}
 	/* parse resource table to remoteproc */
 	ret = remoteproc_set_rsc_table(&rproc_inst, rsc_table, rsc_size);
+	/* Mark: after set_rsc_table */
+	if (tbuf) {
+		memcpy(tbuf, "B\0", 2);
+		Xil_DCacheFlushRange((UINTPTR)tbuf, 2);
+	}
 	if (ret != 0) {
 		ML_ERR("Failed to initialize remoteproc\r\n");
 		remoteproc_remove(&rproc_inst);
@@ -146,7 +164,22 @@ int32_t platform_init(int32_t argc, char *argv[], void **platform)
 		return -EINVAL;
 	}
 	/* Initialize HW system components */
+	/* PI1: platform_init entry */
+	uint32_t tlen;
+	char *tbuf;
+	tbuf = get_rsc_trace_info(&tlen);
+	if (tbuf) {
+		memcpy(tbuf, "PI1\0", 4);
+		Xil_DCacheFlushRange((UINTPTR)tbuf, 4);
+	}
+
 	init_system();
+
+	/* PI2: after init_system */
+	if (tbuf) {
+		memcpy(tbuf + 4, "PI2\0", 4);
+		Xil_DCacheFlushRange((UINTPTR)(tbuf + 4), 4);
+	}
 
 	if (argc >= 2) {
 		proc_id = strtoul(argv[1], NULL, 0);
@@ -157,6 +190,12 @@ int32_t platform_init(int32_t argc, char *argv[], void **platform)
 	}
 
 	ML_INFO("platform_create_proc()\r\n");
+
+	/* PI3: before platform_create_proc */
+	if (tbuf) {
+		memcpy(tbuf + 8, "PI3\0", 4);
+		Xil_DCacheFlushRange((UINTPTR)(tbuf + 8), 4);
+	}
 	rproc = platform_create_proc(proc_id, rsc_id);
 	if (!rproc) {
 		ML_ERR("Failed to create remoteproc device.\r\n");
@@ -180,9 +219,7 @@ platform_create_rpmsg_vdev(void *platform, uint32_t vdev_index,
 	int32_t ret;
 	struct  rpmsg_device *ret_rpmsg_dev=NULL;
 
-	rpmsg_vdev = metal_allocate_memory(sizeof(*rpmsg_vdev));
-	if (!rpmsg_vdev)
-		return NULL;
+	rpmsg_vdev = &rpmsg_vdev_inst;  /* static allocation, never freed */
 	shbuf_io = remoteproc_get_io_with_pa(rproc, SHARED_MEM_PA);
 	if (!shbuf_io)
 		goto err1;
@@ -214,15 +251,11 @@ platform_create_rpmsg_vdev(void *platform, uint32_t vdev_index,
 
 	ret_rpmsg_dev = rpmsg_virtio_get_rpmsg_device(rpmsg_vdev);
 
-	if (rpmsg_vdev != NULL){
-		metal_free_memory(rpmsg_vdev);
-	}
 
 	return ret_rpmsg_dev;
 err2:
 	remoteproc_remove_virtio(rproc, vdev);
 err1:
-	metal_free_memory(rpmsg_vdev);
 	return NULL;
 }
 
