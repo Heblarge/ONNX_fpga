@@ -2,9 +2,8 @@ package org.forwarder.backend.impls.HWAccelerated.opsets.v13.ops;
 
 import Accelerator.AcceleratorSimInterface;
 import Accelerator.InstJavaTODO;
-// import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedOperator; // (Unused)
 import org.forwarder.backend.impls.HWAccelerated.opsets.HWAcceleratedQuantizedOperator;
-import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratedCollector;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorCollector;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
@@ -14,15 +13,18 @@ import org.onnx4j.model.Graph;
 import org.onnx4j.model.graph.Node;
 import org.onnx4j.opsets.domain.aiOnnx.v13.ops.ExpV13;
 import org.onnx4j.opsets.operator.OperatorOutputs;
+import org.onnx4j.SharedMemoryPool;
+import org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI;
 
 import static org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorTileUtils.*;
-
-// import java.util.List; // (Unused)
 
 public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implements ExpV13 {
 
     private static final int HW_DIM_MULTIPLE = 16;
     private static final int MAX_HW_ELEMENTS = 512 * 512;
+
+    // Buffer池管理 - 跟踪下一个可用的buffer ID
+    private int nextBufferId = 0;
 
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
@@ -81,8 +83,6 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
     private INDArray exp3D(INDArray x, long sourceShift, long targetInputShift, long targetOutputShift, String nodeName) {
         long[] shape = x.shape();
         long batch = shape[0];
-        // long rows = shape[1]; // (Unused)
-        // long cols = shape[2]; // (Unused)
 
         INDArray result = Nd4j.createUninitialized(x.dataType(), shape, 'c');
 
@@ -93,6 +93,93 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
         }
 
         return result;
+    }
+
+    /**
+     * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
+     * 使用预分配buffer池方案（与 R5 侧 g_buffer_pool 对齐）
+     */
+    private long[][] executeOnHardware(long[][] tileA, long[][] tileB, InstJavaTODO instruction,
+                                       int rows, int cols) {
+
+        // 1. 获取共享内存池
+        SharedMemoryPool pool = SharedMemoryPool.getInstance();
+        if (!pool.isInitialized()) {
+            throw new IllegalStateException("SharedMemoryPool not initialized");
+        }
+
+        // 2. 计算大小并分配固定 buffer（与 R5 侧对齐）
+        int sizeA = rows * cols * 4;
+        int sizeB = rows * cols * 4;
+        int sizeZ = rows * cols * 4;
+
+        int bufferIdA = pool.findNextFreeBuffer(nextBufferId);
+        if (bufferIdA < 0) {
+            throw new RuntimeException("No free buffer available for A");
+        }
+        SharedMemoryPool.BufferInfo infoA = pool.allocateBuffer(bufferIdA);
+
+        int bufferIdB = pool.findNextFreeBuffer(bufferIdA + 1);
+        if (bufferIdB < 0) {
+            pool.freeBuffer(bufferIdA);
+            throw new RuntimeException("No free buffer available for B");
+        }
+        SharedMemoryPool.BufferInfo infoB = pool.allocateBuffer(bufferIdB);
+
+        int bufferIdZ = pool.findNextFreeBuffer(bufferIdB + 1);
+        if (bufferIdZ < 0) {
+            pool.freeBuffer(bufferIdA);
+            pool.freeBuffer(bufferIdB);
+            throw new RuntimeException("No free buffer available for Z");
+        }
+        SharedMemoryPool.BufferInfo infoZ = pool.allocateBuffer(bufferIdZ);
+
+        nextBufferId = (bufferIdZ + 1) % 64;
+
+        try {
+            // 3. 写入数据（使用固定地址）
+            java.nio.ByteBuffer buffer = pool.mapBuffer(bufferIdA, sizeA);
+            buffer.order(java.nio.ByteOrder.nativeOrder());
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    buffer.putInt((int)tileA[i][j]);
+
+            buffer = pool.mapBuffer(bufferIdB, sizeB);
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    buffer.putInt((int)tileB[i][j]);
+
+            // 4. 设置bufferId
+            instruction.bufferIdA = bufferIdA;
+            instruction.bufferIdB = bufferIdB;
+            instruction.bufferIdZ = bufferIdZ;
+
+            // 5. 执行
+            HWAcceleratorJNI jni = HWAcceleratorJNI.getInstance();
+
+            jni.syncToDevice(infoA.blockId, infoA.offsetInBlock, sizeA);
+            jni.syncToDevice(infoB.blockId, infoB.offsetInBlock, sizeB);
+
+            if (!jni.executeInstructions(new InstJavaTODO[]{instruction})) {
+                throw new RuntimeException("FPGA execution failed");
+            }
+
+            jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
+
+            // 6. 读取结果
+            buffer = pool.mapBuffer(bufferIdZ, sizeZ);
+            long[][] result = new long[rows][cols];
+            for (int i = 0; i < rows; i++)
+                for (int j = 0; j < cols; j++)
+                    result[i][j] = buffer.getInt() & 0xFFFFFFFFL;
+
+            return result;
+        } finally {
+            // 7. 释放 buffer
+            pool.freeBuffer(bufferIdA);
+            pool.freeBuffer(bufferIdB);
+            pool.freeBuffer(bufferIdZ);
+        }
     }
 
     private INDArray expOnAccelerator(INDArray x, int rows, int cols, long sourceShift, long targetInputShift, long targetOutputShift, String nodeName) {
@@ -108,7 +195,6 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
             for (int j = 0; j < cols; j++) {
                 long valX = x.getLong(i, j);
                 fixedPointInput[i][j] = (preShiftAmount < 0) ? (valX << -preShiftAmount) : (valX >> preShiftAmount);
-
             }
         }
 
@@ -155,7 +241,8 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
 
             copyTileFromSource(tileA, fixedPointInput, rowOffset, 0, TILE_ROWS, cols);
 
-            long[][] tileResult = AcceleratorSimInterface.runRefOneInst(tileA, tileB, instruction);
+            // 使用硬件执行替代仿真
+            long[][] tileResult = executeOnHardware(tileA, tileB, instruction, TILE_ROWS, cols);
 
             copyTileToResult(hardwareResult, tileResult, rowOffset, 0, TILE_ROWS, cols);
 
@@ -170,7 +257,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
             }
         }
 
-        INDArray fianlOutput =  Nd4j.create(output, new long[]{rows, cols}, x.dataType());
+        INDArray fianlOutput = Nd4j.create(output, new long[]{rows, cols}, x.dataType());
 
         return fianlOutput;
     }
