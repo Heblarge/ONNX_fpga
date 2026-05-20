@@ -220,34 +220,28 @@ platform_create_rpmsg_vdev(void *platform, uint32_t vdev_index,
 	struct  rpmsg_device *ret_rpmsg_dev=NULL;
 
 	rpmsg_vdev = &rpmsg_vdev_inst;  /* static allocation, never freed */
-	shbuf_io = remoteproc_get_io_with_pa(rproc, SHARED_MEM_PA);
+    trace_print(">> create_virtio: get_io\n");
+    shbuf_io = remoteproc_get_io_with_pa(rproc, SHARED_MEM_PA);
+    if (!shbuf_io) goto err1;
 	if (!shbuf_io)
 		goto err1;
 	shbuf = metal_io_phys_to_virt(shbuf_io,
 				      SHARED_MEM_PA + SHARED_BUF_OFFSET);
 
-	ML_INFO("creating remoteproc virtio rproc %p\r\n", rproc);
-	/* TODO: can we have a wrapper for the following two functions? */
-	vdev = remoteproc_create_virtio(rproc, vdev_index, role, rst_cb);
-	if (!vdev) {
-		ML_ERR("failed remoteproc_create_virtio\r\n");
-		goto err1;
-	}
+    trace_print(">> create_virtio: create_virtio\n");
+    vdev = remoteproc_create_virtio(rproc, vdev_index, role, rst_cb);
+    if (!vdev) goto err1;
 
-	ML_INFO("initializing rpmsg shared buffer pool\r\n");
-	/* Only RPMsg virtio master needs to initialize the shared buffers pool */
-	rpmsg_virtio_init_shm_pool(&shpool, shbuf,
-				   (SHARED_MEM_SIZE - SHARED_BUF_OFFSET));
+    trace_print(">> create_virtio: init_shm_pool\n");
+    rpmsg_virtio_init_shm_pool(&shpool, shbuf,
+                               (SHARED_MEM_SIZE - SHARED_BUF_OFFSET));
 
-	ML_INFO("initializing rpmsg vdev\r\n");
+    trace_print(">> create_virtio: rpmsg_init_vdev\n");
 	/* RPMsg virtio device can set shared buffers pool argument to NULL */
-	ret =  rpmsg_init_vdev(rpmsg_vdev, vdev, ns_bind_cb,
-			       shbuf_io,
-			       &shpool);
-	if (ret != 0) {
-		ML_ERR("failed rpmsg_init_vdev\r\n");
-		goto err2;
-	}
+    ret = rpmsg_init_vdev(rpmsg_vdev, vdev, ns_bind_cb, shbuf_io, &shpool);
+    if (ret != 0) goto err2;
+
+    trace_print(">> create_virtio: done\n");
 
 	ret_rpmsg_dev = rpmsg_virtio_get_rpmsg_device(rpmsg_vdev);
 

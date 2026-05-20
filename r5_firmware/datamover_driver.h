@@ -59,11 +59,18 @@ typedef struct {
 } datamover_driver_t;
 
 /**
- * 初始化 Data Mover 驱动
+ * 初始化 Data Mover 驱动（不连接中断）
  * @param driver 驱动句柄
  * @return 0=成功, <0=失败
  */
 int dmdrv_init(datamover_driver_t* driver);
+
+/**
+ * 设置 DataMover 中断（在 dmdrv_init() 之后调用）
+ * @param driver 驱动句柄
+ * @return 0=成功, <0=失败
+ */
+int dmdrv_setup_interrupts(datamover_driver_t* driver);
 
 /**
  * 关闭 Data Mover 驱动
@@ -91,6 +98,7 @@ int dmdrv_transfer(datamover_driver_t* driver, int index,
  * @param index Data Mover 索引
  * @return 0=成功, <0=超时
  */
+
 int dmdrv_wait_complete(datamover_driver_t* driver, int index);
 
 /**

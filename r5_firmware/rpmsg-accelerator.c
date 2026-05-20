@@ -375,15 +375,21 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     if (cycle_b < 10) cycle_b = 10;
     if (cycle_b > 1000) cycle_b = 1000;
 
+    LPRINTF("     Before fpga_configure_cache (cycle_a=%u, cycle_b=%u)\n", cycle_a, cycle_b);
     fpga_configure_cache(&g_fpga, cycle_a, cycle_b);
+    LPRINTF("     After fpga_configure_cache\n");
 
     // 5. 转换指令格式并发送到FPGA
+    LPRINTF("     Before fpga_convert_instruction\n");
     fpga_convert_instruction(msg_inst, &fpga_inst);
+    LPRINTF("     After fpga_convert_instruction\n");
 
+    LPRINTF("     Before fpga_send_instruction\n");
     if (fpga_send_instruction(&g_fpga, &fpga_inst) != 0) {
         LPERROR("Failed to send instruction to FPGA\n");
         return -1;
     }
+    LPRINTF("     After fpga_send_instruction\n");
 
     // 6. 等待FPGA完成
     // 根据矩阵大小动态计算等待时间
@@ -455,21 +461,29 @@ static int handle_instructions_data(void *data, size_t len) {
 
     // 初始化 FPGA 驱动 (如果尚未初始化)
     if (!g_fpga.initialized) {
+        LPRINTF("About to call fpga_init...\n");
         if (fpga_init(&g_fpga) != 0) {
             LPERROR("Failed to initialize FPGA driver\n");
             return -1;
         }
+        LPRINTF("fpga_init returned successfully\n");
         // Cache 生命周期将在执行每条指令时动态配置
     }
 
     // 初始化 DataMover (如果尚未初始化)
     if (!g_datamover_initialized) {
+        LPRINTF("Initializing DataMover driver...\n");
         if (dmdrv_init(&g_datamover) != 0) {
             LPERROR("Failed to initialize DataMover driver\n");
             return -1;
         }
+        LPRINTF("Setting up DataMover interrupts...\n");
+        if (dmdrv_setup_interrupts(&g_datamover) != 0) {
+            LPERROR("Failed to setup DataMover interrupts\n");
+            return -1;
+        }
         g_datamover_initialized = true;
-        LPRINTF("DataMover driver initialized\n");
+        LPRINTF("DataMover driver fully initialized\n");
     }
 
     // 执行每条指令
@@ -590,23 +604,32 @@ int32_t app(struct rpmsg_device *rdev, void *priv) {
     LPRINTF("Waiting for vdev reset...\n");
     ret = platform_poll_on_vdev_reset(&arg);
     LPRINTF("Vdev reset complete (ret=%d)\n", ret);
+    /* ===== 出口清理 ===== */
+    // 1. 先恢复默认日志handler，避免后续log调用往已销毁的endpoint发送
+    metal_set_log_handler(metal_default_log_handler);
 
+    // 2. 注销endpoint
+    rpmsg_destroy_ept(&g_lept);
+
+    // 3. 清零g_lept，防止残留指针被误用
+    memset(&g_lept, 0, sizeof(g_lept));
     return ret;
 }
 
 int main(int argc, char *argv[]) {
     /* FIRST LINE: Direct physical address write, no dependencies */
-    volatile char *tbuf = (volatile char *)0x41914dac;
-    tbuf[0] = 'M';
-    tbuf[1] = '\0';
-    Xil_DCacheFlushRange((UINTPTR)tbuf, 2);
+
 
     void *platform = NULL;
     struct rpmsg_device *rpdev;
     int32_t ret;
     uint32_t tlen;
-    char *tb;
-
+    char *tb = get_rsc_trace_info(&tlen);
+    if (tb) {
+        tb[0] = 'M';
+        tb[1] = '\0';
+        Xil_DCacheFlushRange((UINTPTR)tb, 2);
+    }
     /* Initialize platform */
     ret = platform_init(argc, argv, &platform);
     if (ret != 0) {
@@ -621,6 +644,11 @@ int main(int argc, char *argv[]) {
      * 主循环：处理 RPMsg 通信
      */
     while (1) {
+        // 重置trace buffer，防止第二次启动时offset溢出
+        trace_offset = 0;
+        tb = get_rsc_trace_info(&tlen);
+        if (tb) memset(tb, 0, tlen);
+
     	trace_print(">> before create_virtio\n");
         rpdev = platform_create_rpmsg_vdev(platform, 0,
                                            VIRTIO_DEV_DEVICE,
@@ -633,12 +661,22 @@ int main(int argc, char *argv[]) {
         }
 
         xil_printf("[R5] RPMsg virtio device created\n");
-
         ret = app(rpdev, platform);
         xil_printf("[R5] App returned with ret=%d\n", ret);
 
         platform_release_rpmsg_vdev(rpdev, platform);
         xil_printf("[R5] RPMsg virtio device released\n");
+
+        /* ===== 驱动反初始化，防止第二次启动时驱动卡死 ===== */
+        if (g_datamover_initialized) {
+            dmdrv_cleanup(&g_datamover);
+            g_datamover_initialized = false;
+        }
+        if (g_fpga.initialized) {
+            fpga_cleanup(&g_fpga);
+        }
+
+        xil_printf("[R5] Drivers cleaned up, restarting loop...\n");
     }
 
     /* Never reach here. */

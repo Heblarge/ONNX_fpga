@@ -11,10 +11,10 @@
 #include <metal/log.h>
 #include <metal/sys.h>
 #include <stdlib.h>
-
+#include "xil_mpu.h"
 // 日志宏 - 使用 libmetal，通过 RPMsg 发送到 A53
-#define DM_LOG(fmt, ...) ML_INFO(fmt, ##__VA_ARGS__)
-#define DM_ERR(fmt, ...) ML_ERR(fmt, ##__VA_ARGS__)
+#define DM_LOG(fmt, ...) metal_info(fmt, ##__VA_ARGS__)
+#define DM_ERR(fmt, ...) metal_err(fmt, ##__VA_ARGS__)
 
 // 全局驱动实例 (用于中断处理回调)
 static datamover_driver_t* g_driver = NULL;
@@ -61,28 +61,48 @@ static int init_one_datamover(XData_mover *InstancePtr, u16 DeviceId, const char
     XData_mover_Config *Config;
 
     DM_LOG("[DM] Initializing %s...\r\n", name);
+    DM_LOG("[DM] Looking up config for DeviceId=%u\r\n", DeviceId);
+
     Config = XData_mover_LookupConfig(DeviceId);
     if (NULL == Config) {
-        DM_ERR("[DM] Lookup config failed for %s\r\n", name);
+        DM_ERR("[DM] Lookup config failed for %s (DeviceId=%u)\r\n", name, DeviceId);
         return XST_FAILURE;
     }
 
+    DM_LOG("[DM] Config found: Ctrl_r=0x%llx, Ctrl=0x%llx\r\n",
+           Config->Control_r_BaseAddress, Config->Control_BaseAddress);
+
+    DM_LOG("[DM] Calling CfgInitialize...\r\n");
     Status = XData_mover_CfgInitialize(InstancePtr, Config);
+    DM_LOG("[DM] CfgInitialize returned: %d\r\n", Status);
+
     if (Status != XST_SUCCESS) {
-        DM_ERR("[DM] CfgInitialize failed for %s\r\n", name);
+        DM_ERR("[DM] CfgInitialize failed for %s (status=%d)\r\n", name, Status);
         return XST_FAILURE;
     }
 
+    DM_LOG("[DM] === STEP 1: Before DisableAutoRestart ===\r\n");
+    DM_LOG("[DM] Calling DisableAutoRestart...\r\n");
     XData_mover_DisableAutoRestart(InstancePtr);
-    XData_mover_InterruptGlobalEnable(InstancePtr);
-    XData_mover_InterruptEnable(InstancePtr, 0x3);
+    DM_LOG("[DM] DisableAutoRestart DONE\r\n");
 
-    DM_LOG("[DM] %s initialized successfully\r\n", name);
+    DM_LOG("[DM] === STEP 2: Before InterruptGlobalEnable ===\r\n");
+    DM_LOG("[DM] Calling InterruptGlobalEnable...\r\n");
+    XData_mover_InterruptGlobalEnable(InstancePtr);
+    DM_LOG("[DM] InterruptGlobalEnable DONE\r\n");
+
+    DM_LOG("[DM] === STEP 3: Before InterruptEnable ===\r\n");
+    DM_LOG("[DM] Calling InterruptEnable...\r\n");
+    XData_mover_InterruptEnable(InstancePtr, 0x3);
+    DM_LOG("[DM] InterruptEnable DONE\r\n");
+
+    DM_LOG("[DM] === DataMover0 INIT COMPLETE ===\r\n");
     return XST_SUCCESS;
 }
 
 /**
- * 初始化 Data Mover 驱动
+ * 初始化 Data Mover 驱动（不连接中断，参考裸机代码）
+ * 中断连接应该在 dmdrv_setup_interrupts() 中单独完成
  */
 int dmdrv_init(datamover_driver_t* driver) {
     if (driver == NULL) {
@@ -91,6 +111,8 @@ int dmdrv_init(datamover_driver_t* driver) {
 
     memset(driver, 0, sizeof(datamover_driver_t));
     g_driver = driver;
+
+    DM_LOG("[DM] Initializing DataMover instances...\r\n");
 
     // 初始化 DataMover0
     driver->handles[0].instance = &driver->dm0;
@@ -116,18 +138,56 @@ int dmdrv_init(datamover_driver_t* driver) {
         return -1;
     }
 
-    // 注册 DataMover 中断到 GIC (从 vitis/full_system_test_v0/src/drivers/sys_intr.c 迁移)
-    DM_LOG("[DM] Registering interrupts...\r\n");
+    // 注意：中断连接移到 dmdrv_setup_interrupts() 中
+    // 这样可以确保 DataMover 完全初始化后再设置中断
+
+    driver->initialized = true;
+    DM_LOG("[DM] All Data Movers initialized (interrupts not yet connected)\n");
+    return 0;
+}
+
+/**
+ * 设置 DataMover 中断（在 dmdrv_init() 之后调用）
+ * 参考裸机代码 full_system_test_v0/src/drivers/sys_intr.c
+ */
+int dmdrv_setup_interrupts(datamover_driver_t* driver) {
+    if (driver == NULL || !driver->initialized) {
+        DM_ERR("[DM] ERROR: Driver not initialized\n");
+        return -1;
+    }
+
+    DM_LOG("[DM] Setting up interrupts...\r\n");
+
+    // 检查 GIC 是否已初始化
+    // IsReady 被设置为 XIL_COMPONENT_IS_READY (通常是 0x11111111，不是 1)
+    if (xInterruptController.IsReady == 0) {
+        DM_ERR("[DM] ERROR: GIC not initialized!\r\n");
+        return -1;
+    }
 
     // 连接 DataMover0 中断
-    XScuGic_Connect(&xInterruptController, DATA_MOVER_0_INTR_ID,
-                    (Xil_ExceptionHandler)DataMover0IntrHandler, &driver->dm0);
+    DM_LOG("[DM] Connecting DM0 interrupt (ID=%u)...\r\n", DATA_MOVER_0_INTR_ID);
+    if (XScuGic_Connect(&xInterruptController, DATA_MOVER_0_INTR_ID,
+                        (Xil_ExceptionHandler)DataMover0IntrHandler, &driver->dm0) != XST_SUCCESS) {
+        DM_ERR("[DM] Failed to connect DM0 interrupt\r\n");
+        return -1;
+    }
+
     // 连接 DataMover1 中断
-    XScuGic_Connect(&xInterruptController, DATA_MOVER_1_INTR_ID,
-                    (Xil_ExceptionHandler)DataMover1IntrHandler, &driver->dm1);
+    DM_LOG("[DM] Connecting DM1 interrupt (ID=%u)...\r\n", DATA_MOVER_1_INTR_ID);
+    if (XScuGic_Connect(&xInterruptController, DATA_MOVER_1_INTR_ID,
+                        (Xil_ExceptionHandler)DataMover1IntrHandler, &driver->dm1) != XST_SUCCESS) {
+        DM_ERR("[DM] Failed to connect DM1 interrupt\r\n");
+        return -1;
+    }
+
     // 连接 DataMover2 中断
-    XScuGic_Connect(&xInterruptController, DATA_MOVER_2_INTR_ID,
-                    (Xil_ExceptionHandler)DataMover2IntrHandler, &driver->dm2);
+    DM_LOG("[DM] Connecting DM2 interrupt (ID=%u)...\r\n", DATA_MOVER_2_INTR_ID);
+    if (XScuGic_Connect(&xInterruptController, DATA_MOVER_2_INTR_ID,
+                        (Xil_ExceptionHandler)DataMover2IntrHandler, &driver->dm2) != XST_SUCCESS) {
+        DM_ERR("[DM] Failed to connect DM2 interrupt\r\n");
+        return -1;
+    }
 
     // 使能 DataMover 中断
     XScuGic_Enable(&xInterruptController, DATA_MOVER_0_INTR_ID);
@@ -137,8 +197,6 @@ int dmdrv_init(datamover_driver_t* driver) {
     DM_LOG("[DM] Interrupts registered: DM0=%d, DM1=%d, DM2=%d\r\n",
             DATA_MOVER_0_INTR_ID, DATA_MOVER_1_INTR_ID, DATA_MOVER_2_INTR_ID);
 
-    driver->initialized = true;
-    DM_LOG("[DM] All Data Movers initialized\n");
     return 0;
 }
 

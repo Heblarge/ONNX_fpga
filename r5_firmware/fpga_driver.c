@@ -14,10 +14,9 @@
 #include <unistd.h>
 
 // 日志宏 - 使用 libmetal，通过 RPMsg 发送到 A53
-#define FPGA_LOG(fmt, ...) ML_INFO(fmt, ##__VA_ARGS__)
-#define FPGA_ERR(fmt, ...) ML_ERR(fmt, ##__VA_ARGS__)
+#define FPGA_LOG(fmt, ...) metal_info(fmt, ##__VA_ARGS__)
+#define FPGA_ERR(fmt, ...) metal_err(fmt, ##__VA_ARGS__)
 
-#define usleep_range(us_min, us_max) usleep((us_min + us_max) / 2)
 
 // ==================== 内部辅助函数 ====================
 
@@ -139,6 +138,8 @@ void fpga_make_instruction(
 void fpga_write_instruction(volatile uint32_t *base, uint8_t *cmd) {
     uint32_t dword_data[4] = {0};
 
+    FPGA_LOG("[FPGA] write_instruction: base=0x%08x\n", (uint32_t)base);
+
     // 将字节转换为 32-bit 字
     for (int i = 0; i < 4; i++) {
         for (int b = 0; b < 4; b++) {
@@ -149,11 +150,16 @@ void fpga_write_instruction(volatile uint32_t *base, uint8_t *cmd) {
         }
     }
 
+    FPGA_LOG("[FPGA] Writing dword_data: [0x%08x, 0x%08x, 0x%08x, 0x%08x]\n",
+             dword_data[0], dword_data[1], dword_data[2], dword_data[3]);
+
     // 写入 4 个寄存器
     base[0] = dword_data[0];
     base[1] = dword_data[1];
     base[2] = dword_data[2];
     base[3] = dword_data[3];
+
+    FPGA_LOG("[FPGA] Registers written, now firing...\n");
 
     // 触发指令执行
     Xil_Out32((uintptr_t)base + INSTR_FIRE_OFFSET, 0x1);
@@ -166,11 +172,22 @@ void fpga_write_instruction(volatile uint32_t *base, uint8_t *cmd) {
  */
 void fpga_configure_cache(fpga_driver_t* driver, uint16_t cycle_a, uint16_t cycle_b) {
     if (driver == NULL || !driver->initialized) {
+        FPGA_ERR("[FPGA] Cache config: driver not initialized\n");
         return;
     }
 
+    FPGA_LOG("[FPGA] Configuring cache: A=%u, B=%u, cache_base=0x%08x\n",
+             cycle_a, cycle_b, (uint32_t)driver->cache_base);
+
+    FPGA_LOG("[FPGA] Before writing cache A (addr=0x%08x, val=%u)\n",
+             (uint32_t)((uintptr_t)driver->cache_base + CACHE_A_LIFECYCLE_OFFSET), cycle_a);
     Xil_Out32((uintptr_t)driver->cache_base + CACHE_A_LIFECYCLE_OFFSET, cycle_a);
+    FPGA_LOG("[FPGA] After writing cache A\n");
+
+    FPGA_LOG("[FPGA] Before writing cache B (addr=0x%08x, val=%u)\n",
+             (uint32_t)((uintptr_t)driver->cache_base + CACHE_B_LIFECYCLE_OFFSET), cycle_b);
     Xil_Out32((uintptr_t)driver->cache_base + CACHE_B_LIFECYCLE_OFFSET, cycle_b);
+    FPGA_LOG("[FPGA] After writing cache B\n");
 
     FPGA_LOG("[FPGA] Cache configured: A=%u cycles, B=%u cycles\n", cycle_a, cycle_b);
 }
@@ -211,6 +228,8 @@ int fpga_send_instruction(fpga_driver_t* driver, const fpga_instruction_t* inst)
         return -1;
     }
 
+    FPGA_LOG("[FPGA] Sending instruction: instr_base=0x%08x\n", (uint32_t)driver->instr_base);
+
     // 组装 128-bit 指令
     uint8_t cmd_buffer[16];
     fpga_make_instruction(
@@ -229,8 +248,12 @@ int fpga_send_instruction(fpga_driver_t* driver, const fpga_instruction_t* inst)
         inst->shiftLeft_B
     );
 
+    FPGA_LOG("[FPGA] Instruction assembled, writing to hardware...\n");
+
     // 写入硬件并触发
     fpga_write_instruction(driver->instr_base, cmd_buffer);
+
+    FPGA_LOG("[FPGA] Instruction sent successfully\n");
 
     return 0;
 }
@@ -253,10 +276,18 @@ int fpga_wait_completion(fpga_driver_t* driver, int timeout_us) {
 
     // 使用传入的超时时间，如果为0则使用默认值
     // 默认等待 200ms，足以应对 512x512 矩阵
-    int wait_time = (timeout_us > 0) ? timeout_us : 200000;
+    int wait_us = (timeout_us > 0) ? timeout_us : 200000;
 
-    // 简单延迟等待
-    usleep_range(wait_time, wait_time + 5000);
+    FPGA_LOG("[FPGA] Waiting %d us for FPGA completion...\n", wait_us);
+
+    // R5 运行约 500MHz，每微秒约 500 个周期
+    // 使用忙等待循环代替 usleep（裸机环境可能不可用）
+    volatile uint32_t count = wait_us * 500 / 4;  // 除以4是循环开销估算
+    while (count--) {
+        __asm__ volatile("nop");
+    }
+
+    FPGA_LOG("[FPGA] Wait complete\n");
 
     return 0;
 }
@@ -274,5 +305,9 @@ void fpga_reset(fpga_driver_t* driver) {
     // 触发复位 (如果有复位寄存器)
     // Xil_Out32((uintptr_t)driver->instr_base + INSTR_FIRE_OFFSET, 0x0);
 
-    usleep_range(100, 200);
+    // 短暂延迟
+    volatile uint32_t count = 100 * 500 / 4;
+    while (count--) {
+        __asm__ volatile("nop");
+    }
 }

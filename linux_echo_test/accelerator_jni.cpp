@@ -804,53 +804,25 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeRead
 /**
  * ARM 数据缓存操作 - 刷新到内存
  * 确保A53写入的数据对R5/DataMover可见
+ *
+ * O_SYNC + MAP_SHARED 已保证一致性，只需内存屏障
  */
 static void dcache_flush(void* addr, size_t size) {
-    unsigned long start = (unsigned long)addr;
-    unsigned long end = start + size;
-    unsigned long line_size = 64;  // ARMv8 cache line size
-
-    // 按cache line对齐
-    start &= ~(line_size - 1);
-    end = (end + line_size - 1) & ~(line_size - 1);
-
-    for (unsigned long line = start; line < end; line += line_size) {
-        __asm__ volatile(
-            "dc cvac, %0"  // Clean to Point of Coherency
-            :
-            : "r"(line)
-            : "memory"
-        );
-    }
-
-    // 数据同步屏障
-    __asm__ volatile("dmb sy" ::: "memory");
+    (void)addr;  // 未使用
+    (void)size;  // 未使用
+    __sync_synchronize();
 }
 
 /**
  * ARM 数据缓存操作 - 失效
  * 确保读取R5/DataMover写入的最新数据
+ *
+ * 使用msync替代dc ivac，避免用户态执行特权指令导致SIGILL
  */
 static void dcache_invalidate(void* addr, size_t size) {
-    unsigned long start = (unsigned long)addr;
-    unsigned long end = start + size;
-    unsigned long line_size = 64;
-
-    // 按cache line对齐
-    start &= ~(line_size - 1);
-    end = (end + line_size - 1) & ~(line_size - 1);
-
-    for (unsigned long line = start; line < end; line += line_size) {
-        __asm__ volatile(
-            "dc ivac, %0"  // Invalidate to Point of Coherency
-            :
-            : "r"(line)
-            : "memory"
-        );
-    }
-
-    // 数据同步屏障
-    __asm__ volatile("dmb sy" ::: "memory");
+    // mmap的内存用msync同步，内核会处理cache一致性
+    msync(addr, size, MS_SYNC | MS_INVALIDATE);
+    __sync_synchronize();
 }
 
 // ========== 缓冲区状态管理（通过共享内存标志位同步） ==========

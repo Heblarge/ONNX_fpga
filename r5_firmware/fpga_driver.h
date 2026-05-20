@@ -26,7 +26,7 @@ extern "C" {
 #define INSTR_FIRE_OFFSET    0x10        // 触发指令执行
 
 // Cache 控制器
-#define CACHE_CTRL           0x80001000  // XPAR_MATRIXCACHECONTROLLER_0_BASEADDR
+#define CACHE_CTRL           0x80010000  // XPAR_DUALCACHE_CTRL_0_BASEADDR
 #define CACHE_A_LIFECYCLE_OFFSET 0x00    // Cache A 生命周期配置
 #define CACHE_B_LIFECYCLE_OFFSET 0x04    // Cache B 生命周期配置
 
