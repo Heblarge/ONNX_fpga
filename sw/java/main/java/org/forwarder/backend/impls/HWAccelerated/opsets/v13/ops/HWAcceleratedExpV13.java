@@ -97,7 +97,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
 
     /**
      * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
-     * 使用预分配buffer池方案（与 R5 侧 g_buffer_pool 对齐）
+     * 使用block池方案（与 R5 侧 g_block_pool 对齐）
      */
     private long[][] executeOnHardware(long[][] tileA, long[][] tileB, InstJavaTODO instruction,
                                        int rows, int cols) {
@@ -113,46 +113,46 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
         int sizeB = rows * cols * 4;
         int sizeZ = rows * cols * 4;
 
-        int bufferIdA = pool.findNextFreeBuffer(nextBufferId);
-        if (bufferIdA < 0) {
-            throw new RuntimeException("No free buffer available for A");
+        int blockIdA = pool.findNextFreeBlock(nextBufferId);
+        if (blockIdA < 0) {
+            throw new RuntimeException("No free block available for A");
         }
-        SharedMemoryPool.BufferInfo infoA = pool.allocateBuffer(bufferIdA);
+        SharedMemoryPool.BlockInfo infoA = pool.allocateBlock(blockIdA);
 
-        int bufferIdB = pool.findNextFreeBuffer(bufferIdA + 1);
-        if (bufferIdB < 0) {
-            pool.freeBuffer(bufferIdA);
-            throw new RuntimeException("No free buffer available for B");
+        int blockIdB = pool.findNextFreeBlock(blockIdA + 1);
+        if (blockIdB < 0) {
+            pool.freeBlock(blockIdA);
+            throw new RuntimeException("No free block available for B");
         }
-        SharedMemoryPool.BufferInfo infoB = pool.allocateBuffer(bufferIdB);
+        SharedMemoryPool.BlockInfo infoB = pool.allocateBlock(blockIdB);
 
-        int bufferIdZ = pool.findNextFreeBuffer(bufferIdB + 1);
-        if (bufferIdZ < 0) {
-            pool.freeBuffer(bufferIdA);
-            pool.freeBuffer(bufferIdB);
-            throw new RuntimeException("No free buffer available for Z");
+        int blockIdZ = pool.findNextFreeBlock(blockIdB + 1);
+        if (blockIdZ < 0) {
+            pool.freeBlock(blockIdA);
+            pool.freeBlock(blockIdB);
+            throw new RuntimeException("No free block available for Z");
         }
-        SharedMemoryPool.BufferInfo infoZ = pool.allocateBuffer(bufferIdZ);
+        SharedMemoryPool.BlockInfo infoZ = pool.allocateBlock(blockIdZ);
 
-        nextBufferId = (bufferIdZ + 1) % 64;
+        nextBufferId = (blockIdZ + 1) % 4;
 
         try {
             // 3. 写入数据（使用固定地址）
-            java.nio.ByteBuffer buffer = pool.mapBuffer(bufferIdA, sizeA);
+            java.nio.ByteBuffer buffer = pool.mapBlock(blockIdA, sizeA);
             buffer.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
                     buffer.putInt((int)tileA[i][j]);
 
-            buffer = pool.mapBuffer(bufferIdB, sizeB);
+            buffer = pool.mapBlock(blockIdB, sizeB);
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
                     buffer.putInt((int)tileB[i][j]);
 
-            // 4. 设置bufferId
-            instruction.bufferIdA = bufferIdA;
-            instruction.bufferIdB = bufferIdB;
-            instruction.bufferIdZ = bufferIdZ;
+            // 4. 设置blockId
+            instruction.blockIdA = blockIdA;
+            instruction.blockIdB = blockIdB;
+            instruction.blockIdZ = blockIdZ;
 
             // 5. 执行
             HWAcceleratorJNI jni = HWAcceleratorJNI.getInstance();
@@ -167,7 +167,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
             jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
 
             // 6. 读取结果
-            buffer = pool.mapBuffer(bufferIdZ, sizeZ);
+            buffer = pool.mapBlock(blockIdZ, sizeZ);
             long[][] result = new long[rows][cols];
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
@@ -176,9 +176,9 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
             return result;
         } finally {
             // 7. 释放 buffer
-            pool.freeBuffer(bufferIdA);
-            pool.freeBuffer(bufferIdB);
-            pool.freeBuffer(bufferIdZ);
+            pool.freeBlock(blockIdA);
+            pool.freeBlock(blockIdB);
+            pool.freeBlock(blockIdZ);
         }
     }
 

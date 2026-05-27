@@ -2,7 +2,8 @@ package Accelerator;
 
 /**
  * FPGA指令结构
- * 使用预分配buffer池方案：R5根据bufferId从池中获取物理地址
+ * 简化设计：直接使用4个block，每个block作为完整的数据区
+ * 消除了64个buffer的复杂地址转换逻辑
  */
 public class InstJavaTODO {
     public int UID;
@@ -12,10 +13,10 @@ public class InstJavaTODO {
     public String activationFunction;
     public int shiftLeft_AfterActivation;
 
-    // Buffer索引：R5根据索引从预分配池获取物理地址
-    public int bufferIdA;     // 输入A的buffer索引 (0-15)
-    public int bufferIdB;     // 输入B的buffer索引 (0-15)
-    public int bufferIdZ;     // 输出Z的buffer索引 (0-15)
+    // Block索引：直接指向共享内存中的4个block之一
+    public int blockIdA;     // 输入A的block索引 (0-3)
+    public int blockIdB;     // 输入B的block索引 (0-3)
+    public int blockIdZ;     // 输出Z的block索引 (0-3)
 
     public int input0Shape0;  // M / ROWA
     public int input0Shape1;  // K / COLA
@@ -31,9 +32,9 @@ public class InstJavaTODO {
         boolean doTranspose,
         String activationFunction,
         int shiftLeft_AfterActivation,
-        int bufferIdA,
-        int bufferIdB,
-        int bufferIdZ,
+        int blockIdA,
+        int blockIdB,
+        int blockIdZ,
         int input0Shape0,
         int input0Shape1,
         int input1Shape1,
@@ -47,9 +48,9 @@ public class InstJavaTODO {
         this.doTranspose = doTranspose;
         this.activationFunction = activationFunction;
         this.shiftLeft_AfterActivation = shiftLeft_AfterActivation;
-        this.bufferIdA = bufferIdA;
-        this.bufferIdB = bufferIdB;
-        this.bufferIdZ = bufferIdZ;
+        this.blockIdA = blockIdA;
+        this.blockIdB = blockIdB;
+        this.blockIdZ = blockIdZ;
         this.input0Shape0 = input0Shape0;
         this.input0Shape1 = input0Shape1;
         this.input1Shape1 = input1Shape1;

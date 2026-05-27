@@ -252,9 +252,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                         false,
                         "none",
                         0,
-                        0,  // bufferIdA (将在executeOnHardware中设置)
-                        0,  // bufferIdB
-                        0,  // bufferIdZ
+                        0,  // blockIdA (将在executeOnHardware中设置)
+                        0,  // blockIdB
+                        0,  // blockIdZ
                         TILE_M,
                         K,
                         TILE_N,
@@ -291,9 +291,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
     /**
      * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
      *
-     * 使用预分配buffer池方案：
-     * - 每个tile使用独立的bufferId
-     * - R5根据bufferId从预定义池中获取物理地址
+     * 使用block池方案：
+     * - 每个tile使用独立的blockId
+     * - R5根据blockId从预定义池中获取物理地址
      */
     private static int nextBufferId = 0;  // 简单的buffer分配计数器
 
@@ -313,39 +313,39 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
         int sizeB = colsA * colsB * 4;
         int sizeZ = rowsA * colsB * 4;
 
-        // 3. 分配固定 buffer（与 R5 侧 g_buffer_pool 对齐）
+        // 3. 分配固定 buffer（与 R5 侧 g_block_pool 对齐）
         // 使用同步查找可用的 buffer
-        int bufferIdA = pool.findNextFreeBuffer(nextBufferId);
-        if (bufferIdA < 0) {
-            throw new RuntimeException("No free buffer available for A");
+        int blockIdA = pool.findNextFreeBlock(nextBufferId);
+        if (blockIdA < 0) {
+            throw new RuntimeException("No free block available for A");
         }
-        org.onnx4j.SharedMemoryPool.BufferInfo infoA = pool.allocateBuffer(bufferIdA);
+        org.onnx4j.SharedMemoryPool.BlockInfo infoA = pool.allocateBlock(blockIdA);
 
-        int bufferIdB = pool.findNextFreeBuffer(bufferIdA + 1);
-        if (bufferIdB < 0) {
-            pool.freeBuffer(bufferIdA);
-            throw new RuntimeException("No free buffer available for B");
+        int blockIdB = pool.findNextFreeBlock(blockIdA + 1);
+        if (blockIdB < 0) {
+            pool.freeBlock(blockIdA);
+            throw new RuntimeException("No free block available for B");
         }
-        org.onnx4j.SharedMemoryPool.BufferInfo infoB = pool.allocateBuffer(bufferIdB);
+        org.onnx4j.SharedMemoryPool.BlockInfo infoB = pool.allocateBlock(blockIdB);
 
-        int bufferIdZ = pool.findNextFreeBuffer(bufferIdB + 1);
-        if (bufferIdZ < 0) {
-            pool.freeBuffer(bufferIdA);
-            pool.freeBuffer(bufferIdB);
-            throw new RuntimeException("No free buffer available for Z");
+        int blockIdZ = pool.findNextFreeBlock(blockIdB + 1);
+        if (blockIdZ < 0) {
+            pool.freeBlock(blockIdA);
+            pool.freeBlock(blockIdB);
+            throw new RuntimeException("No free block available for Z");
         }
-        org.onnx4j.SharedMemoryPool.BufferInfo infoZ = pool.allocateBuffer(bufferIdZ);
+        org.onnx4j.SharedMemoryPool.BlockInfo infoZ = pool.allocateBlock(blockIdZ);
 
         // 更新下一个搜索起点
-        nextBufferId = (bufferIdZ + 1) % 64;
+        nextBufferId = (blockIdZ + 1) % 4;
 
-        System.out.println("[JNI-HW] Allocated buffers: A[id=" + bufferIdA + ",block=" + infoA.blockId + ",off=0x" + Integer.toHexString(infoA.offsetInBlock) + "]" +
-                          ", B[id=" + bufferIdB + ",block=" + infoB.blockId + ",off=0x" + Integer.toHexString(infoB.offsetInBlock) + "]" +
-                          ", Z[id=" + bufferIdZ + ",block=" + infoZ.blockId + ",off=0x" + Integer.toHexString(infoZ.offsetInBlock) + "]");
+        System.out.println("[JNI-HW] Allocated buffers: A[id=" + blockIdA + ",block=" + infoA.blockId + ",off=0x" + Integer.toHexString(infoA.offsetInBlock) + "]" +
+                          ", B[id=" + blockIdB + ",block=" + infoB.blockId + ",off=0x" + Integer.toHexString(infoB.offsetInBlock) + "]" +
+                          ", Z[id=" + blockIdZ + ",block=" + infoZ.blockId + ",off=0x" + Integer.toHexString(infoZ.offsetInBlock) + "]");
 
         try {
             // 4. 写入tileA到共享内存（使用固定地址）
-            java.nio.ByteBuffer bufferA = pool.mapBuffer(bufferIdA, sizeA);
+            java.nio.ByteBuffer bufferA = pool.mapBlock(blockIdA, sizeA);
             bufferA.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < rowsA; i++) {
                 for (int j = 0; j < colsA; j++) {
@@ -354,7 +354,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
             }
 
             // 5. 写入tileB到共享内存
-            java.nio.ByteBuffer bufferB = pool.mapBuffer(bufferIdB, sizeB);
+            java.nio.ByteBuffer bufferB = pool.mapBlock(blockIdB, sizeB);
             bufferB.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < colsA; i++) {
                 for (int j = 0; j < colsB; j++) {
@@ -362,12 +362,12 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                 }
             }
 
-            // 6. 设置指令的bufferId
-            instruction.bufferIdA = bufferIdA;
-            instruction.bufferIdB = bufferIdB;
-            instruction.bufferIdZ = bufferIdZ;
+            // 6. 设置指令的blockId
+            instruction.blockIdA = blockIdA;
+            instruction.blockIdB = blockIdB;
+            instruction.blockIdZ = blockIdZ;
 
-            System.out.println("[JNI-HW] Instruction bufferIds: A=" + bufferIdA + ", B=" + bufferIdB + ", Z=" + bufferIdZ);
+            System.out.println("[JNI-HW] Instruction blockIds: A=" + blockIdA + ", B=" + blockIdB + ", Z=" + blockIdZ);
 
             // 7. 同步并执行
             org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI jni =
@@ -385,7 +385,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
             jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
 
             // 8. 读取结果
-            java.nio.ByteBuffer bufferZ = pool.mapBuffer(bufferIdZ, sizeZ);
+            java.nio.ByteBuffer bufferZ = pool.mapBlock(blockIdZ, sizeZ);
             bufferZ.order(java.nio.ByteOrder.nativeOrder());
             long[][] result = new long[rowsA][colsB];
             for (int i = 0; i < rowsA; i++) {
@@ -399,9 +399,9 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
             return result;
         } finally {
             // 9. 释放 buffer（无论成功或失败）
-            pool.freeBuffer(bufferIdA);
-            pool.freeBuffer(bufferIdB);
-            pool.freeBuffer(bufferIdZ);
+            pool.freeBlock(blockIdA);
+            pool.freeBlock(blockIdB);
+            pool.freeBlock(blockIdZ);
         }
     }
 

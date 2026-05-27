@@ -62,66 +62,30 @@ typedef struct {
 // 指令数组最大长度
 #define MAX_INSTRUCTIONS 256
 
-// ==================== Buffer池定义 ====================
-// 预分配buffer池，每个buffer对应共享内存中的一个固定大小区域
+// ==================== Block池定义 ====================
+// 简化设计：直接使用4个block，每个block作为完整的数据区
 // 共享内存布局（需与rsc_table.c和Java保持一致）:
 // - Block 0: 0x3F100000, 10MB
 // - Block 1: 0x3FB00000, 10MB
 // - Block 2: 0x40500000, 10MB
 // - Block 3: 0x40F00000, 10MB
-//
-// 每个块划分为16个buffer，每个buffer最大640KB (可容纳512x512的int32矩阵)
-#define BUFFERS_PER_BLOCK  16
-#define BUFFER_MAX_SIZE    (640 * 1024)  // 640KB per buffer
-#define BUFFER_MAX_SIZE_HEX 0xA0000      // 640KB = 0xA0000
-#define TOTAL_BUFFERS      (4 * BUFFERS_PER_BLOCK)  // 64个buffer
+
+#define TOTAL_BLOCKS       4
+#define BLOCK_MAX_SIZE     (10 * 1024 * 1024)  // 10MB per block
 
 typedef struct {
     uint64_t shm_phys_addr;   // 共享内存物理地址
-    uint32_t size;            // buffer大小
+    uint32_t size;            // block大小
     uint32_t reserved;        // 对齐
-} buffer_info_t;
+} block_info_t;
 
-// Buffer池映射表
-// 每个buffer相隔640KB (0xA0000)，与Java侧SharedMemoryPool对齐
-// 布局：每个Block (10MB) 包含 16 个 buffer (每个 640KB)
-static const buffer_info_t g_buffer_pool[TOTAL_BUFFERS] = {
-    // Block 0: 0x3F100000
-    {0x3F100000UL, BUFFER_MAX_SIZE, 0}, {0x3F1A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F240000UL, BUFFER_MAX_SIZE, 0}, {0x3F2E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F380000UL, BUFFER_MAX_SIZE, 0}, {0x3F420000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F4C0000UL, BUFFER_MAX_SIZE, 0}, {0x3F560000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F600000UL, BUFFER_MAX_SIZE, 0}, {0x3F6A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F740000UL, BUFFER_MAX_SIZE, 0}, {0x3F7E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F880000UL, BUFFER_MAX_SIZE, 0}, {0x3F920000UL, BUFFER_MAX_SIZE, 0},
-    {0x3F9C0000UL, BUFFER_MAX_SIZE, 0}, {0x3FA60000UL, BUFFER_MAX_SIZE, 0},
-    // Block 1: 0x3FB00000
-    {0x3FB00000UL, BUFFER_MAX_SIZE, 0}, {0x3FBA0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FC40000UL, BUFFER_MAX_SIZE, 0}, {0x3FCE0000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FD80000UL, BUFFER_MAX_SIZE, 0}, {0x3FE20000UL, BUFFER_MAX_SIZE, 0},
-    {0x3FEC0000UL, BUFFER_MAX_SIZE, 0}, {0x3FF60000UL, BUFFER_MAX_SIZE, 0},
-    {0x40000000UL, BUFFER_MAX_SIZE, 0}, {0x400A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40140000UL, BUFFER_MAX_SIZE, 0}, {0x401E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40280000UL, BUFFER_MAX_SIZE, 0}, {0x40320000UL, BUFFER_MAX_SIZE, 0},
-    {0x403C0000UL, BUFFER_MAX_SIZE, 0}, {0x40460000UL, BUFFER_MAX_SIZE, 0},
-    // Block 2: 0x40500000
-    {0x40500000UL, BUFFER_MAX_SIZE, 0}, {0x405A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40640000UL, BUFFER_MAX_SIZE, 0}, {0x406E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40780000UL, BUFFER_MAX_SIZE, 0}, {0x40820000UL, BUFFER_MAX_SIZE, 0},
-    {0x408C0000UL, BUFFER_MAX_SIZE, 0}, {0x40960000UL, BUFFER_MAX_SIZE, 0},
-    {0x40A00000UL, BUFFER_MAX_SIZE, 0}, {0x40AA0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40B40000UL, BUFFER_MAX_SIZE, 0}, {0x40BE0000UL, BUFFER_MAX_SIZE, 0},
-    {0x40C80000UL, BUFFER_MAX_SIZE, 0}, {0x40D20000UL, BUFFER_MAX_SIZE, 0},
-    {0x40DC0000UL, BUFFER_MAX_SIZE, 0}, {0x40E60000UL, BUFFER_MAX_SIZE, 0},
-    // Block 3: 0x40F00000
-    {0x40F00000UL, BUFFER_MAX_SIZE, 0}, {0x40FA0000UL, BUFFER_MAX_SIZE, 0},
-    {0x41040000UL, BUFFER_MAX_SIZE, 0}, {0x410E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x41180000UL, BUFFER_MAX_SIZE, 0}, {0x41220000UL, BUFFER_MAX_SIZE, 0},
-    {0x412C0000UL, BUFFER_MAX_SIZE, 0}, {0x41360000UL, BUFFER_MAX_SIZE, 0},
-    {0x41400000UL, BUFFER_MAX_SIZE, 0}, {0x414A0000UL, BUFFER_MAX_SIZE, 0},
-    {0x41540000UL, BUFFER_MAX_SIZE, 0}, {0x415E0000UL, BUFFER_MAX_SIZE, 0},
-    {0x41680000UL, BUFFER_MAX_SIZE, 0}, {0x41720000UL, BUFFER_MAX_SIZE, 0},
-    {0x417C0000UL, BUFFER_MAX_SIZE, 0}, {0x41860000UL, BUFFER_MAX_SIZE, 0},
+// Block池映射表
+// 与A核侧的SHM_CONFIG和Java侧SharedMemoryPool完全对齐
+static const block_info_t g_block_pool[TOTAL_BLOCKS] = {
+    {0x3F100000UL, BLOCK_MAX_SIZE, 0},  // Block 0
+    {0x3FB00000UL, BLOCK_MAX_SIZE, 0},  // Block 1
+    {0x40500000UL, BLOCK_MAX_SIZE, 0},  // Block 2
+    {0x40F00000UL, BLOCK_MAX_SIZE, 0},  // Block 3
 };
 
 // ==================== 全局变量 ====================
@@ -175,29 +139,29 @@ static void metal_rpmsg_log_handler(enum metal_log_level level,
 #define LPERROR(fmt, ...) metal_err(fmt, ##__VA_ARGS__)
 
 // ==================== 前向声明 ====================
-static const buffer_info_t* get_buffer_info(int bufferId);
+static const block_info_t* get_block_info(int blockId);
 
-// ==================== 缓冲区状态管理 ====================
+// ==================== Block状态管理 ====================
 
 /**
- * 获取缓冲区状态标志位的物理地址
- * 标志位位于每个buffer的起始位置（前4字节）
+ * 获取block状态标志位的物理地址
+ * 标志位位于每个block的起始位置（前4字节）
  */
-static uint32_t get_buffer_status_phys_addr(int bufferId) {
-    const buffer_info_t* info = get_buffer_info(bufferId);
+static uint32_t get_block_status_phys_addr(int blockId) {
+    const block_info_t* info = get_block_info(blockId);
     if (info == NULL) {
         return 0;
     }
-    // 状态标志位于buffer起始位置
+    // 状态标志位于block起始位置
     return (uint32_t)info->shm_phys_addr;
 }
 
 /**
- * 通过libmetal获取缓冲区状态的虚拟地址
+ * 通过libmetal获取block状态的虚拟地址
  * 将共享内存物理地址映射为虚拟地址
  */
-static volatile uint32_t* get_buffer_status_virt_addr(int bufferId) {
-    uint32_t phys_addr = get_buffer_status_phys_addr(bufferId);
+static volatile uint32_t* get_block_status_virt_addr(int blockId) {
+    uint32_t phys_addr = get_block_status_phys_addr(blockId);
     if (phys_addr == 0) {
         return NULL;
     }
@@ -208,10 +172,10 @@ static volatile uint32_t* get_buffer_status_virt_addr(int bufferId) {
 }
 
 /**
- * 读取缓冲区状态
+ * 读取block状态
  */
-static uint32_t read_buffer_status(int bufferId) {
-    volatile uint32_t* status_addr = get_buffer_status_virt_addr(bufferId);
+static uint32_t read_block_status(int blockId) {
+    volatile uint32_t* status_addr = get_block_status_virt_addr(blockId);
     if (status_addr == NULL) {
         return BUFFER_STATUS_ERROR;
     }
@@ -222,10 +186,10 @@ static uint32_t read_buffer_status(int bufferId) {
 }
 
 /**
- * 设置缓冲区状态
+ * 设置block状态
  */
-static void write_buffer_status(int bufferId, uint32_t status) {
-    volatile uint32_t* status_addr = get_buffer_status_virt_addr(bufferId);
+static void write_block_status(int blockId, uint32_t status) {
+    volatile uint32_t* status_addr = get_block_status_virt_addr(blockId);
     if (status_addr == NULL) {
         return;
     }
@@ -238,14 +202,14 @@ static void write_buffer_status(int bufferId, uint32_t status) {
 // ==================== 指令处理 ====================
 
 /**
- * 根据bufferId获取buffer信息
+ * 根据blockId获取block信息
  */
-static const buffer_info_t* get_buffer_info(int bufferId) {
-    if (bufferId < 0 || bufferId >= TOTAL_BUFFERS) {
-        LPERROR("Invalid bufferId: %d\n", bufferId);
+static const block_info_t* get_block_info(int blockId) {
+    if (blockId < 0 || blockId >= TOTAL_BLOCKS) {
+        LPERROR("Invalid blockId: %d\n", blockId);
         return NULL;
     }
-    return &g_buffer_pool[bufferId];
+    return &g_block_pool[blockId];
 }
 
 /**
@@ -253,7 +217,7 @@ static const buffer_info_t* get_buffer_info(int bufferId) {
  * 与 Accelerator/InstJavaTODO.java 对齐
  *
  * 流程：
- * 1. 验证bufferId并获取共享内存地址
+ * 1. 验证blockId并获取共享内存地址
  * 2. DataMover: 共享内存 → FPGA片上SRAM (sdpramA/B从地址0开始)
  * 3. 发送指令到FPGA
  * 4. 等待计算完成
@@ -271,38 +235,38 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
             msg_inst->input1Shape0, msg_inst->input1Shape1,
             msg_inst->shiftLeft_A, msg_inst->shiftLeft_B);
 
-    // 0. 检查输入缓冲区状态
-    uint32_t statusA = read_buffer_status(msg_inst->bufferIdA);
-    uint32_t statusB = read_buffer_status(msg_inst->bufferIdB);
+    // 0. 检查输入block状态
+    uint32_t statusA = read_block_status(msg_inst->blockIdA);
+    uint32_t statusB = read_block_status(msg_inst->blockIdB);
     if (statusA != BUFFER_STATUS_READY) {
-        LPERROR("Buffer A not ready: id=%d, status=%d\n", msg_inst->bufferIdA, statusA);
+        LPERROR("Block A not ready: id=%d, status=%d\n", msg_inst->blockIdA, statusA);
         return -1;
     }
     if (statusB != BUFFER_STATUS_READY) {
-        LPERROR("Buffer B not ready: id=%d, status=%d\n", msg_inst->bufferIdB, statusB);
+        LPERROR("Block B not ready: id=%d, status=%d\n", msg_inst->blockIdB, statusB);
         return -1;
     }
 
-    // 标记输入缓冲区为BUSY，输出缓冲区为BUSY
-    write_buffer_status(msg_inst->bufferIdA, BUFFER_STATUS_BUSY);
-    write_buffer_status(msg_inst->bufferIdB, BUFFER_STATUS_BUSY);
-    write_buffer_status(msg_inst->bufferIdZ, BUFFER_STATUS_BUSY);
+    // 标记输入block为BUSY，输出block为BUSY
+    write_block_status(msg_inst->blockIdA, BUFFER_STATUS_BUSY);
+    write_block_status(msg_inst->blockIdB, BUFFER_STATUS_BUSY);
+    write_block_status(msg_inst->blockIdZ, BUFFER_STATUS_BUSY);
 
-    // 1. 获取buffer信息
-    const buffer_info_t* bufA = get_buffer_info(msg_inst->bufferIdA);
-    const buffer_info_t* bufB = get_buffer_info(msg_inst->bufferIdB);
-    const buffer_info_t* bufZ = get_buffer_info(msg_inst->bufferIdZ);
+    // 1. 获取block信息
+    const block_info_t* blkA = get_block_info(msg_inst->blockIdA);
+    const block_info_t* blkB = get_block_info(msg_inst->blockIdB);
+    const block_info_t* blkZ = get_block_info(msg_inst->blockIdZ);
 
-    if (bufA == NULL || bufB == NULL || bufZ == NULL) {
-        LPERROR("Invalid buffer IDs: A=%d, B=%d, Z=%d\n",
-                msg_inst->bufferIdA, msg_inst->bufferIdB, msg_inst->bufferIdZ);
+    if (blkA == NULL || blkB == NULL || blkZ == NULL) {
+        LPERROR("Invalid block IDs: A=%d, B=%d, Z=%d\n",
+                msg_inst->blockIdA, msg_inst->blockIdB, msg_inst->blockIdZ);
         return -1;
     }
 
-    LPRINTF("     buffers: A[id=%d,PA=0x%lX], B[id=%d,PA=0x%lX], Z[id=%d,PA=0x%lX]\n",
-            msg_inst->bufferIdA, bufA->shm_phys_addr,
-            msg_inst->bufferIdB, bufB->shm_phys_addr,
-            msg_inst->bufferIdZ, bufZ->shm_phys_addr);
+    LPRINTF("     blocks: A[id=%d,PA=0x%lX], B[id=%d,PA=0x%lX], Z[id=%d,PA=0x%lX]\n",
+            msg_inst->blockIdA, blkA->shm_phys_addr,
+            msg_inst->blockIdB, blkB->shm_phys_addr,
+            msg_inst->blockIdZ, blkZ->shm_phys_addr);
 
     // 2. 计算数据大小
     uint32_t sizeA = msg_inst->input0Shape0 * msg_inst->input0Shape1 * 4;  // int32 = 4字节
@@ -319,15 +283,15 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     const uint64_t sdpramZ_base = 0xA0020000UL;  // sdpramZ (输出)
 
     // Cache同步: Invalidate R5的cache，确保DataMover读取的是A53写入的最新数据
-    Xil_DCacheInvalidateRange(bufA->shm_phys_addr, sizeA);
-    Xil_DCacheInvalidateRange(bufB->shm_phys_addr, sizeB);
+    Xil_DCacheInvalidateRange(blkA->shm_phys_addr, sizeA);
+    Xil_DCacheInvalidateRange(blkB->shm_phys_addr, sizeB);
 
     LPRINTF("     DataMover: shm→FPGA SRAM...\n");
 
     // 搬运tileA: 共享内存 → sdpramA (从地址0开始)
     // 注意：源地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 0,  // DataMover 0
-                       bufA->shm_phys_addr + 64, sdpramA_base,
+                       blkA->shm_phys_addr + 64, sdpramA_base,
                        msg_inst->input0Shape0, rowLenA) != 0) {
         LPERROR("Failed to transfer tileA\n");
         return -1;
@@ -348,7 +312,7 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     // 搬运tileB: 共享内存 → sdpramB (从地址0开始)
     // 注意：源地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 1,  // DataMover 1
-                       bufB->shm_phys_addr + 64, sdpramB_base,
+                       blkB->shm_phys_addr + 64, sdpramB_base,
                        msg_inst->input1Shape0, rowLenB) != 0) {
         LPERROR("Failed to transfer tileB\n");
         return -1;
@@ -428,7 +392,7 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     // 注意：目标地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 2,  // DataMover 2
-                       sdpramZ_base, bufZ->shm_phys_addr + 64,
+                       sdpramZ_base, blkZ->shm_phys_addr + 64,
                        msg_inst->input0Shape0, rowLenZ) != 0) {
         LPERROR("Failed to transfer result\n");
         return -1;
@@ -439,14 +403,14 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     }
 
     // Cache同步: Flush R5的cache，确保A53读取时能看到DataMover写入的最新结果
-    Xil_DCacheFlushRange(bufZ->shm_phys_addr, sizeZ);
+    Xil_DCacheFlushRange(blkZ->shm_phys_addr, sizeZ);
 
-    // 8. 更新缓冲区状态
-    write_buffer_status(msg_inst->bufferIdA, BUFFER_STATUS_FREE);  // 输入缓冲区可重用
-    write_buffer_status(msg_inst->bufferIdB, BUFFER_STATUS_FREE);
-    write_buffer_status(msg_inst->bufferIdZ, BUFFER_STATUS_DONE);   // 输出缓冲区完成
+    // 8. 更新block状态
+    write_block_status(msg_inst->blockIdA, BUFFER_STATUS_FREE);  // 输入block可重用
+    write_block_status(msg_inst->blockIdB, BUFFER_STATUS_FREE);
+    write_block_status(msg_inst->blockIdZ, BUFFER_STATUS_DONE);   // 输出block完成
 
-    LPRINTF("     Instruction fully complete, bufferZ marked as DONE\n");
+    LPRINTF("     Instruction fully complete, blockZ marked as DONE\n");
 
     return 0;
 }
@@ -506,8 +470,8 @@ static int handle_instructions_data(void *data, size_t len) {
     int failed_count = 0;
     for (uint32_t i = 0; i < count; i++) {
         // 调试：直接打印关键字段
-        LPRINTF("Instruction %u: bufferIdA=%d, bufferIdB=%d, bufferIdZ=%d\n",
-                i, instructions[i].bufferIdA, instructions[i].bufferIdB, instructions[i].bufferIdZ);
+        LPRINTF("Instruction %u: blockIdA=%d, blockIdB=%d, blockIdZ=%d\n",
+                i, instructions[i].blockIdA, instructions[i].blockIdB, instructions[i].blockIdZ);
 
         if (execute_single_instruction(&instructions[i]) != 0) {
             LPERROR("Failed to execute instruction %u\n", i);

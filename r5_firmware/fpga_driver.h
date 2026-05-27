@@ -64,9 +64,10 @@ extern "C" {
 #define BUFFER_STATUS_ERROR    0xFF
 
 // ==================== 指令结构 (对应 InstJavaTODO.java) ====================
+// 简化设计：直接使用4个block，消除64个buffer的复杂地址转换
 // Java: InstJavaTODO(int UID, String matrixOperation, int shiftLeft_AfterMatrixOperation,
 //                    boolean doTranspose, String activationFunction, int shiftLeft_AfterActivation,
-//                    int input0Address, int input1Address, int outputAddress,
+//                    int blockIdA, int blockIdB, int blockIdZ,
 //                    int input0Shape0, int input0Shape1, int input1Shape1,
 //                    int shiftLeft_A, int shiftLeft_B)
 
@@ -77,9 +78,9 @@ typedef struct {
     uint8_t  doTranspose;                   // 0=false, 1=true
     uint8_t  activationFunction;            // 0=Exp, 1=Log, 2=Softplus, 3=Relu, 4=None
     int8_t   shiftLeft_AfterActivation;
-    int32_t  bufferIdA;                     // 输入A的buffer索引 (0-63)
-    int32_t  bufferIdB;                     // 输入B的buffer索引 (0-63)
-    int32_t  bufferIdZ;                     // 输出Z的buffer索引 (0-63)
+    int32_t  blockIdA;                      // 输入A的block索引 (0-3)
+    int32_t  blockIdB;                      // 输入B的block索引 (0-3)
+    int32_t  blockIdZ;                      // 输出Z的block索引 (0-3)
     int32_t  input0Shape0;                  // input0Shape[0] (行数)
     int32_t  input0Shape1;                  // input0Shape[1] (列数)
     int32_t  input1Shape0;                  // input1Shape[0] (行数，ElementWise时等于input0Shape0)

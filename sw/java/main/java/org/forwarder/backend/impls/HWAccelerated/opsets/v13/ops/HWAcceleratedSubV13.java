@@ -211,9 +211,9 @@ public class HWAcceleratedSubV13 extends HWAcceleratedQuantizedOperator implemen
                     false,
                     "none",
                     0,
-                    0,  // bufferIdA
-                    0,  // bufferIdB
-                    0,  // bufferIdZ
+                    0,  // blockIdA
+                    0,  // blockIdB
+                    0,  // blockIdZ
                     TILE_ROWS,
                     cols,
                     cols,
@@ -254,44 +254,44 @@ public class HWAcceleratedSubV13 extends HWAcceleratedQuantizedOperator implemen
         int size = rows * cols * 4;
 
         // 分配固定 buffer（与 R5 侧对齐）
-        int bufferIdA = pool.findNextFreeBuffer(nextBufferId);
-        if (bufferIdA < 0) {
-            throw new RuntimeException("No free buffer available for A");
+        int blockIdA = pool.findNextFreeBlock(nextBufferId);
+        if (blockIdA < 0) {
+            throw new RuntimeException("No free block available for A");
         }
-        org.onnx4j.SharedMemoryPool.BufferInfo infoA = pool.allocateBuffer(bufferIdA);
+        org.onnx4j.SharedMemoryPool.BlockInfo infoA = pool.allocateBlock(blockIdA);
 
-        int bufferIdB = pool.findNextFreeBuffer(bufferIdA + 1);
-        if (bufferIdB < 0) {
-            pool.freeBuffer(bufferIdA);
-            throw new RuntimeException("No free buffer available for B");
+        int blockIdB = pool.findNextFreeBlock(blockIdA + 1);
+        if (blockIdB < 0) {
+            pool.freeBlock(blockIdA);
+            throw new RuntimeException("No free block available for B");
         }
-        org.onnx4j.SharedMemoryPool.BufferInfo infoB = pool.allocateBuffer(bufferIdB);
+        org.onnx4j.SharedMemoryPool.BlockInfo infoB = pool.allocateBlock(blockIdB);
 
-        int bufferIdZ = pool.findNextFreeBuffer(bufferIdB + 1);
-        if (bufferIdZ < 0) {
-            pool.freeBuffer(bufferIdA);
-            pool.freeBuffer(bufferIdB);
-            throw new RuntimeException("No free buffer available for Z");
+        int blockIdZ = pool.findNextFreeBlock(blockIdB + 1);
+        if (blockIdZ < 0) {
+            pool.freeBlock(blockIdA);
+            pool.freeBlock(blockIdB);
+            throw new RuntimeException("No free block available for Z");
         }
-        org.onnx4j.SharedMemoryPool.BufferInfo infoZ = pool.allocateBuffer(bufferIdZ);
+        org.onnx4j.SharedMemoryPool.BlockInfo infoZ = pool.allocateBlock(blockIdZ);
 
-        nextBufferId = (bufferIdZ + 1) % 64;
+        nextBufferId = (blockIdZ + 1) % 4;
 
         try {
-            java.nio.ByteBuffer buffer = pool.mapBuffer(bufferIdA, size);
+            java.nio.ByteBuffer buffer = pool.mapBlock(blockIdA, size);
             buffer.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
                     buffer.putInt((int)tileA[i][j]);
 
-            buffer = pool.mapBuffer(bufferIdB, size);
+            buffer = pool.mapBlock(blockIdB, size);
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
                     buffer.putInt((int)tileB[i][j]);
 
-            instruction.bufferIdA = bufferIdA;
-            instruction.bufferIdB = bufferIdB;
-            instruction.bufferIdZ = bufferIdZ;
+            instruction.blockIdA = blockIdA;
+            instruction.blockIdB = blockIdB;
+            instruction.blockIdZ = blockIdZ;
 
             org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI jni =
                 org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI.getInstance();
@@ -305,7 +305,7 @@ public class HWAcceleratedSubV13 extends HWAcceleratedQuantizedOperator implemen
 
             jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, size);
 
-            buffer = pool.mapBuffer(bufferIdZ, size);
+            buffer = pool.mapBlock(blockIdZ, size);
             long[][] result = new long[rows][cols];
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
@@ -313,9 +313,9 @@ public class HWAcceleratedSubV13 extends HWAcceleratedQuantizedOperator implemen
 
             return result;
         } finally {
-            pool.freeBuffer(bufferIdA);
-            pool.freeBuffer(bufferIdB);
-            pool.freeBuffer(bufferIdZ);
+            pool.freeBlock(blockIdA);
+            pool.freeBlock(blockIdB);
+            pool.freeBlock(blockIdZ);
         }
     }
 }

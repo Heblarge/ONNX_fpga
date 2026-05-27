@@ -128,9 +128,9 @@ public class SharedMemoryPool implements AutoCloseable {
 	private final Map<Integer, ByteBuffer> sliceBuffers = new HashMap<>();
 	private boolean initialized = false;
 
-	/* Buffer 池状态管理 */
-	private final boolean[] bufferUsed = new boolean[TOTAL_BUFFERS];  /* 跟踪每个buffer的使用状态 */
-	private final Object bufferLock = new Object();  /* buffer分配同步锁 */
+	/* Block 池状态管理 - 简化设计：直接使用4个block */
+	private final boolean[] blockUsed = new boolean[4];  /* 跟踪每个block的使用状态 */
+	private final Object blockLock = new Object();  /* block分配同步锁 */
 
 	/* 默认配置 - 需与rsc_table.c保持一致 */
 	private static final long[] DEFAULT_ADDRESSES = {
@@ -146,11 +146,6 @@ public class SharedMemoryPool implements AutoCloseable {
 		0x00A00000,   /* 10MB */
 		0x00A00000    /* 10MB */
 	};
-
-	/* 固定 Buffer 池配置 - 需与 rpmsg-accelerator.c 保持一致 */
-	private static final int BUFFERS_PER_BLOCK = 16;
-	private static final int BUFFER_MAX_SIZE = 640 * 1024;  /* 640KB per buffer */
-	private static final int TOTAL_BUFFERS = 4 * BUFFERS_PER_BLOCK;  /* 64个buffer */
 
 	private SharedMemoryPool() {
 		this.blocks = new MemoryBlock[DEFAULT_ADDRESSES.length];
@@ -267,93 +262,82 @@ public class SharedMemoryPool implements AutoCloseable {
 		/* 完整实现需要维护空闲块链表 */
 	}
 
-	/* ========== 固定 Buffer 池管理方法 ========== */
+	/* ========== Block 池管理方法 ========== */
 
 	/**
-	 * 根据 bufferId 计算其在固定池中的物理地址和偏移
-	 * 与 rpmsg-accelerator.c 的 g_buffer_pool 保持一致
+	 * Block信息：直接使用block作为完整的数据区
 	 */
-	public static class BufferInfo {
-		public final int bufferId;
+	public static class BlockInfo {
 		public final int blockId;
-		public final int offsetInBlock;
 		public final long physicalAddress;
 		public final int size;
 
-		public BufferInfo(int bufferId, int blockId, int offsetInBlock, long physicalAddress, int size) {
-			this.bufferId = bufferId;
+		public BlockInfo(int blockId, long physicalAddress, int size) {
 			this.blockId = blockId;
-			this.offsetInBlock = offsetInBlock;
 			this.physicalAddress = physicalAddress;
 			this.size = size;
 		}
 	}
 
 	/**
-	 * 获取指定 bufferId 的固定地址信息
-	 * 与 rpmsg-accelerator.c 的 g_buffer_pool 完全对齐
+	 * 获取指定 blockId 的信息
 	 */
-	public BufferInfo getBufferInfo(int bufferId) {
+	public BlockInfo getBlockInfo(int blockId) {
 		if (!initialized) {
 			throw new IllegalStateException("Shared memory pool not initialized");
 		}
-		if (bufferId < 0 || bufferId >= TOTAL_BUFFERS) {
-			throw new IllegalArgumentException("Invalid bufferId: " + bufferId + ", must be 0-" + (TOTAL_BUFFERS - 1));
+		if (blockId < 0 || blockId >= 4) {
+			throw new IllegalArgumentException("Invalid blockId: " + blockId + ", must be 0-3");
 		}
 
-		int blockId = bufferId / BUFFERS_PER_BLOCK;
-		int bufferInBlock = bufferId % BUFFERS_PER_BLOCK;
-		int offsetInBlock = bufferInBlock * BUFFER_MAX_SIZE;
-		long physicalAddr = DEFAULT_ADDRESSES[blockId] + offsetInBlock;
-
-		return new BufferInfo(bufferId, blockId, offsetInBlock, physicalAddr, BUFFER_MAX_SIZE);
+		return new BlockInfo(blockId, DEFAULT_ADDRESSES[blockId], DEFAULT_SIZES[blockId]);
 	}
 
 	/**
-	 * 按固定 bufferId 分配 buffer（与 R5 侧 buffer 池对齐）
-	 * @param bufferId buffer ID (0-63)
-	 * @return BufferInfo 对象，包含分配信息
-	 * @throws IllegalStateException 如果 buffer 已被占用
+	 * 按blockId分配block
+	 * @param blockId block ID (0-3)
+	 * @return BlockInfo 对象，包含分配信息
+	 * @throws IllegalStateException 如果 block 已被占用
 	 */
-	public BufferInfo allocateBuffer(int bufferId) {
+	public BlockInfo allocateBlock(int blockId) {
 		if (!initialized) {
 			throw new IllegalStateException("Shared memory pool not initialized");
 		}
-		if (bufferId < 0 || bufferId >= TOTAL_BUFFERS) {
-			throw new IllegalArgumentException("Invalid bufferId: " + bufferId);
+		if (blockId < 0 || blockId >= 4) {
+			throw new IllegalArgumentException("Invalid blockId: " + blockId);
 		}
 
-		synchronized (bufferLock) {
-			if (bufferUsed[bufferId]) {
-				throw new IllegalStateException("Buffer " + bufferId + " is already in use");
+		synchronized (blockLock) {
+			if (blockUsed[blockId]) {
+				throw new IllegalStateException("Block " + blockId + " is already in use");
 			}
-			bufferUsed[bufferId] = true;
+			blockUsed[blockId] = true;
 		}
 
-		BufferInfo info = getBufferInfo(bufferId);
-		logger.debug("Allocated buffer {}: block={}, offset=0x{:X}, PA=0x{:X}",
-			bufferId, info.blockId, info.offsetInBlock, info.physicalAddress);
+		BlockInfo info = getBlockInfo(blockId);
+		logger.debug("Allocated block {}: PA=0x{:X}, Size={}MB",
+			blockId, info.physicalAddress, info.size / (1024 * 1024));
 		return info;
 	}
 
 	/**
-	 * 释放固定 buffer
-	 * @param bufferId buffer ID (0-63)
+	 * 释放block
+	 * @param blockId block ID (0-3)
 	 */
-	public void freeBuffer(int bufferId) {
-		if (bufferId < 0 || bufferId >= TOTAL_BUFFERS) {
-			throw new IllegalArgumentException("Invalid bufferId: " + bufferId);
+	public void freeBlock(int blockId) {
+		if (blockId < 0 || blockId >= 4) {
+			throw new IllegalArgumentException("Invalid blockId: " + blockId);
 		}
 
-		synchronized (bufferLock) {
-			if (!bufferUsed[bufferId]) {
-				logger.warn("Buffer {} was not allocated", bufferId);
+		synchronized (blockLock) {
+			if (!blockUsed[blockId]) {
+				logger.warn("Block {} was not allocated", blockId);
 				return;
 			}
-			bufferUsed[bufferId] = false;
+			blockUsed[blockId] = false;
 		}
 
-		logger.debug("Freed buffer {}", bufferId);
+		logger.debug("Freed block {}", blockId);
 	}
 
 	/**
@@ -362,7 +346,7 @@ public class SharedMemoryPool implements AutoCloseable {
 	 * @param size 映射大小
 	 * @return 映射的 ByteBuffer
 	 */
-	public ByteBuffer mapBuffer(int bufferId, int size) {
+	public ByteBuffer mapBuffer(int blockId, int size) {
 		BufferInfo info = getBufferInfo(bufferId);
 		return mapBuffer(info.blockId, info.offsetInBlock, size);
 	}
@@ -370,8 +354,8 @@ public class SharedMemoryPool implements AutoCloseable {
 	/**
 	 * 检查 buffer 是否可用
 	 */
-	public boolean isBufferFree(int bufferId) {
-		if (bufferId < 0 || bufferId >= TOTAL_BUFFERS) {
+	public boolean isBufferFree(int blockId) {
+		if (bufferId < 0 || bufferId >= 4) {
 			return false;
 		}
 		synchronized (bufferLock) {
@@ -385,8 +369,8 @@ public class SharedMemoryPool implements AutoCloseable {
 	 * @return 可用的 buffer ID，如果没有则返回 -1
 	 */
 	public int findNextFreeBuffer(int startId) {
-		for (int i = 0; i < TOTAL_BUFFERS; i++) {
-			int bufferId = (startId + i) % TOTAL_BUFFERS;
+		for (int i = 0; i < 4; i++) {
+			int blockId = (startId + i) % 4;
 			if (isBufferFree(bufferId)) {
 				return bufferId;
 			}

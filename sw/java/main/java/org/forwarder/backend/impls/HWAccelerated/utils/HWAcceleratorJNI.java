@@ -125,19 +125,19 @@ public class HWAcceleratorJNI {
 
 	/**
 	 * 等待 R5/FPGA 完成计算
-	 * @deprecated 使用 waitForBufferCompletion 代替，直接检查缓冲区状态
+	 * @deprecated 使用 waitForBlockCompletion 代替，直接检查block状态
 	 */
 	@Deprecated
 	private native boolean nativeWaitForCompletion(int timeoutMs);
 
 	/**
-	 * 等待指定缓冲区完成处理（基于共享内存状态标志）
-	 * 直接检查缓冲区状态，无需轮询 RPMsg
-	 * @param bufferId 缓冲区ID (0-63)
+	 * 等待指定block完成处理（基于共享内存状态标志）
+	 * 直接检查block状态，无需轮询 RPMsg
+	 * @param blockId block ID (0-3)
 	 * @param timeoutMs 超时时间（毫秒）
 	 * @return 成功返回true
 	 */
-	private native boolean nativeWaitForBufferCompletion(int bufferId, int timeoutMs);
+	private native boolean nativeWaitForBlockCompletion(int blockId, int timeoutMs);
 
 	/**
 	 * 读取计算结果
@@ -287,8 +287,8 @@ public class HWAcceleratorJNI {
 	}
 
 	/**
-	 * 发送指令并等待指定输出缓冲区完成
-	 * 使用缓冲区状态标志同步，比轮询 RPMsg 更高效
+	 * 发送指令并等待指定输出block完成
+	 * 使用block状态标志同步，比轮询 RPMsg 更高效
 	 */
 	public boolean executeInstructionsWithBufferSync(InstJavaTODO[] instructions, int timeoutMs) {
 		if (!initialized) {
@@ -308,10 +308,10 @@ public class HWAcceleratorJNI {
 			return false;
 		}
 
-		// 等待最后一个输出缓冲区完成
+		// 等待最后一个输出block完成
 		InstJavaTODO lastInst = instructions[instructions.length - 1];
-		int outputBufferId = getOutputBufferId(lastInst);
-		if (!nativeWaitForBufferCompletion(outputBufferId, timeoutMs)) {
+		int outputBufferId = getOutputBlockId(lastInst);
+		if (!nativeWaitForBlockCompletion(outputBufferId, timeoutMs)) {
 			System.err.println("Timeout waiting for buffer " + outputBufferId + " completion");
 			return false;
 		}
@@ -321,25 +321,25 @@ public class HWAcceleratorJNI {
 	}
 
 	/**
-	 * 等待指定缓冲区完成
+	 * 等待指定block完成
 	 */
-	public boolean waitForBufferCompletion(int bufferId, int timeoutMs) {
+	public boolean waitForBlockCompletion(int blockId, int timeoutMs) {
 		if (!initialized) {
 			throw new IllegalStateException("HWAcceleratorJNI not initialized");
 		}
-		return nativeWaitForBufferCompletion(bufferId, timeoutMs);
+		return nativeWaitForBlockCompletion(blockId, timeoutMs);
 	}
 
 	/**
-	 * 获取指令的输出缓冲区ID
+	 * 获取指令的输出block ID
 	 */
-	private int getOutputBufferId(InstJavaTODO inst) {
+	private int getOutputBlockId(InstJavaTODO inst) {
 		try {
-			java.lang.reflect.Field field = inst.getClass().getDeclaredField("bufferIdZ");
+			java.lang.reflect.Field field = inst.getClass().getDeclaredField("blockIdZ");
 			field.setAccessible(true);
 			return field.getInt(inst);
 		} catch (Exception e) {
-			throw new RuntimeException("Failed to get bufferIdZ", e);
+			throw new RuntimeException("Failed to get blockIdZ", e);
 		}
 	}
 

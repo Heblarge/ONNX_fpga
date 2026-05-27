@@ -81,12 +81,11 @@ typedef struct {
 #define FPGA_STATUS_ERROR       2
 
 // ==================== 指令结构 (对应 InstJavaTODO.java) ====================
-// 与 Accelerator/InstJavaTODO.java 完全对齐
-// 使用预分配buffer池方案：bufferId用于索引R5侧的buffer池
+// 简化设计：直接使用4个block，消除64个buffer的复杂地址转换
 //
 // Java: InstJavaTODO(int UID, String matrixOperation, int shiftLeft_AfterMatrixOperation,
 //                    boolean doTranspose, String activationFunction, int shiftLeft_AfterActivation,
-//                    int bufferIdA, int bufferIdB, int bufferIdZ,
+//                    int blockIdA, int blockIdB, int blockIdZ,
 //                    int input0Shape0, int input0Shape1, int input1Shape1,
 //                    int shiftLeft_A, int shiftLeft_B)
 //
@@ -97,9 +96,9 @@ typedef struct {
     uint8_t  doTranspose;                   // 0=false, 1=true
     uint8_t  activationFunction;            // 0=Exp, 1=Log, 2=Softplus, 3=Relu, 4=None
     int8_t   shiftLeft_AfterActivation;
-    int32_t  bufferIdA;                     // 输入A的buffer索引 (0-15)
-    int32_t  bufferIdB;                     // 输入B的buffer索引 (0-15)
-    int32_t  bufferIdZ;                     // 输出Z的buffer索引 (0-15)
+    int32_t  blockIdA;                      // 输入A的block索引 (0-3)
+    int32_t  blockIdB;                      // 输入B的block索引 (0-3)
+    int32_t  blockIdZ;                      // 输出Z的block索引 (0-3)
     int32_t  input0Shape0;                  // input0Shape[0] (行数)
     int32_t  input0Shape1;                  // input0Shape[1] (列数)
     int32_t  input1Shape0;                  // input1Shape[0] (行数，自动=input0Shape1)
@@ -158,7 +157,7 @@ static struct {
 
 static void dcache_flush(void* addr, size_t size);
 static void dcache_invalidate(void* addr, size_t size);
-static volatile uint32_t* get_buffer_status_addr(int bufferId);
+static volatile uint32_t* get_block_status_addr(int blockId);
 
 // ========== RPMsg 辅助函数 ==========
 
@@ -331,10 +330,10 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
 
     instNative->shiftLeft_AfterActivation = (int8_t)getIntField(env, instJava, "shiftLeft_AfterActivation");
 
-    // Buffer索引字段 (预分配池方案)
-    instNative->bufferIdA = getIntField(env, instJava, "bufferIdA");
-    instNative->bufferIdB = getIntField(env, instJava, "bufferIdB");
-    instNative->bufferIdZ = getIntField(env, instJava, "bufferIdZ");
+    // Block索引字段 (简化设计：直接使用4个block)
+    instNative->blockIdA = getIntField(env, instJava, "blockIdA");
+    instNative->blockIdB = getIntField(env, instJava, "blockIdB");
+    instNative->blockIdZ = getIntField(env, instJava, "blockIdZ");
 
     // 形状字段
     instNative->input0Shape0 = getIntField(env, instJava, "input0Shape0");
@@ -356,30 +355,30 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     return true;
 }
 
-// ========== 缓冲区状态管理函数 ==========
+// ========== Block状态管理函数 ==========
 
 /**
- * 标记缓冲区状态（通过共享内存标志位）
- * @param bufferId 缓冲区ID (0-63)
+ * 标记block状态（通过共享内存标志位）
+ * @param blockId block索引 (0-3)
  * @param status 状态: FREE, READY, BUSY, DONE
  */
-static bool set_buffer_status(int bufferId, uint32_t status) {
-    volatile uint32_t* status_addr = get_buffer_status_addr(bufferId);
+static bool set_block_status(int blockId, uint32_t status) {
+    volatile uint32_t* status_addr = get_block_status_addr(blockId);
     if (status_addr == NULL) {
         return false;
     }
     *status_addr = status;
     // 刷新缓存确保R5能看到状态更新
     dcache_flush((void*)status_addr, sizeof(uint32_t));
-    printf("[JNI] Buffer %d status set to %u\n", bufferId, status);
+    printf("[JNI] Block %d status set to %u\n", blockId, status);
     return true;
 }
 
 /**
- * 获取缓冲区状态
+ * 获取block状态
  */
-static uint32_t get_buffer_status(int bufferId) {
-    volatile uint32_t* status_addr = get_buffer_status_addr(bufferId);
+static uint32_t get_block_status(int blockId) {
+    volatile uint32_t* status_addr = get_block_status_addr(blockId);
     if (status_addr == NULL) {
         return BUFFER_STATUS_ERROR;
     }
@@ -389,33 +388,33 @@ static uint32_t get_buffer_status(int bufferId) {
 }
 
 /**
- * 等待缓冲区状态变更（带超时）
- * @param bufferId 缓冲区ID
+ * 等待block状态变更（带超时）
+ * @param blockId block索引 (0-3)
  * @param expected 期望的状态
  * @param timeout_ms 超时时间（毫秒）
  * @return true=状态匹配，false=超时或错误
  */
-static bool wait_for_buffer_status(int bufferId, uint32_t expected, int timeout_ms) {
+static bool wait_for_block_status(int blockId, uint32_t expected, int timeout_ms) {
     int elapsed = 0;
     const int interval_ms = 1;  // 1ms检查一次
 
     while (elapsed < timeout_ms) {
-        uint32_t status = get_buffer_status(bufferId);
+        uint32_t status = get_block_status(blockId);
         if (status == expected) {
-            printf("[JNI] Buffer %d reached expected status %u\n", bufferId, expected);
+            printf("[JNI] Block %d reached expected status %u\n", blockId, expected);
             return true;
         }
         if (status == BUFFER_STATUS_ERROR) {
-            fprintf(stderr, "[JNI] Buffer %d in error state\n", bufferId);
+            fprintf(stderr, "[JNI] Block %d in error state\n", blockId);
             return false;
         }
         usleep(interval_ms * 1000);
         elapsed += interval_ms;
     }
 
-    uint32_t final_status = get_buffer_status(bufferId);
-    fprintf(stderr, "[JNI] Buffer %d status timeout: expected=%u, actual=%u\n",
-            bufferId, expected, final_status);
+    uint32_t final_status = get_block_status(blockId);
+    fprintf(stderr, "[JNI] Block %d status timeout: expected=%u, actual=%u\n",
+            blockId, expected, final_status);
     return false;
 }
 
@@ -585,18 +584,18 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeSend
         convertInstruction(env, instJava, &instArray[i]);
 
         // 调试：打印转换后的指令
-        printf("[JNI] Converted instruction[%d]: UID=%d, op=%d, act=%d, bufferIds=[A=%d,B=%d,Z=%d]\n",
+        printf("[JNI] Converted instruction[%d]: UID=%d, op=%d, act=%d, blockIds=[A=%d,B=%d,Z=%d]\n",
                i, instArray[i].UID, instArray[i].matrixOperation, instArray[i].activationFunction,
-               instArray[i].bufferIdA, instArray[i].bufferIdB, instArray[i].bufferIdZ);
+               instArray[i].blockIdA, instArray[i].blockIdB, instArray[i].blockIdZ);
 
-        // 设置输入缓冲区状态为 READY（标记数据已准备好）
-        int bufferIdA = instArray[i].bufferIdA;
-        int bufferIdB = instArray[i].bufferIdB;
-        int bufferIdZ = instArray[i].bufferIdZ;
+        // 设置输入block状态为 READY（标记数据已准备好）
+        int blockIdA = instArray[i].blockIdA;
+        int blockIdB = instArray[i].blockIdB;
+        int blockIdZ = instArray[i].blockIdZ;
 
-        set_buffer_status(bufferIdA, BUFFER_STATUS_READY);
-        set_buffer_status(bufferIdB, BUFFER_STATUS_READY);
-        set_buffer_status(bufferIdZ, BUFFER_STATUS_FREE);  // 输出缓冲区初始为FREE
+        set_block_status(blockIdA, BUFFER_STATUS_READY);
+        set_block_status(blockIdB, BUFFER_STATUS_READY);
+        set_block_status(blockIdZ, BUFFER_STATUS_FREE);  // 输出block初始为FREE
 
         env->DeleteLocalRef(instJava);
     }
@@ -654,24 +653,24 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeWait
 }
 
 /**
- * 等待指定缓冲区完成处理（基于共享内存状态标志）
- * 替代轮询 RPMsg 的方式，直接检查缓冲区状态
+ * 等待指定block完成处理（基于共享内存状态标志）
+ * 替代轮询 RPMsg 的方式，直接检查block状态
  */
 extern "C" JNIEXPORT jboolean JNICALL
-Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeWaitForBufferCompletion(
-    JNIEnv* env, jobject thiz, jint bufferId, jint timeoutMs) {
+Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeWaitForBlockCompletion(
+    JNIEnv* env, jobject thiz, jint blockId, jint timeoutMs) {
 
-    if (bufferId < 0 || bufferId >= 64) {
-        fprintf(stderr, "[JNI] Invalid bufferId: %d\n", bufferId);
+    if (blockId < 0 || blockId >= MAX_SHM_BLOCKS) {
+        fprintf(stderr, "[JNI] Invalid blockId: %d\n", blockId);
         return JNI_FALSE;
     }
 
-    printf("[JNI] Waiting for buffer %d completion...\n", bufferId);
-    bool success = wait_for_buffer_status(bufferId, BUFFER_STATUS_DONE, timeoutMs);
+    printf("[JNI] Waiting for block %d completion...\n", blockId);
+    bool success = wait_for_block_status(blockId, BUFFER_STATUS_DONE, timeoutMs);
 
     if (success) {
-        // 处理完成后，将缓冲区状态设置为 FREE
-        set_buffer_status(bufferId, BUFFER_STATUS_FREE);
+        // 处理完成后，将block状态设置为 FREE
+        set_block_status(blockId, BUFFER_STATUS_FREE);
     }
 
     return success ? JNI_TRUE : JNI_FALSE;
@@ -768,28 +767,23 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeRead
 }
 
 extern "C" JNIEXPORT jbyteArray JNICALL
-Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeReadResult(
-    JNIEnv* env, jobject thiz, jint bufferId, jint length) {
-    // 从指定的 buffer 读取计算结果
-    if (!g_state.shm_initialized || bufferId < 0 || bufferId >= 64) {
+Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeReadBlockResult(
+    JNIEnv* env, jobject thiz, jint blockId, jint length) {
+    // 从指定的 block 读取计算结果
+    if (!g_state.shm_initialized || blockId < 0 || blockId >= MAX_SHM_BLOCKS) {
         return NULL;
     }
 
-    // 计算 buffer 位置
-    int blockId = bufferId / 16;
-    int bufferInBlock = bufferId % 16;
-    size_t buffer_offset = bufferInBlock * (640 * 1024) + 64;  // +64 跳过状态标志
-
-    if (blockId >= MAX_SHM_BLOCKS || g_state.mmap_addrs[blockId] == NULL) {
+    if (g_state.mmap_addrs[blockId] == NULL) {
         return NULL;
     }
 
-    if (length <= 0 || length > (640 * 1024 - 64)) {
-        length = 640 * 1024 - 64;  // 默认读取整个 buffer
+    if (length <= 0 || length > (int)(SHM_CONFIG[blockId].size - 64)) {
+        length = SHM_CONFIG[blockId].size - 64;  // 默认读取整个block（跳过64字节状态标志）
     }
 
-    // 失效缓存
-    void* src = (char*)g_state.mmap_addrs[blockId] + buffer_offset;
+    // 数据从block起始位置+64字节开始（跳过状态标志区）
+    void* src = (char*)g_state.mmap_addrs[blockId] + 64;
     dcache_invalidate(src, length);
 
     // 创建 Java 字节数组
@@ -800,7 +794,7 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeRead
 
     env->SetByteArrayRegion(result, 0, length, (jbyte*)src);
 
-    printf("[JNI] Read %d bytes from buffer %d\n", length, bufferId);
+    printf("[JNI] Read %d bytes from block %d\n", length, blockId);
     return result;
 }
 
@@ -833,23 +827,15 @@ static void dcache_invalidate(void* addr, size_t size) {
 // ========== 缓冲区状态管理（通过共享内存标志位同步） ==========
 
 /**
- * 获取缓冲区状态标志位的地址
- * 标志位位于每个buffer的起始位置，使用前4字节存储状态
+ * 获取block状态标志位的地址
+ * 简化设计：每个block起始位置的前4字节存储状态
  */
-static volatile uint32_t* get_buffer_status_addr(int bufferId) {
-    if (bufferId < 0 || bufferId >= 64) return NULL;
+static volatile uint32_t* get_block_status_addr(int blockId) {
+    if (blockId < 0 || blockId >= MAX_SHM_BLOCKS) return NULL;
+    if (g_state.mmap_addrs[blockId] == NULL) return NULL;
 
-    // 每个block有16个buffer，每个640KB
-    int blockId = bufferId / 16;
-    int bufferInBlock = bufferId % 16;
-
-    if (blockId >= MAX_SHM_BLOCKS || g_state.mmap_addrs[blockId] == NULL) {
-        return NULL;
-    }
-
-    // 计算buffer在block中的偏移
-    size_t buffer_offset = bufferInBlock * (640 * 1024);
-    return (volatile uint32_t*)((char*)g_state.mmap_addrs[blockId] + buffer_offset);
+    // 状态标志位于block起始位置
+    return (volatile uint32_t*)g_state.mmap_addrs[blockId];
 }
 
 // ========== 共享内存相关 JNI 方法 ==========

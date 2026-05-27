@@ -211,9 +211,9 @@ public class HWAcceleratedGemmReluV13 extends HWAcceleratedQuantizedOperator imp
                         false,
                         "relu",
                         0,
-                        0,  // bufferIdA (将在executeOnHardware中设置)
-                        0,  // bufferIdB
-                        0,  // bufferIdZ
+                        0,  // blockIdA (将在executeOnHardware中设置)
+                        0,  // blockIdB
+                        0,  // blockIdZ
                         TILE_M,
                         K,
                         TILE_N,
