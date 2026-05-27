@@ -209,7 +209,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
 
             InstJavaTODO instruction = new InstJavaTODO(
                     0,
-                    "none",
+                    "elementadd",
                     0,
                     false,
                     "exp",

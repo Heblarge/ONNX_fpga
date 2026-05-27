@@ -143,7 +143,7 @@ public class HWAcceleratedSoftplusV13 extends HWAcceleratedQuantizedOperator imp
 
             InstJavaTODO instruction = new InstJavaTODO(
                     0,
-                    "none",
+                    "elementadd",
                     0,
                     false,
                     "softplus",

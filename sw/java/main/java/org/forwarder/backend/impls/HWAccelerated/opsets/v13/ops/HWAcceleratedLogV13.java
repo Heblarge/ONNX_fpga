@@ -143,7 +143,7 @@ public class HWAcceleratedLogV13 extends HWAcceleratedQuantizedOperator implemen
 
             InstJavaTODO instruction = new InstJavaTODO(
                     0,
-                    "none",
+                    "elementadd",
                     0,
                     false,
                     "log",
