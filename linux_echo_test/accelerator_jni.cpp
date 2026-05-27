@@ -294,6 +294,7 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
     instNative->UID = getIntField(env, instJava, "UID");
 
     // 转换 matrixOperation (String → uint8_t)
+    // 注意：硬件没有"none"操作，纯激活函数使用"elementadd"(A+0=A)
     jstring matOpStrObj = getStringField(env, instJava, "matrixOperation");
     const char* matOpStr = getStringUTFChars(env, matOpStrObj);
     if (strcmp(matOpStr, "matmul") == 0) {
@@ -304,8 +305,11 @@ static bool convertInstruction(JNIEnv* env, jobject instJava, InstructionStruct*
         instNative->matrixOperation = 2;
     } else if (strcmp(matOpStr, "elementmax") == 0) {
         instNative->matrixOperation = 3;
+    } else if (strcmp(matOpStr, "none") == 0) {
+        // 纯激活函数操作：使用elementadd(A+0=A)，硬件会执行激活函数
+        instNative->matrixOperation = 1;
     } else {
-        instNative->matrixOperation = 0;
+        instNative->matrixOperation = 0;  // 默认MatMul
     }
     releaseStringUTFChars(env, matOpStrObj, matOpStr);
 
