@@ -17,6 +17,8 @@ import java.util.Arrays;
 
 /**
  * HWAccelerated 后端测试 - 测试非融合版 gemm_relu_ir7_add_exp.onnx
+ * 模型有两个输入：Add_8_output_0 和 Concat_9_output_0
+ * 输出：Exp_10_output_0
  */
 public class DL4JTest {
 
@@ -61,6 +63,7 @@ public class DL4JTest {
         try (Session<?> session = backend.newSession()) {
             // 为所有输入创建测试数据
             System.out.println("\n===== Creating test inputs =====");
+            int inputIndex = 0;
             for (var input : model.getGraph().getInputs()) {
                 long[] inputShape = input.getValueInfo().getShape().toArray();
                 int totalElements = 1;
@@ -70,18 +73,28 @@ public class DL4JTest {
                 System.out.println("Input shape: " + Arrays.toString(inputShape));
                 System.out.println("Total elements: " + totalElements);
 
-                // 创建 INT32 类型输入数据（固定点量化）
-                int[] inputData = new int[totalElements];
+                // 创建 FLOAT 类型输入数据，范围在 -1.0 到 1.0
+                float[] inputData = new float[totalElements];
                 for (int i = 0; i < totalElements; i++) {
-                    inputData[i] = 10000 + i * 1000;
+                    // 生成 -1.0 到 1.0 之间的浮点数
+                    // 第一个输入：-1.0, -0.9, -0.8, ...
+                    // 第二个输入：0.1, 0.2, 0.3, ...
+                    if (inputIndex == 0) {
+                        inputData[i] = -1.0f + (i * 0.1f);
+                    } else {
+                        inputData[i] = 0.1f + (i * 0.05f);
+                        // 限制在 1.0 以内
+                        if (inputData[i] > 1.0f) inputData[i] = 1.0f;
+                    }
                 }
 
                 System.out.println("Input data (first 10): " + Arrays.toString(Arrays.copyOf(inputData, Math.min(10, inputData.length))));
                 System.out.println();
 
                 // Feed 输入
-                Tensor inputTensor = buildInt32Tensor(model, input.getName(), inputData, inputShape);
+                Tensor inputTensor = buildFloatTensor(model, input.getName(), inputData, inputShape);
                 session.feed(inputTensor, false);
+                inputIndex++;
             }
 
             // 执行推理
@@ -121,19 +134,19 @@ public class DL4JTest {
     }
 
     /**
-     * 构建 INT32 Tensor（不依赖 ND4J）
+     * 构建 FLOAT32 Tensor（不依赖 ND4J）
      */
-    private static Tensor buildInt32Tensor(Model model, String name, int[] data, long[] shape) {
+    private static Tensor buildFloatTensor(Model model, String name, float[] data, long[] shape) {
         TensorProto.Builder builder = TensorProto.newBuilder();
 
         for (long dim : shape) {
             builder.addDims(dim);
         }
 
-        builder.setDataType(TensorProto.DataType.INT32.getNumber());
+        builder.setDataType(TensorProto.DataType.FLOAT.getNumber());
 
         ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
-        buffer.asIntBuffer().put(data);
+        buffer.asFloatBuffer().put(data);
 
         builder.setRawData(ByteString.copyFrom(buffer));
 

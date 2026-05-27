@@ -290,13 +290,8 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
     // ==================== 真实硬件执行方法 ====================
     /**
      * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
-     *
-     * 使用block池方案：
-     * - 每个tile使用独立的blockId
-     * - R5根据blockId从预定义池中获取物理地址
+     * 使用固定block方案：A=block 0, B=block 1, Z=block 2
      */
-    private static int nextBufferId = 0;  // 简单的buffer分配计数器
-
     private long[][] executeOnHardware(long[][] tileA, long[][] tileB, InstJavaTODO instruction,
                                        int rowsA, int colsA, int colsB) {
 
@@ -308,73 +303,53 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
             throw new IllegalStateException("SharedMemoryPool not initialized. Call Session.initializeSharedMemoryPool() first.");
         }
 
-        // 2. 计算所需内存大小
-        int sizeA = rowsA * colsA * 4;
-        int sizeB = colsA * colsB * 4;
-        int sizeZ = rowsA * colsB * 4;
+        // 2. 固定使用block 0, 1, 2（A=0, B=1, Z=2）
+        final int blockIdA = 0;
+        final int blockIdB = 1;
+        final int blockIdZ = 2;
 
-        // 3. 分配固定 buffer（与 R5 侧 g_block_pool 对齐）
-        // 使用同步查找可用的 buffer
-        int blockIdA = pool.findNextFreeBlock(nextBufferId);
-        if (blockIdA < 0) {
-            throw new RuntimeException("No free block available for A");
-        }
-        org.onnx4j.SharedMemoryPool.BlockInfo infoA = pool.allocateBlock(blockIdA);
-
-        int blockIdB = pool.findNextFreeBlock(blockIdA + 1);
-        if (blockIdB < 0) {
-            pool.freeBlock(blockIdA);
-            throw new RuntimeException("No free block available for B");
-        }
-        org.onnx4j.SharedMemoryPool.BlockInfo infoB = pool.allocateBlock(blockIdB);
-
-        int blockIdZ = pool.findNextFreeBlock(blockIdB + 1);
-        if (blockIdZ < 0) {
-            pool.freeBlock(blockIdA);
-            pool.freeBlock(blockIdB);
-            throw new RuntimeException("No free block available for Z");
-        }
-        org.onnx4j.SharedMemoryPool.BlockInfo infoZ = pool.allocateBlock(blockIdZ);
-
-        // 更新下一个搜索起点
-        nextBufferId = (blockIdZ + 1) % 4;
-
-        System.out.println("[JNI-HW] Allocated buffers: A[id=" + blockIdA + ",block=" + infoA.blockId + ",off=0x" + Integer.toHexString(infoA.offsetInBlock) + "]" +
-                          ", B[id=" + blockIdB + ",block=" + infoB.blockId + ",off=0x" + Integer.toHexString(infoB.offsetInBlock) + "]" +
-                          ", Z[id=" + blockIdZ + ",block=" + infoZ.blockId + ",off=0x" + Integer.toHexString(infoZ.offsetInBlock) + "]");
+        // 3. 分配block（设置blockUsed[]状态，防止并发冲突）
+        pool.allocateBlock(blockIdA);
+        pool.allocateBlock(blockIdB);
+        pool.allocateBlock(blockIdZ);
 
         try {
-            // 4. 写入tileA到共享内存（使用固定地址）
-            java.nio.ByteBuffer bufferA = pool.mapBlock(blockIdA, sizeA);
-            bufferA.order(java.nio.ByteOrder.nativeOrder());
+            // 4. 计算所需内存大小
+            int sizeA = rowsA * colsA * 4;
+            int sizeB = colsA * colsB * 4;
+            int sizeZ = rowsA * colsB * 4;
+
+            // 5. 写入tileA到block 0
+            java.nio.ByteBuffer bufA = pool.mapBlock(blockIdA, sizeA);
+            bufA.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < rowsA; i++) {
                 for (int j = 0; j < colsA; j++) {
-                    bufferA.putInt((int)tileA[i][j]);
+                    bufA.putInt((int)tileA[i][j]);
                 }
             }
 
-            // 5. 写入tileB到共享内存
-            java.nio.ByteBuffer bufferB = pool.mapBlock(blockIdB, sizeB);
-            bufferB.order(java.nio.ByteOrder.nativeOrder());
+            // 6. 写入tileB到block 1
+            java.nio.ByteBuffer bufB = pool.mapBlock(blockIdB, sizeB);
+            bufB.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < colsA; i++) {
                 for (int j = 0; j < colsB; j++) {
-                    bufferB.putInt((int)tileB[i][j]);
+                    bufB.putInt((int)tileB[i][j]);
                 }
             }
 
-            // 6. 设置指令的blockId
+            // 7. 设置指令的blockId
             instruction.blockIdA = blockIdA;
             instruction.blockIdB = blockIdB;
             instruction.blockIdZ = blockIdZ;
 
             System.out.println("[JNI-HW] Instruction blockIds: A=" + blockIdA + ", B=" + blockIdB + ", Z=" + blockIdZ);
 
-            // 7. 同步并执行
+            // 8. 同步并执行
             org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI jni =
                 org.forwarder.backend.impls.HWAccelerated.utils.HWAcceleratorJNI.getInstance();
 
-            jni.syncToDevice(infoA.blockId, infoA.offsetInBlock, sizeA);
-            jni.syncToDevice(infoB.blockId, infoB.offsetInBlock, sizeB);
+            jni.syncToDevice(blockIdA, 64, sizeA);
+            jni.syncToDevice(blockIdB, 64, sizeB);
 
             boolean success = jni.executeInstructions(new InstJavaTODO[]{instruction});
 
@@ -382,15 +357,15 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
                 throw new RuntimeException("FPGA execution failed");
             }
 
-            jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
+            jni.syncFromDevice(blockIdZ, 64, sizeZ);
 
-            // 8. 读取结果
-            java.nio.ByteBuffer bufferZ = pool.mapBlock(blockIdZ, sizeZ);
-            bufferZ.order(java.nio.ByteOrder.nativeOrder());
+            // 9. 读取结果从block 2
+            java.nio.ByteBuffer bufZ = pool.mapBlock(blockIdZ, sizeZ);
+            bufZ.order(java.nio.ByteOrder.nativeOrder());
             long[][] result = new long[rowsA][colsB];
             for (int i = 0; i < rowsA; i++) {
                 for (int j = 0; j < colsB; j++) {
-                    result[i][j] = bufferZ.getInt() & 0xFFFFFFFFL;
+                    result[i][j] = bufZ.getInt() & 0xFFFFFFFFL;
                 }
             }
 
@@ -398,7 +373,7 @@ public class HWAcceleratedMatMulV13 extends HWAcceleratedQuantizedOperator imple
 
             return result;
         } finally {
-            // 9. 释放 buffer（无论成功或失败）
+            // 10. 释放block（无论成功或失败）
             pool.freeBlock(blockIdA);
             pool.freeBlock(blockIdB);
             pool.freeBlock(blockIdZ);

@@ -23,9 +23,6 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
     private static final int HW_DIM_MULTIPLE = 16;
     private static final int MAX_HW_ELEMENTS = 512 * 512;
 
-    // Buffer池管理 - 跟踪下一个可用的buffer ID
-    private int nextBufferId = 0;
-
     @Override
     public OperatorOutputs<INDArray> forward(Node node, Inputs inputs) {
         ExpInputsV13<INDArray> castedInputs = new ExpInputsV13<>(node, inputs);
@@ -97,7 +94,7 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
 
     /**
      * 通过JNI将数据写入共享内存，发送指令到R5/FPGA执行
-     * 使用block池方案（与 R5 侧 g_block_pool 对齐）
+     * 使用固定block方案：A=block 0, B=block 1, Z=block 2
      */
     private long[][] executeOnHardware(long[][] tileA, long[][] tileB, InstJavaTODO instruction,
                                        int rows, int cols) {
@@ -108,74 +105,62 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
             throw new IllegalStateException("SharedMemoryPool not initialized");
         }
 
-        // 2. 计算大小并分配固定 buffer（与 R5 侧对齐）
-        int sizeA = rows * cols * 4;
-        int sizeB = rows * cols * 4;
-        int sizeZ = rows * cols * 4;
+        // 2. 固定使用block 0, 1, 2（A=0, B=1, Z=2）
+        final int blockIdA = 0;
+        final int blockIdB = 1;
+        final int blockIdZ = 2;
 
-        int blockIdA = pool.findNextFreeBlock(nextBufferId);
-        if (blockIdA < 0) {
-            throw new RuntimeException("No free block available for A");
-        }
-        SharedMemoryPool.BlockInfo infoA = pool.allocateBlock(blockIdA);
-
-        int blockIdB = pool.findNextFreeBlock(blockIdA + 1);
-        if (blockIdB < 0) {
-            pool.freeBlock(blockIdA);
-            throw new RuntimeException("No free block available for B");
-        }
-        SharedMemoryPool.BlockInfo infoB = pool.allocateBlock(blockIdB);
-
-        int blockIdZ = pool.findNextFreeBlock(blockIdB + 1);
-        if (blockIdZ < 0) {
-            pool.freeBlock(blockIdA);
-            pool.freeBlock(blockIdB);
-            throw new RuntimeException("No free block available for Z");
-        }
-        SharedMemoryPool.BlockInfo infoZ = pool.allocateBlock(blockIdZ);
-
-        nextBufferId = (blockIdZ + 1) % 4;
+        // 3. 分配block（设置blockUsed[]状态，防止并发冲突）
+        pool.allocateBlock(blockIdA);
+        pool.allocateBlock(blockIdB);
+        pool.allocateBlock(blockIdZ);
 
         try {
-            // 3. 写入数据（使用固定地址）
-            java.nio.ByteBuffer buffer = pool.mapBlock(blockIdA, sizeA);
-            buffer.order(java.nio.ByteOrder.nativeOrder());
+            int sizeA = rows * cols * 4;
+            int sizeB = rows * cols * 4;
+            int sizeZ = rows * cols * 4;
+
+            // 4. 写入数据A到block 0
+            java.nio.ByteBuffer bufA = pool.mapBlock(blockIdA, sizeA);
+            bufA.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
-                    buffer.putInt((int)tileA[i][j]);
+                    bufA.putInt((int)tileA[i][j]);
 
-            buffer = pool.mapBlock(blockIdB, sizeB);
+            // 5. 写入数据B到block 1
+            java.nio.ByteBuffer bufB = pool.mapBlock(blockIdB, sizeB);
+            bufB.order(java.nio.ByteOrder.nativeOrder());
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
-                    buffer.putInt((int)tileB[i][j]);
+                    bufB.putInt((int)tileB[i][j]);
 
-            // 4. 设置blockId
+            // 6. 设置指令的blockId
             instruction.blockIdA = blockIdA;
             instruction.blockIdB = blockIdB;
             instruction.blockIdZ = blockIdZ;
 
-            // 5. 执行
+            // 7. 执行
             HWAcceleratorJNI jni = HWAcceleratorJNI.getInstance();
 
-            jni.syncToDevice(infoA.blockId, infoA.offsetInBlock, sizeA);
-            jni.syncToDevice(infoB.blockId, infoB.offsetInBlock, sizeB);
+            jni.syncToDevice(blockIdA, 64, sizeA);
+            jni.syncToDevice(blockIdB, 64, sizeB);
 
             if (!jni.executeInstructions(new InstJavaTODO[]{instruction})) {
                 throw new RuntimeException("FPGA execution failed");
             }
 
-            jni.syncFromDevice(infoZ.blockId, infoZ.offsetInBlock, sizeZ);
+            jni.syncFromDevice(blockIdZ, 64, sizeZ);
 
-            // 6. 读取结果
-            buffer = pool.mapBlock(blockIdZ, sizeZ);
+            // 8. 读取结果从block 2
+            java.nio.ByteBuffer bufZ = pool.mapBlock(blockIdZ, sizeZ);
             long[][] result = new long[rows][cols];
             for (int i = 0; i < rows; i++)
                 for (int j = 0; j < cols; j++)
-                    result[i][j] = buffer.getInt() & 0xFFFFFFFFL;
+                    result[i][j] = bufZ.getInt() & 0xFFFFFFFFL;
 
             return result;
         } finally {
-            // 7. 释放 buffer
+            // 9. 释放block（无论成功或失败）
             pool.freeBlock(blockIdA);
             pool.freeBlock(blockIdB);
             pool.freeBlock(blockIdZ);

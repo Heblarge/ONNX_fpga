@@ -341,41 +341,41 @@ public class SharedMemoryPool implements AutoCloseable {
 	}
 
 	/**
-	 * 映射指定 buffer 到 ByteBuffer
-	 * @param bufferId buffer ID (0-63)
+	 * 映射指定block到ByteBuffer
+	 * 数据区从offset=64开始（跳过状态标志区）
+	 * @param blockId block ID (0-3)
 	 * @param size 映射大小
-	 * @return 映射的 ByteBuffer
+	 * @return 映射的 ByteBuffer，起点为block基址+64
 	 */
-	public ByteBuffer mapBuffer(int blockId, int size) {
-		BufferInfo info = getBufferInfo(bufferId);
-		return mapBuffer(info.blockId, info.offsetInBlock, size);
+	public ByteBuffer mapBlock(int blockId, int size) {
+		return mapBuffer(blockId, 64, size);  // 从offset=64开始，跳过状态标志区
 	}
 
 	/**
-	 * 检查 buffer 是否可用
+	 * 检查 block 是否可用
 	 */
-	public boolean isBufferFree(int blockId) {
-		if (bufferId < 0 || bufferId >= 4) {
+	public boolean isBlockFree(int blockId) {
+		if (blockId < 0 || blockId >= 4) {
 			return false;
 		}
-		synchronized (bufferLock) {
-			return !bufferUsed[bufferId];
+		synchronized (blockLock) {
+			return !blockUsed[blockId];
 		}
 	}
 
 	/**
-	 * 获取下一个可用的 buffer ID
-	 * @param startId 开始搜索的 buffer ID
-	 * @return 可用的 buffer ID，如果没有则返回 -1
+	 * 获取下一个可用的 block ID
+	 * @param startId 开始搜索的 block ID
+	 * @return 可用的 block ID，如果没有则返回 -1
 	 */
-	public int findNextFreeBuffer(int startId) {
+	public int findNextFreeBlock(int startId) {
 		for (int i = 0; i < 4; i++) {
 			int blockId = (startId + i) % 4;
-			if (isBufferFree(bufferId)) {
-				return bufferId;
+			if (isBlockFree(blockId)) {
+				return blockId;
 			}
 		}
-		return -1;  /* 所有 buffer 都被占用 */
+		return -1;  /* 所有 block 都被占用 */
 	}
 
 	/**
