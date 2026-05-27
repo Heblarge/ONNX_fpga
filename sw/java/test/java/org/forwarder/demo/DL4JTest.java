@@ -73,18 +73,16 @@ public class DL4JTest {
                 System.out.println("Input shape: " + Arrays.toString(inputShape));
                 System.out.println("Total elements: " + totalElements);
 
-                // 创建 FLOAT 类型输入数据，范围在 -1.0 到 1.0
-                float[] inputData = new float[totalElements];
+                // 创建 INT32 类型输入数据，范围在 -8 到 8
+                int[] inputData = new int[totalElements];
                 for (int i = 0; i < totalElements; i++) {
-                    // 生成 -1.0 到 1.0 之间的浮点数
-                    // 第一个输入：-1.0, -0.9, -0.8, ...
-                    // 第二个输入：0.1, 0.2, 0.3, ...
+                    // 生成 -8 到 8 之间的整数
+                    // 第一个输入：-8, -7, -6, ...
+                    // 第二个输入：1, 2, 3, ...
                     if (inputIndex == 0) {
-                        inputData[i] = -1.0f + (i * 0.1f);
+                        inputData[i] = -8 + (i % 17);  // -8 到 8 循环
                     } else {
-                        inputData[i] = 0.1f + (i * 0.05f);
-                        // 限制在 1.0 以内
-                        if (inputData[i] > 1.0f) inputData[i] = 1.0f;
+                        inputData[i] = 1 + (i % 8);  // 1 到 8 循环
                     }
                 }
 
@@ -92,7 +90,7 @@ public class DL4JTest {
                 System.out.println();
 
                 // Feed 输入
-                Tensor inputTensor = buildFloatTensor(model, input.getName(), inputData, inputShape);
+                Tensor inputTensor = buildIntTensor(model, input.getName(), inputData, inputShape);
                 session.feed(inputTensor, false);
                 inputIndex++;
             }
@@ -147,6 +145,29 @@ public class DL4JTest {
 
         ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
         buffer.asFloatBuffer().put(data);
+
+        builder.setRawData(ByteString.copyFrom(buffer));
+
+        return TensorBuilder.builder(builder.build(), model.getConfig().getTensorOptions())
+                .manager(model.getTensorManager())
+                .name(name)
+                .build();
+    }
+
+    /**
+     * 构建 INT32 Tensor（不依赖 ND4J）
+     */
+    private static Tensor buildIntTensor(Model model, String name, int[] data, long[] shape) {
+        TensorProto.Builder builder = TensorProto.newBuilder();
+
+        for (long dim : shape) {
+            builder.addDims(dim);
+        }
+
+        builder.setDataType(TensorProto.DataType.INT32.getNumber());
+
+        ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+        buffer.asIntBuffer().put(data);
 
         builder.setRawData(ByteString.copyFrom(buffer));
 
