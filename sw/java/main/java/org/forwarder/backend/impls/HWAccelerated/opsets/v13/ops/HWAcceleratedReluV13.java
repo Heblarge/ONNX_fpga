@@ -149,7 +149,7 @@ public class HWAcceleratedReluV13 extends HWAcceleratedQuantizedOperator impleme
 
             InstJavaTODO instruction = new InstJavaTODO(
                     0,
-                    "elementadd",
+                    "none",
                     0,
                     false,
                     "relu",
