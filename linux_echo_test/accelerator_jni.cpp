@@ -584,6 +584,11 @@ Java_org_forwarder_backend_impls_HWAccelerated_utils_HWAcceleratorJNI_nativeSend
         }
         convertInstruction(env, instJava, &instArray[i]);
 
+        // 调试：打印转换后的指令
+        printf("[JNI] Converted instruction[%d]: UID=%d, op=%d, act=%d, bufferIds=[A=%d,B=%d,Z=%d]\n",
+               i, instArray[i].UID, instArray[i].matrixOperation, instArray[i].activationFunction,
+               instArray[i].bufferIdA, instArray[i].bufferIdB, instArray[i].bufferIdZ);
+
         // 设置输入缓冲区状态为 READY（标记数据已准备好）
         int bufferIdA = instArray[i].bufferIdA;
         int bufferIdB = instArray[i].bufferIdB;

@@ -337,6 +337,14 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         return -1;
     }
 
+    // 调试：打印 sdpramA 前10个元素
+    volatile uint32_t* sdpramA_ptr = (volatile uint32_t*)sdpramA_base;
+    LPRINTF("     sdpramA first 10: ");
+    for (int i = 0; i < 10; i++) {
+        LPRINTF("%d ", sdpramA_ptr[i]);
+    }
+    LPRINTF("\n");
+
     // 搬运tileB: 共享内存 → sdpramB (从地址0开始)
     // 注意：源地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 1,  // DataMover 1
@@ -349,6 +357,14 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         LPERROR("tileB transfer timeout\n");
         return -1;
     }
+
+    // 调试：打印 sdpramB 前10个元素
+    volatile uint32_t* sdpramB_ptr = (volatile uint32_t*)sdpramB_base;
+    LPRINTF("     sdpramB first 10: ");
+    for (int i = 0; i < 10; i++) {
+        LPRINTF("%d ", sdpramB_ptr[i]);
+    }
+    LPRINTF("\n");
 
     LPRINTF("     DataMover: complete, now triggering FPGA...\n");
 
@@ -489,6 +505,10 @@ static int handle_instructions_data(void *data, size_t len) {
     // 执行每条指令
     int failed_count = 0;
     for (uint32_t i = 0; i < count; i++) {
+        // 调试：直接打印关键字段
+        LPRINTF("Instruction %u: bufferIdA=%d, bufferIdB=%d, bufferIdZ=%d\n",
+                i, instructions[i].bufferIdA, instructions[i].bufferIdB, instructions[i].bufferIdZ);
+
         if (execute_single_instruction(&instructions[i]) != 0) {
             LPERROR("Failed to execute instruction %u\n", i);
             failed_count++;
