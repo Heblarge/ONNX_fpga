@@ -149,11 +149,11 @@ int32_t init_system(void)
 	/* Configure MPU for FPGA SRAM regions (0xA0000000, 0xA2000000, 0xA4000000)
 	 * These are AXI BRAM controllers and must be marked as non-cacheable
 	 * to ensure R5 reads the actual data written by DataMover.
-	 * Using NORM_NSHARED_NCACHE for normal non-cacheable memory.
+	 * Using Xil_SetMPURegion (R5 MPU API, not Xil_SetTlbAttributes which is for A53 MMU).
 	 */
-	Xil_SetTlbAttributes(0xA0000000, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramA
-	Xil_SetTlbAttributes(0xA2000000, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramB
-	Xil_SetTlbAttributes(0xA4000000, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramZ
+	Xil_SetMPURegion(0xA0000000UL, 0x200000UL, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramA: 2MB
+	Xil_SetMPURegion(0xA2000000UL, 0x200000UL, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramB: 2MB
+	Xil_SetMPURegion(0xA4000000UL, 0x200000UL, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramZ: 2MB
 	Xil_DCacheFlush();  // Flush any stale cached data
 
 	/* configure the global interrupt controller */
