@@ -81,6 +81,16 @@ public class HWAcceleratedBackend extends Backend<INDArray> {
 
 		// 复制数据到共享内存
 		java.nio.ByteBuffer srcBuffer = onnx4jTensor.getData();
+
+		// DEBUG: 检查srcBuffer状态
+		System.out.printf("[DEBUG toBackendTensor] tensor=%s, buf position=%d limit=%d capacity=%d%n",
+			onnx4jTensor.getName(), srcBuffer.position(), srcBuffer.limit(), srcBuffer.capacity());
+		// 用绝对索引读取前4个int，不受position影响
+		if (srcBuffer.capacity() >= 16) {
+			System.out.printf("[DEBUG toBackendTensor] first 4 ints (absolute): %d %d %d %d%n",
+				srcBuffer.getInt(0), srcBuffer.getInt(4), srcBuffer.getInt(8), srcBuffer.getInt(12));
+		}
+
 		java.nio.ByteBuffer dstBuffer = sharedMemoryPool.mapBuffer(alloc.blockId, alloc.offset, (int) requiredBytes);
 		dstBuffer.put(srcBuffer);
 		dstBuffer.flip();
@@ -114,13 +124,31 @@ public class HWAcceleratedBackend extends Backend<INDArray> {
 		// 所以这里直接从 INDArray 创建 Tensor，而不是指向 shared memory
 		org.onnx4j.tensor.DataType onnx4jDataType = convertToONNXDataType(backendTensor.data().dataType());
 
+		// DEBUG: 检查INDArray数据
+		long totalElements = backendTensor.length();
+		System.out.printf("[DEBUG toNativeTensor] tensor=%s, dtype=%s, length=%d%n",
+			name, backendTensor.data().dataType(), totalElements);
+		if (totalElements >= 4) {
+			System.out.printf("[DEBUG toNativeTensor] first 4 values from INDArray: %d %d %d %d%n",
+				backendTensor.getLong(0), backendTensor.getLong(1), backendTensor.getLong(2), backendTensor.getLong(3));
+		}
+
 		// 从 INDArray 数据创建 Tensor（与 DL4J 后端类似）
+		java.nio.ByteBuffer dataBuffer = backendTensor.data().asNio();
+		// DEBUG: 检查asNio()返回的buffer
+		System.out.printf("[DEBUG toNativeTensor] asNio buffer: position=%d limit=%d capacity=%d%n",
+			dataBuffer.position(), dataBuffer.limit(), dataBuffer.capacity());
+		if (dataBuffer.capacity() >= 16) {
+			System.out.printf("[DEBUG toNativeTensor] first 4 ints from asNio (absolute): %d %d %d %d%n",
+				dataBuffer.getInt(0), dataBuffer.getInt(4), dataBuffer.getInt(8), dataBuffer.getInt(12));
+		}
+
 		Tensor tensor = new Tensor(
 			name,
 			"",
 			onnx4jDataType,
 			org.onnx4j.tensor.Shape.create(backendTensor.shape()),
-			backendTensor.data().asNio()  // 使用 INDArray 的数据
+			dataBuffer  // 使用 INDArray 的数据
 		);
 
 		return tensor;
