@@ -982,3 +982,379 @@ WARNING: Unmatched cancel notification for request id 421
 2026.05.27 10:16:13 WARN  javac exited with exit code 1
 2026.05.27 10:16:13 INFO  time: compiled onnx_spinal_project_new-test in 3.1s
 2026.05.27 10:16:13 INFO  time: compiled Onnx_SpinalHDL in 3.16s
+2026.05.27 10:17:06 INFO  compiling onnx_spinal_project_new-test (107 java sources)
+2026.05.27 10:17:06 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.27 10:17:07 INFO  time: compiled Onnx_SpinalHDL in 0.99s
+2026.05.27 10:17:08 WARN  javac exited with exit code 1
+2026.05.27 10:17:08 INFO  time: compiled onnx_spinal_project_new-test in 2.3s
+2026.05.27 10:17:20 INFO  compiling onnx_spinal_project_new-test (107 java sources)
+2026.05.27 10:17:20 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.27 10:17:20 INFO  time: compiled Onnx_SpinalHDL in 0.56s
+2026.05.27 10:17:22 WARN  javac exited with exit code 1
+2026.05.27 10:17:22 INFO  time: compiled onnx_spinal_project_new-test in 2.07s
+2026.05.27 10:17:37 INFO  compiling onnx_spinal_project_new-test (107 java sources)
+2026.05.27 10:17:37 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.27 10:17:38 INFO  time: compiled Onnx_SpinalHDL in 0.77s
+2026.05.27 10:17:39 WARN  javac exited with exit code 1
+2026.05.27 10:17:39 INFO  time: compiled onnx_spinal_project_new-test in 2.17s
+May 27, 2026 10:26:40 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 498
+2026.05.27 10:26:41 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:26:43 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:26:53 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+May 27, 2026 10:26:55 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 531
+2026.05.27 10:26:56 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:26:56 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+May 27, 2026 10:26:59 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint fallbackResponseError
+SEVERE: Internal error: begin -1, end 1813, length 1816
+java.lang.StringIndexOutOfBoundsException: begin -1, end 1813, length 1816
+	at java.base/java.lang.String.checkBoundsBeginEnd(String.java:4606)
+	at java.base/java.lang.String.substring(String.java:2709)
+	at scala.meta.internal.pc.JavaMetalsGlobal.findIndentifierStartAndEnd(JavaMetalsGlobal.scala:87)
+	at scala.meta.internal.pc.JavaMetalsGlobal.isAtIdentifier(JavaMetalsGlobal.scala:137)
+	at scala.meta.internal.pc.JavaDocumentHighlightProvider.atIdentifier$1(JavaDocumentHighlightProvider.scala:53)
+	at scala.meta.internal.pc.JavaDocumentHighlightProvider.documentHighlight(JavaDocumentHighlightProvider.scala:55)
+	at scala.meta.internal.pc.JavaDocumentHighlightProvider.documentHighlight(JavaDocumentHighlightProvider.scala:25)
+	at scala.meta.internal.pc.JavaPresentationCompiler.documentHighlight(JavaPresentationCompiler.scala:112)
+	at scala.meta.internal.metals.Compilers.$anonfun$documentHighlight$1(Compilers.scala:908)
+	at scala.meta.internal.metals.Compilers.$anonfun$withPCAndAdjustLsp$4(Compilers.scala:1543)
+	at scala.Option.map(Option.scala:242)
+	at scala.meta.internal.metals.Compilers.$anonfun$withPCAndAdjustLsp$3(Compilers.scala:1543)
+	at scala.Option.flatMap(Option.scala:283)
+	at scala.meta.internal.metals.Compilers.withPCAndAdjustLsp(Compilers.scala:1535)
+	at scala.meta.internal.metals.Compilers.documentHighlight(Compilers.scala:903)
+	at scala.meta.internal.metals.MetalsLspService.$anonfun$documentHighlights$1(MetalsLspService.scala:1019)
+	at scala.meta.internal.metals.CancelTokens$.future(CancelTokens.scala:38)
+	at scala.meta.internal.metals.MetalsLspService.documentHighlights(MetalsLspService.scala:1018)
+	at scala.meta.internal.metals.WorkspaceLspService.documentHighlights(WorkspaceLspService.scala:541)
+	at scala.meta.metals.lsp.DelegatingScalaService.documentHighlights(DelegatingScalaService.scala:83)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.request(GenericEndpoint.java:128)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleRequest(RemoteEndpoint.java:265)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:195)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+
+May 27, 2026 10:26:59 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 538
+May 27, 2026 10:26:59 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 541
+2026.05.27 10:28:16 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+May 27, 2026 10:28:22 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 615
+2026.05.27 10:43:32 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:43:42 INFO  compiling onnx_spinal_project_new-test (107 java sources)
+2026.05.27 10:43:42 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.27 10:43:44 INFO  time: compiled Onnx_SpinalHDL in 1.99s
+2026.05.27 10:43:46 WARN  javac exited with exit code 1
+2026.05.27 10:43:46 INFO  time: compiled onnx_spinal_project_new-test in 4.45s
+2026.05.27 10:43:47 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:43:51 INFO  compiling onnx_spinal_project_new-test (107 java sources)
+2026.05.27 10:43:51 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.27 10:43:52 INFO  time: compiled Onnx_SpinalHDL in 0.72s
+2026.05.27 10:43:53 WARN  javac exited with exit code 1
+2026.05.27 10:43:53 INFO  time: compiled onnx_spinal_project_new-test in 2.06s
+2026.05.27 10:43:53 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:43:58 INFO  compiling onnx_spinal_project_new-test (107 java sources)
+2026.05.27 10:43:58 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.27 10:43:58 INFO  time: compiled Onnx_SpinalHDL in 0.64s
+2026.05.27 10:44:01 WARN  javac exited with exit code 1
+2026.05.27 10:44:01 INFO  time: compiled onnx_spinal_project_new-test in 3.2s
+2026.05.27 10:44:01 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:51:02 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.27 10:51:07 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+2026.05.28 04:11:56 INFO  Started: Metals version 1.6.7 in folders '/root/onnx_spinal_project_new' for client Visual Studio Code 1.122.0.
+2026.05.28 04:11:56 INFO  Memory monitor started
+2026.05.28 04:12:00 WARN  Using H2 2.4.240 which is newer than the version Flyway has been verified with. The latest verified version of H2 is 2.3.232.
+2026.05.28 04:12:00 INFO  Attempting to connect to the build server...
+2026.05.28 04:12:00 INFO  No running Bloop server found, starting one.
+2026.05.28 04:12:02 INFO  Starting compilation server
+2026.05.28 04:12:04 INFO  tracing is disabled for protocol BSP, to enable tracing of incoming and outgoing JSON messages create an empty file at /root/onnx_spinal_project_new/.metals/bsp.trace.json or /root/.cache/metals/bsp.trace.json
+2026.05.28 04:12:08 INFO  Attempting to connect to the build server...
+2026.05.28 04:12:08 INFO  Found a Bloop server running
+2026.05.28 04:12:08 INFO  Attempting to connect to the build server...
+2026.05.28 04:12:08 INFO  Found a Bloop server running
+2026.05.28 04:12:08 INFO  tracing is disabled for protocol BSP, to enable tracing of incoming and outgoing JSON messages create an empty file at /root/onnx_spinal_project_new/project/project/.metals/bsp.trace.json or /root/.cache/metals/bsp.trace.json
+2026.05.28 04:12:08 INFO  tracing is disabled for protocol BSP, to enable tracing of incoming and outgoing JSON messages create an empty file at /root/onnx_spinal_project_new/project/.metals/bsp.trace.json or /root/.cache/metals/bsp.trace.json
+2026.05.28 04:12:08 INFO  time: Connected to build server in 8.18s
+2026.05.28 04:12:08 INFO  Connected to Build server: Bloop v2.0.19
+2026.05.28 04:12:09 INFO  time: Imported build in 0.2s
+2026.05.28 04:12:09 WARN  2.13.14 is no longer supported in the current Metals versions, using the last known supported version 1.6.3
+2026.05.28 04:12:12 INFO  QDox parse error in file:///root/onnx_spinal_project_new/sw/java/test/java/org/forwarder/backend/impls/dl4j/opsets/aiOnnx/v13/ops/DL4JCastV13Test.java (full report at: "/root/onnx_spinal_project_new/.metals/.reports/metals-full/2026-05-13/r_qdox-error_(onnx_5fspinal_5fproject_5fnew-test)_06-23-56-663.md")
+2026.05.28 04:12:13 INFO  QDox parse error in file:///root/onnx_spinal_project_new/sw/java/test/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedNegV13Test.java (full report at: "/root/onnx_spinal_project_new/.metals/.reports/metals-full/2026-05-11/r_qdox-error_(onnx_5fspinal_5fproject_5fnew-test)_07-17-36-535.md")
+2026.05.28 04:12:15 WARN  Could not find java sources in /usr/lib/jvm/src.zip, /usr/lib/jvm/lib/src.zip, /usr/lib/jvm/java-17-openjdk/src.zip, /usr/lib/jvm/java-17-openjdk/lib/src.zip, /usr/lib/jvm/src.zip, /usr/lib/jvm/lib/src.zip, /usr/lib/jvm/java-17-openjdk-17.0.14.0.7-2.el9.x86_64/src.zip, /usr/lib/jvm/java-17-openjdk-17.0.14.0.7-2.el9.x86_64/lib/src.zip. Java symbols will not be available.
+2026.05.28 04:12:17 INFO  time: indexed workspace in 8.36s
+May 28, 2026 8:32:30 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "metals/didFocusTextDocument",
+  "params": [
+    "_claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java"
+  ]
+}
+java.lang.IllegalArgumentException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI.create(URI.java:906)
+	at scala.meta.internal.mtags.MtagsEnrichments$XtensionStringMtags.toAbsolutePath(MtagsEnrichments.scala:209)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:787)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:784)
+	at scala.meta.internal.metals.WorkspaceLspService.didFocus(WorkspaceLspService.scala:808)
+	at scala.meta.metals.lsp.DelegatingScalaService.didFocus(DelegatingScalaService.scala:42)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:160)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:225)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:192)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.URISyntaxException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI$Parser.fail(URI.java:2976)
+	at java.base/java.net.URI$Parser.checkChars(URI.java:3147)
+	at java.base/java.net.URI$Parser.checkChar(URI.java:3157)
+	at java.base/java.net.URI$Parser.parse(URI.java:3172)
+	at java.base/java.net.URI.<init>(URI.java:623)
+	at java.base/java.net.URI.create(URI.java:904)
+	... 21 more
+
+May 28, 2026 8:32:30 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 1
+2026.05.28 08:32:33 INFO  compiling onnx_spinalhdl (11 scala sources and 27 java sources)
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/Misc.scala
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/FpxxAdd.scala
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/FpxxTesterSupport.scala
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/FpxxRSqrt.scala
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/FpxxMul.scala
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/FpxxSqrtStream.scala
+2026.05.28 08:32:38 WARN  Invalid text document uri received from build server: file:///root/onnx_spinal_project_new/hw/spinal/FloatingPoint/FpxxConverter.scala
+2026.05.28 08:32:38 INFO  time: compiled Onnx_SpinalHDL in 5.27s
+May 28, 2026 9:36:07 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "metals/didFocusTextDocument",
+  "params": [
+    "_claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java"
+  ]
+}
+java.lang.IllegalArgumentException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI.create(URI.java:906)
+	at scala.meta.internal.mtags.MtagsEnrichments$XtensionStringMtags.toAbsolutePath(MtagsEnrichments.scala:209)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:787)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:784)
+	at scala.meta.internal.metals.WorkspaceLspService.didFocus(WorkspaceLspService.scala:808)
+	at scala.meta.metals.lsp.DelegatingScalaService.didFocus(DelegatingScalaService.scala:42)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:160)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:225)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:192)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.URISyntaxException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI$Parser.fail(URI.java:2976)
+	at java.base/java.net.URI$Parser.checkChars(URI.java:3147)
+	at java.base/java.net.URI$Parser.checkChar(URI.java:3157)
+	at java.base/java.net.URI$Parser.parse(URI.java:3172)
+	at java.base/java.net.URI.<init>(URI.java:623)
+	at java.base/java.net.URI.create(URI.java:904)
+	... 21 more
+
+May 28, 2026 9:36:07 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 7
+May 28, 2026 10:24:15 AM org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint notify
+INFO: Unsupported notification method: $/setTrace
+May 28, 2026 11:52:22 AM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 14
+2026.05.28 11:52:22 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedAddV13.java
+2026.05.28 11:52:22 WARN  Could not load snapshot text for /root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedAddV13.java
+May 28, 2026 1:40:59 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "metals/didFocusTextDocument",
+  "params": [
+    "_claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/onnx4j/Tensor.java"
+  ]
+}
+java.lang.IllegalArgumentException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/onnx4j/Tensor.java
+	at java.base/java.net.URI.create(URI.java:906)
+	at scala.meta.internal.mtags.MtagsEnrichments$XtensionStringMtags.toAbsolutePath(MtagsEnrichments.scala:209)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:787)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:784)
+	at scala.meta.internal.metals.WorkspaceLspService.didFocus(WorkspaceLspService.scala:808)
+	at scala.meta.metals.lsp.DelegatingScalaService.didFocus(DelegatingScalaService.scala:42)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:160)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:225)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:192)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.URISyntaxException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/onnx4j/Tensor.java
+	at java.base/java.net.URI$Parser.fail(URI.java:2976)
+	at java.base/java.net.URI$Parser.checkChars(URI.java:3147)
+	at java.base/java.net.URI$Parser.checkChar(URI.java:3157)
+	at java.base/java.net.URI$Parser.parse(URI.java:3172)
+	at java.base/java.net.URI.<init>(URI.java:623)
+	at java.base/java.net.URI.create(URI.java:904)
+	... 21 more
+
+May 28, 2026 1:40:59 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 34
+May 28, 2026 1:44:27 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "metals/didFocusTextDocument",
+  "params": [
+    "_claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java"
+  ]
+}
+java.lang.IllegalArgumentException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI.create(URI.java:906)
+	at scala.meta.internal.mtags.MtagsEnrichments$XtensionStringMtags.toAbsolutePath(MtagsEnrichments.scala:209)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:787)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:784)
+	at scala.meta.internal.metals.WorkspaceLspService.didFocus(WorkspaceLspService.scala:808)
+	at scala.meta.metals.lsp.DelegatingScalaService.didFocus(DelegatingScalaService.scala:42)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:160)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:225)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:192)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.URISyntaxException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI$Parser.fail(URI.java:2976)
+	at java.base/java.net.URI$Parser.checkChars(URI.java:3147)
+	at java.base/java.net.URI$Parser.checkChar(URI.java:3157)
+	at java.base/java.net.URI$Parser.parse(URI.java:3172)
+	at java.base/java.net.URI.<init>(URI.java:623)
+	at java.base/java.net.URI.create(URI.java:904)
+	... 21 more
+
+May 28, 2026 1:45:42 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "metals/didFocusTextDocument",
+  "params": [
+    "_claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java"
+  ]
+}
+java.lang.IllegalArgumentException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI.create(URI.java:906)
+	at scala.meta.internal.mtags.MtagsEnrichments$XtensionStringMtags.toAbsolutePath(MtagsEnrichments.scala:209)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:787)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:784)
+	at scala.meta.internal.metals.WorkspaceLspService.didFocus(WorkspaceLspService.scala:808)
+	at scala.meta.metals.lsp.DelegatingScalaService.didFocus(DelegatingScalaService.scala:42)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:160)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:225)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:192)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.URISyntaxException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/HWAcceleratedBackend.java
+	at java.base/java.net.URI$Parser.fail(URI.java:2976)
+	at java.base/java.net.URI$Parser.checkChars(URI.java:3147)
+	at java.base/java.net.URI$Parser.checkChar(URI.java:3157)
+	at java.base/java.net.URI$Parser.parse(URI.java:3172)
+	at java.base/java.net.URI.<init>(URI.java:623)
+	at java.base/java.net.URI.create(URI.java:904)
+	... 21 more
+
+May 28, 2026 2:15:33 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleNotification
+WARNING: Notification threw an exception: {
+  "jsonrpc": "2.0",
+  "method": "metals/didFocusTextDocument",
+  "params": [
+    "_claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java"
+  ]
+}
+java.lang.IllegalArgumentException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+	at java.base/java.net.URI.create(URI.java:906)
+	at scala.meta.internal.mtags.MtagsEnrichments$XtensionStringMtags.toAbsolutePath(MtagsEnrichments.scala:209)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:787)
+	at scala.meta.internal.metals.MetalsEnrichments$XtensionString.toAbsolutePath(MetalsEnrichments.scala:784)
+	at scala.meta.internal.metals.WorkspaceLspService.didFocus(WorkspaceLspService.scala:808)
+	at scala.meta.metals.lsp.DelegatingScalaService.didFocus(DelegatingScalaService.scala:42)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.lambda$recursiveFindRpcMethods$0(GenericEndpoint.java:65)
+	at org.eclipse.lsp4j.jsonrpc.services.GenericEndpoint.notify(GenericEndpoint.java:160)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.handleNotification(RemoteEndpoint.java:225)
+	at org.eclipse.lsp4j.jsonrpc.RemoteEndpoint.consume(RemoteEndpoint.java:192)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.handleMessage(StreamMessageProducer.java:189)
+	at org.eclipse.lsp4j.jsonrpc.json.StreamMessageProducer.listen(StreamMessageProducer.java:97)
+	at org.eclipse.lsp4j.jsonrpc.json.ConcurrentMessageProcessor.run(ConcurrentMessageProcessor.java:97)
+	at java.base/java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:539)
+	at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+	at java.base/java.lang.Thread.run(Thread.java:840)
+Caused by: java.net.URISyntaxException: Illegal character in scheme name at index 0: _claude_fs_right:/root/onnx_spinal_project_new/sw/java/main/java/org/forwarder/backend/impls/HWAccelerated/opsets/v13/ops/HWAcceleratedExpV13.java
+	at java.base/java.net.URI$Parser.fail(URI.java:2976)
+	at java.base/java.net.URI$Parser.checkChars(URI.java:3147)
+	at java.base/java.net.URI$Parser.checkChar(URI.java:3157)
+	at java.base/java.net.URI$Parser.parse(URI.java:3172)
+	at java.base/java.net.URI.<init>(URI.java:623)
+	at java.base/java.net.URI.create(URI.java:904)
+	... 21 more
+
+May 28, 2026 2:15:33 PM org.eclipse.lsp4j.jsonrpc.RemoteEndpoint handleCancellation
+WARNING: Unmatched cancel notification for request id 46

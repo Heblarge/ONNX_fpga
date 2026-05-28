@@ -20,6 +20,7 @@
 #include "platform_info.h"
 #include "fpga_driver.h"
 #include "datamover_driver.h"
+#include "xparameters.h"
 
 #define RPMSG_SERVICE_NAME "rpmsg-openamp-demo-channel"
 #define SHUTDOWN_MSG 0xEF56A55A
@@ -263,10 +264,10 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         return -1;
     }
 
-    LPRINTF("     blocks: A[id=%d,PA=0x%lX], B[id=%d,PA=0x%lX], Z[id=%d,PA=0x%lX]\n",
-            msg_inst->blockIdA, blkA->shm_phys_addr,
-            msg_inst->blockIdB, blkB->shm_phys_addr,
-            msg_inst->blockIdZ, blkZ->shm_phys_addr);
+    LPRINTF("     blocks: A[id=%d,PA=0x%llX], B[id=%d,PA=0x%llX], Z[id=%d,PA=0x%llX]\n",
+            msg_inst->blockIdA, (unsigned long long)blkA->shm_phys_addr,
+            msg_inst->blockIdB, (unsigned long long)blkB->shm_phys_addr,
+            msg_inst->blockIdZ, (unsigned long long)blkZ->shm_phys_addr);
 
     // 2. 计算数据大小
     uint32_t sizeA = msg_inst->input0Shape0 * msg_inst->input0Shape1 * 4;  // int32 = 4字节
@@ -277,16 +278,38 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     uint32_t rowLenZ = msg_inst->input1Shape1 * 4;
 
     // 3. DataMover: 共享内存 → FPGA SRAM
-    // FPGA片上SRAM地址 (从r5_bm_validation迁移)
-    const uint64_t sdpramA_base = 0xA0000000UL;  // sdpramA
-    const uint64_t sdpramB_base = 0xA0010000UL;  // sdpramB
-    const uint64_t sdpramZ_base = 0xA0020000UL;  // sdpramZ (输出)
+    // FPGA片上SRAM地址（从 xparameters.h 获取正确的 BRAM 地址）
+    const uint64_t sdpramA_base = XPAR_AXI_BRAM_CTRL_0_S_AXI_BASEADDR;  // sdpramA: 0xA0000000
+    const uint64_t sdpramB_base = XPAR_AXI_BRAM_CTRL_1_S_AXI_BASEADDR;  // sdpramB: 0xA2000000
+    const uint64_t sdpramZ_base = XPAR_AXI_BRAM_CTRL_2_S_AXI_BASEADDR;  // sdpramZ: 0xA4000000
 
     // Cache同步: Invalidate R5的cache，确保DataMover读取的是A53写入的最新数据
-    Xil_DCacheInvalidateRange(blkA->shm_phys_addr, sizeA);
-    Xil_DCacheInvalidateRange(blkB->shm_phys_addr, sizeB);
+    Xil_DCacheInvalidateRange((UINTPTR)blkA->shm_phys_addr, sizeA);
+    Xil_DCacheInvalidateRange((UINTPTR)blkB->shm_phys_addr, sizeB);
 
     LPRINTF("     DataMover: shm→FPGA SRAM...\n");
+
+    // 调试：确认 invalidate 后 CPU 看到的共享内存数据是否正确
+    volatile uint32_t* blockA_header_ptr = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 0);
+    volatile uint32_t* blockA_data_ptr = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 64);
+    LPRINTF("     blockA header+0: %08X %08X %08X %08X\n",
+            blockA_header_ptr[0], blockA_header_ptr[1], blockA_header_ptr[2], blockA_header_ptr[3]);
+    LPRINTF("     blockA data+64:   %08X %08X %08X %08X\n",
+            blockA_data_ptr[0], blockA_data_ptr[1], blockA_data_ptr[2], blockA_data_ptr[3]);
+
+    // 对照测试：CPU 直接从 DDR 搬到 BRAM，绕过 DataMover
+    // 用于确认是否是 SMMU 权限问题导致 DataMover 读 DDR 失败
+    volatile uint32_t* cpu_test_src = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 64);
+    volatile uint32_t* cpu_test_dst = (volatile uint32_t*)(uintptr_t)sdpramA_base;
+    for (int i = 0; i < 10; i++) {
+        cpu_test_dst[i] = cpu_test_src[i];
+    }
+    // 确保写入完成后再读取
+    Xil_DCacheFlushRange((UINTPTR)sdpramA_base, 10 * sizeof(uint32_t));
+    LPRINTF("CPU copy test - sdpramA: %d %d %d %d\n",
+            (int)cpu_test_dst[0], (int)cpu_test_dst[1], (int)cpu_test_dst[2], (int)cpu_test_dst[3]);
+    LPRINTF("CPU copy test - src    : %d %d %d %d\n",
+            (int)cpu_test_src[0], (int)cpu_test_src[1], (int)cpu_test_src[2], (int)cpu_test_src[3]);
 
     // 搬运tileA: 共享内存 → sdpramA (从地址0开始)
     // 注意：源地址需要 +64 跳过状态标志区域
@@ -301,8 +324,18 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         return -1;
     }
 
+    // 调试：打印 DataMover 搬运后 sdpramA 中的数据
+    // DataMover 直接写内存，CPU 读取前需要 invalidate cache
+    Xil_DCacheInvalidateRange((UINTPTR)sdpramA_base, msg_inst->input0Shape0 * msg_inst->input0Shape1 * 4);
+    volatile uint32_t* sdpramA_ptr = (volatile uint32_t*)(uintptr_t)sdpramA_base;
+    LPRINTF("     sdpramA first 10: ");
+    for (int i = 0; i < 10; i++) {
+        LPRINTF("%d ", sdpramA_ptr[i]);
+    }
+    LPRINTF("\n");
+
     // 调试：打印共享内存中 blockA 前10个元素（64字节偏移量后是数据区）
-    volatile uint32_t* blockA_ptr = (volatile uint32_t*)(blkA->shm_phys_addr + 64);
+    volatile uint32_t* blockA_ptr = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 64);
     LPRINTF("     blockA first 10: ");
     for (int i = 0; i < 10; i++) {
         LPRINTF("%d ", blockA_ptr[i]);
@@ -322,8 +355,18 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         return -1;
     }
 
+    // 调试：打印 DataMover 搬运后 sdpramB 中的数据
+    // DataMover 直接写内存，CPU 读取前需要 invalidate cache
+    Xil_DCacheInvalidateRange((UINTPTR)sdpramB_base, msg_inst->input1Shape0 * msg_inst->input1Shape1 * 4);
+    volatile uint32_t* sdpramB_ptr = (volatile uint32_t*)(uintptr_t)sdpramB_base;
+    LPRINTF("     sdpramB first 10: ");
+    for (int i = 0; i < 10; i++) {
+        LPRINTF("%d ", sdpramB_ptr[i]);
+    }
+    LPRINTF("\n");
+
     // 调试：打印共享内存中 blockB 前10个元素（64字节偏移量后是数据区）
-    volatile uint32_t* blockB_ptr = (volatile uint32_t*)(blkB->shm_phys_addr + 64);
+    volatile uint32_t* blockB_ptr = (volatile uint32_t*)(uintptr_t)(blkB->shm_phys_addr + 64);
     LPRINTF("     blockB first 10: ");
     for (int i = 0; i < 10; i++) {
         LPRINTF("%d ", blockB_ptr[i]);
@@ -332,28 +375,11 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     LPRINTF("     DataMover: complete, now triggering FPGA...\n");
 
-    // 4. 动态配置 Cache 生命周期
-    // 根据矩阵大小计算所需的Cache生命周期
-    // Cache A 存储 input0 (M x K)，每行需要参与计算 N 个输出列
-    // Cache B 存储 input1 (K x N)，每列需要参与计算 M 个输出行
-    // systolicArraySideNum = 32，数据按32x32分块处理
-    //
-    // 估算公式（保守计算）：
-    // - cycle_a: Cache A 需要支持 (N / 32) 次重用，加上安全裕量
-    // - cycle_b: Cache B 需要支持 (M / 32) 次重用，加上安全裕量
-    //
-    uint32_t tile_count_n = (msg_inst->input1Shape1 + 31) / 32;  // 向上取整
-    uint32_t tile_count_m = (msg_inst->input0Shape0 + 31) / 32;  // 向上取整
-
-    // 基本周期数 + 安全裕量(50%) + 最小基准值
-    uint16_t cycle_a = (uint16_t)(tile_count_n * 3 / 2 + 10);
-    uint16_t cycle_b = (uint16_t)(tile_count_m * 3 / 2 + 10);
-
-    // 限制在合理范围内 (最小10，最大1000)
-    if (cycle_a < 10) cycle_a = 10;
-    if (cycle_a > 1000) cycle_a = 1000;
-    if (cycle_b < 10) cycle_b = 10;
-    if (cycle_b > 1000) cycle_b = 1000;
+    // 4. 配置 Cache 生命周期
+    // 由于 BRAM 能装下所有数据，Cache 只需要单次访问即可
+    // 设置为 1 表示数据只使用一次，不需要重用
+    uint16_t cycle_a = 1;
+    uint16_t cycle_b = 1;
 
     LPRINTF("     Before fpga_configure_cache (cycle_a=%u, cycle_b=%u)\n", cycle_a, cycle_b);
     fpga_configure_cache(&g_fpga, cycle_a, cycle_b);
@@ -387,6 +413,16 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     LPRINTF("     FPGA computation complete\n");
 
+    // 调试：打印 sdpramZ 中的计算结果（FPGA 直接写入的）
+    // FPGA 直接写内存，CPU 读取前需要 invalidate cache
+    Xil_DCacheInvalidateRange((UINTPTR)sdpramZ_base, msg_inst->input0Shape0 * msg_inst->input1Shape1 * 4);
+    volatile uint32_t* sdpramZ_ptr = (volatile uint32_t*)(uintptr_t)sdpramZ_base;
+    LPRINTF("     sdpramZ first 10: ");
+    for (int i = 0; i < 10; i++) {
+        LPRINTF("%d ", sdpramZ_ptr[i]);
+    }
+    LPRINTF("\n");
+
     // 7. DataMover: FPGA SRAM → 共享内存
     LPRINTF("     DataMover: FPGA SRAM→shm...\n");
 
@@ -403,7 +439,15 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     }
 
     // Cache同步: Flush R5的cache，确保A53读取时能看到DataMover写入的最新结果
-    Xil_DCacheFlushRange(blkZ->shm_phys_addr, sizeZ);
+    Xil_DCacheFlushRange((UINTPTR)blkZ->shm_phys_addr, sizeZ);
+
+    // 调试：打印传回共享内存后的数据
+    volatile uint32_t* blockZ_ptr = (volatile uint32_t*)(uintptr_t)(blkZ->shm_phys_addr + 64);
+    LPRINTF("     blockZ first 10 (after DM2): ");
+    for (int i = 0; i < 10; i++) {
+        LPRINTF("%d ", blockZ_ptr[i]);
+    }
+    LPRINTF("\n");
 
     // 8. 更新block状态
     write_block_status(msg_inst->blockIdA, BUFFER_STATUS_FREE);  // 输入block可重用

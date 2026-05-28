@@ -171,6 +171,10 @@ public class HWAcceleratedExpV13 extends HWAcceleratedQuantizedOperator implemen
 
         long s_in = sourceShift;
         long s_hw = AcceleratorSimInterface.acceleratorCfg().fracWidth();
+
+        // DEBUG: 打印shift值
+        System.out.printf("[DEBUG expOnAccelerator] nodeName=%s, s_in=%d, s_hw=%d, preShiftAmount=%d%n",
+            nodeName, s_in, s_hw, (int)(s_in - s_hw));
         long s_out = targetOutputShift;
 
         int preShiftAmount = (int) (s_in - s_hw);
