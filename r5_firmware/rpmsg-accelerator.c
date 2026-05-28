@@ -301,11 +301,11 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         return -1;
     }
 
-    // 调试：打印 sdpramA 前10个元素
-    volatile uint32_t* sdpramA_ptr = (volatile uint32_t*)sdpramA_base;
-    LPRINTF("     sdpramA first 10: ");
+    // 调试：打印共享内存中 blockA 前10个元素（64字节偏移量后是数据区）
+    volatile uint32_t* blockA_ptr = (volatile uint32_t*)(blkA->shm_phys_addr + 64);
+    LPRINTF("     blockA first 10: ");
     for (int i = 0; i < 10; i++) {
-        LPRINTF("%d ", sdpramA_ptr[i]);
+        LPRINTF("%d ", blockA_ptr[i]);
     }
     LPRINTF("\n");
 
@@ -322,11 +322,11 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
         return -1;
     }
 
-    // 调试：打印 sdpramB 前10个元素
-    volatile uint32_t* sdpramB_ptr = (volatile uint32_t*)sdpramB_base;
-    LPRINTF("     sdpramB first 10: ");
+    // 调试：打印共享内存中 blockB 前10个元素（64字节偏移量后是数据区）
+    volatile uint32_t* blockB_ptr = (volatile uint32_t*)(blkB->shm_phys_addr + 64);
+    LPRINTF("     blockB first 10: ");
     for (int i = 0; i < 10; i++) {
-        LPRINTF("%d ", sdpramB_ptr[i]);
+        LPRINTF("%d ", blockB_ptr[i]);
     }
     LPRINTF("\n");
 
