@@ -110,26 +110,17 @@ public class HWAcceleratedBackend extends Backend<INDArray> {
 
 	@Override
 	public Tensor toNativeTensor(TensorManager<Tensor> tensorManager, String name, INDArray backendTensor) {
-		if (sharedMemoryPool == null || !sharedMemoryPool.isInitialized()) {
-			throw new IllegalStateException("Shared memory pool not initialized");
-		}
+		// 算子执行时已经把数据从 shared memory 复制到 INDArray
+		// 所以这里直接从 INDArray 创建 Tensor，而不是指向 shared memory
+		org.onnx4j.tensor.DataType onnx4jDataType = convertToONNXDataType(backendTensor.data().dataType());
 
-		// 从跟踪信息获取共享内存位置
-		SharedMemoryInfo info = getSharedMemoryInfo(backendTensor);
-
-		// 注意：不需要 syncFromDevice，因为算子执行完成后已经 sync 过了
-		// （各算子的 executeOnHardware 中已经调用 jni.syncFromDevice(blockIdZ, 64, sizeZ)）
-
-		// 创建Tensor引用共享内存
+		// 从 INDArray 数据创建 Tensor（与 DL4J 后端类似）
 		Tensor tensor = new Tensor(
 			name,
 			"",
-			convertToONNXDataType(backendTensor.data().dataType()),
+			onnx4jDataType,
 			org.onnx4j.tensor.Shape.create(backendTensor.shape()),
-			info.physicalAddress,
-			info.blockId,
-			sharedMemoryPool,
-			info.offset
+			backendTensor.data().asNio()  // 使用 INDArray 的数据
 		);
 
 		return tensor;
