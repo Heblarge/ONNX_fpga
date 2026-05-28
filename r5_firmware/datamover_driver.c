@@ -268,14 +268,19 @@ int dmdrv_transfer(datamover_driver_t* driver, int index,
     XData_mover_Set_src_offset_bytes(instance, 0);
     XData_mover_Set_dst_offset_bytes(instance, 0);
 
+    // 先验证寄存器写入是否正确
+    u64 actual_src = XData_mover_Get_mem_src(instance);
+    u64 actual_dst = XData_mover_Get_mem_dst(instance);
+    DM_LOG("[DM] %s: 0x%llx -> 0x%llx (%dx%d bytes)\r\n",
+               name, src_addr, dst_addr, rows, row_len);
+    DM_LOG("[DM] %s reg verify: src=0x%llx, dst=0x%llx\r\n",
+               name, actual_src, actual_dst);
+
     // 清除完成标志
     *done_flag = 0;
 
-    // 启动传输
+    // 验证通过后再启动传输
     XData_mover_Start(instance);
-
-    DM_LOG("[DM] %s: 0x%llx -> 0x%llx (%dx%d bytes)\r\n",
-               name, src_addr, dst_addr, rows, row_len);
 
     return 0;
 }

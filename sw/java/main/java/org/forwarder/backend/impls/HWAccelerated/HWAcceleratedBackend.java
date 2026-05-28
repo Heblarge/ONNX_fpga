@@ -117,8 +117,8 @@ public class HWAcceleratedBackend extends Backend<INDArray> {
 		// 从跟踪信息获取共享内存位置
 		SharedMemoryInfo info = getSharedMemoryInfo(backendTensor);
 
-		// 同步从设备
-		HWAcceleratorJNI.getInstance().syncFromDevice(info.blockId, info.offset, info.size);
+		// 注意：不需要 syncFromDevice，因为算子执行完成后已经 sync 过了
+		// （各算子的 executeOnHardware 中已经调用 jni.syncFromDevice(blockIdZ, 64, sizeZ)）
 
 		// 创建Tensor引用共享内存
 		Tensor tensor = new Tensor(

@@ -15,6 +15,7 @@
 #include "xil_printf.h"
 #include "xscugic.h"
 #include "xil_cache.h"
+#include "xil_mpu.h"
 #include <metal/sys.h>
 #include <metal/irq.h>
 #include "platform_info.h"
@@ -144,6 +145,16 @@ int32_t init_system(void)
 
 	/* Low level abstraction layer for openamp initialization */
 	metal_init(&metal_param);
+
+	/* Configure MPU for FPGA SRAM regions (0xA0000000, 0xA2000000, 0xA4000000)
+	 * These are AXI BRAM controllers and must be marked as non-cacheable
+	 * to ensure R5 reads the actual data written by DataMover.
+	 * Using NORM_NSHARED_NCACHE for normal non-cacheable memory.
+	 */
+	Xil_SetTlbAttributes(0xA0000000, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramA
+	Xil_SetTlbAttributes(0xA2000000, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramB
+	Xil_SetTlbAttributes(0xA4000000, NORM_NSHARED_NCACHE | PRIV_RW_USER_RW);  // sdpramZ
+	Xil_DCacheFlush();  // Flush any stale cached data
 
 	/* configure the global interrupt controller */
 	app_gic_initialize();
