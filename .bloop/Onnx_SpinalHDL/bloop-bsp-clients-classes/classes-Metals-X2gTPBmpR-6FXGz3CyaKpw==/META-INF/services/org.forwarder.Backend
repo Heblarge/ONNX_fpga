@@ -1,2 +1,0 @@
-org.forwarder.backend.impls.dl4j.DL4JBackend
-org.forwarder.backend.impls.HWAccelerated.HWAcceleratedBackend

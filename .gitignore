@@ -1,0 +1,6 @@
+.bloop/
+.metals/
+.bsp/
+out/
+target/
+.Xil/
