@@ -4,3 +4,10 @@
 out/
 target/
 .Xil/
+validation/validation.cache/
+validation/validation.ip_user_files/
+*.jar
+*.weights
+*.bit
+*.bin
+
