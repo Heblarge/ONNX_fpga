@@ -73,24 +73,33 @@ public class DL4JTest {
                 System.out.println("Input shape: " + Arrays.toString(inputShape));
                 System.out.println("Total elements: " + totalElements);
 
-                // 创建 INT32 类型输入数据，范围在 -8 到 8
-                int[] inputData = new int[totalElements];
+                // 生成符合模型量化格式的测试数据
+                // 根据模型参数：
+                // - Add_8算子输入: Q18.13格式 (shift=13)
+                // - Concat_9输出: Q18.13格式 (shift=13)
+
+                System.out.println("Generating quantized test data...");
+
+                // 创建原始浮点数数据（用户想要测试的实际值）
+                float[] floatData = new float[totalElements];
                 for (int i = 0; i < totalElements; i++) {
-                    // 生成 -8 到 8 之间的整数
-                    // 第一个输入：-8, -7, -6, ...
-                    // 第二个输入：1, 2, 3, ...
                     if (inputIndex == 0) {
-                        inputData[i] = -8 + (i % 17);  // -8 到 8 循环
+                        // 第一个输入：小范围浮点数 (-0.5 到 0.5)
+                        // 量化后不会溢出 Q18.13 范围
+                        floatData[i] = -0.5f + ((i % 11) * 0.1f);  // -0.5, -0.4, ..., 0.5
                     } else {
-                        inputData[i] = 1 + (i % 8);  // 1 到 8 循环
+                        // 第二个输入：正浮点数 (0.1 到 0.8)
+                        floatData[i] = 0.1f + ((i % 8) * 0.1f);  // 0.1, 0.2, ..., 0.8
                     }
                 }
 
-                System.out.println("Input data (first 10): " + Arrays.toString(Arrays.copyOf(inputData, Math.min(10, inputData.length))));
-                System.out.println();
+                System.out.println("Original float data (first 5): " +
+                    Arrays.toString(Arrays.copyOf(floatData, Math.min(5, floatData.length))));
 
-                // Feed 输入
-                Tensor inputTensor = buildIntTensor(model, input.getName(), inputData, inputShape);
+                // 使用 Q18.13 格式量化 (shift=13，对应Add算子的输入格式)
+                // 量化后值范围：约 -4096 到 4096 (对于 -0.5 到 0.5 的浮点数)
+                int shift = 13;
+                Tensor inputTensor = buildQuantizedIntTensor(model, input.getName(), floatData, inputShape, shift);
                 session.feed(inputTensor, false);
                 inputIndex++;
             }
@@ -117,12 +126,20 @@ public class DL4JTest {
             dataBuffer.order(ByteOrder.LITTLE_ENDIAN);
             dataBuffer.rewind();
 
-            // 打印前20个输出值
+            // 打印前20个输出值（包含反量化）
+            // 根据模型，Exp算子输出: Q12.19格式 (shift=19)
             int printCount = Math.min(outputSize, 20);
+            int outputShift = 19;  // Exp输出格式
+            double outputScale = Math.pow(2.0, outputShift);
+
             System.out.println("Output data (first " + printCount + "):");
+            System.out.printf("  Output format: Q12.%d (shift=%d)%n", outputShift, outputShift);
+            System.out.println("  Showing quantized and de-quantized values:");
             for (int i = 0; i < printCount; i++) {
-                int val = dataBuffer.getInt();
-                System.out.printf("  out[%d] = %d (0x%08X)%n", i, val, val);
+                int quantized = dataBuffer.getInt();
+                // 反量化：float_value = quantized / 2^shift
+                float dequantized = (float)(quantized / outputScale);
+                System.out.printf("  out[%d] = %d (0x%08X) → %.6f%n", i, quantized, quantized, dequantized);
             }
 
             System.out.println("\n===== Test completed successfully! =====");
@@ -145,6 +162,57 @@ public class DL4JTest {
 
         ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
         buffer.asFloatBuffer().put(data);
+
+        builder.setRawData(ByteString.copyFrom(buffer));
+
+        return TensorBuilder.builder(builder.build(), model.getConfig().getTensorOptions())
+                .manager(model.getTensorManager())
+                .name(name)
+                .build();
+    }
+
+    /**
+     * 构建量化后的 INT32 Tensor（符合模型Q格式要求）
+     *
+     * 量化参数：
+     * - Add算子输入: Q18.13 (shift=13, scale=1/8192)
+     * - Exp算子输入: Q11.20 (shift=20, scale=1/1048576)
+     *
+     * 量化公式: quantized = round(float_value × 2^shift)
+     * 反量化: float_value = quantized / 2^shift
+     */
+    private static Tensor buildQuantizedIntTensor(Model model, String name, float[] floatData, long[] shape, int shift) {
+        TensorProto.Builder builder = TensorProto.newBuilder();
+
+        for (long dim : shape) {
+            builder.addDims(dim);
+        }
+
+        builder.setDataType(TensorProto.DataType.INT32.getNumber());
+
+        ByteBuffer buffer = ByteBuffer.allocate(floatData.length * 4).order(ByteOrder.LITTLE_ENDIAN);
+
+        // 量化：float → 定点数
+        // quantized = round(float_value × 2^shift)
+        double scaleFactor = Math.pow(2.0, shift);
+        System.out.printf("  Quantizing with shift=%d (scale=%.6e):%n", shift, 1.0/scaleFactor);
+
+        for (int i = 0; i < floatData.length; i++) {
+            // 量化到定点数
+            long quantized = Math.round(floatData[i] * scaleFactor);
+
+            // 限制在32位有符号整数范围内
+            if (quantized > Integer.MAX_VALUE) quantized = Integer.MAX_VALUE;
+            if (quantized < Integer.MIN_VALUE) quantized = Integer.MIN_VALUE;
+
+            buffer.putInt((int) quantized);
+
+            // 打印前几个值的转换过程
+            if (i < 5) {
+                System.out.printf("    [%d] %.4f → %d (0x%08X)%n",
+                    i, floatData[i], (int)quantized, (int)quantized);
+            }
+        }
 
         builder.setRawData(ByteString.copyFrom(buffer));
 
