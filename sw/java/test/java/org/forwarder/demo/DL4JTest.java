@@ -162,6 +162,7 @@ public class DL4JTest {
 
         ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
         buffer.asFloatBuffer().put(data);
+        buffer.rewind();  // Reset position before copying
 
         builder.setRawData(ByteString.copyFrom(buffer));
 
@@ -214,6 +215,7 @@ public class DL4JTest {
             }
         }
 
+        buffer.rewind();  // Reset position before copying
         builder.setRawData(ByteString.copyFrom(buffer));
 
         return TensorBuilder.builder(builder.build(), model.getConfig().getTensorOptions())
@@ -236,6 +238,7 @@ public class DL4JTest {
 
         ByteBuffer buffer = ByteBuffer.allocate(data.length * 4).order(ByteOrder.LITTLE_ENDIAN);
         buffer.asIntBuffer().put(data);
+        buffer.rewind();  // Reset position before copying
 
         builder.setRawData(ByteString.copyFrom(buffer));
 
