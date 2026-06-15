@@ -334,11 +334,13 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     }
     LPRINTF("\n");
 
-    // 调试：打印共享内存中 blockA 前10个元素（64字节偏移量后是数据区）
-    volatile uint32_t* blockA_ptr = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 64);
-    LPRINTF("     blockA first 10: ");
+    // 调试1：验证DataMover传输后源数据未被破坏
+    // 再次从共享内存读取数据，确认与传输前一致
+    volatile uint32_t* blockA_ptr_verify = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 64);
+    Xil_DCacheInvalidateRange((UINTPTR)(blkA->shm_phys_addr + 64), 10 * sizeof(uint32_t));
+    LPRINTF("     [DM_VERIFY] blockA source data after DM0: ");
     for (int i = 0; i < 10; i++) {
-        LPRINTF("%d ", blockA_ptr[i]);
+        LPRINTF("%d ", blockA_ptr_verify[i]);
     }
     LPRINTF("\n");
 
@@ -367,6 +369,7 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
 
     // 调试：打印共享内存中 blockB 前10个元素（64字节偏移量后是数据区）
     volatile uint32_t* blockB_ptr = (volatile uint32_t*)(uintptr_t)(blkB->shm_phys_addr + 64);
+    Xil_DCacheInvalidateRange((UINTPTR)(blkB->shm_phys_addr + 64), 10 * sizeof(uint32_t));
     LPRINTF("     blockB first 10: ");
     for (int i = 0; i < 10; i++) {
         LPRINTF("%d ", blockB_ptr[i]);
@@ -374,6 +377,14 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     LPRINTF("\n");
 
     LPRINTF("     DataMover: complete, now triggering FPGA...\n");
+
+    // 调试2：在DataMover传输完成后添加短暂延时，确保数据稳定
+    // 使用简单的busy-wait延时（约1ms）
+    volatile uint32_t delay_count = 100000;
+    while (delay_count--) {
+        __asm__ volatile ("nop");
+    }
+    LPRINTF("     [DM_DELAY] Delay after DataMover complete\n");
 
     // 4. 配置 Cache 生命周期
     // 由于 BRAM 能装下所有数据，Cache 只需要单次访问即可
