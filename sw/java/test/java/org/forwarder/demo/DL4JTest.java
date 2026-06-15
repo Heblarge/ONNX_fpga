@@ -86,10 +86,11 @@ public class DL4JTest {
                     if (inputIndex == 0) {
                         // 第一个输入：小范围浮点数 (-0.5 到 0.5)
                         // 量化后不会溢出 Q18.13 范围
-                        floatData[i] = -0.5f + ((i % 11) * 0.1f);  // -0.5, -0.4, ..., 0.5
+                        float[] pattern = {-0.5f, -0.25f, 0.0f, 0.25f, 0.5f};
+                        floatData[i] = pattern[i % pattern.length];
                     } else {
                         // 第二个输入：正浮点数 (0.1 到 0.8)
-                        floatData[i] = 0.1f + ((i % 8) * 0.1f);  // 0.1, 0.2, ..., 0.8
+                        floatData[i] = 0.1f; // 0.1, 0.2, ..., 0.8
                     }
                 }
 

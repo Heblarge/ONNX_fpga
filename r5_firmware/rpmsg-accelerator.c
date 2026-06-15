@@ -297,20 +297,6 @@ static int execute_single_instruction(const instruction_msg_t* msg_inst) {
     LPRINTF("     blockA data+64:   %08X %08X %08X %08X\n",
             blockA_data_ptr[0], blockA_data_ptr[1], blockA_data_ptr[2], blockA_data_ptr[3]);
 
-    // 对照测试：CPU 直接从 DDR 搬到 BRAM，绕过 DataMover
-    // 用于确认是否是 SMMU 权限问题导致 DataMover 读 DDR 失败
-    volatile uint32_t* cpu_test_src = (volatile uint32_t*)(uintptr_t)(blkA->shm_phys_addr + 64);
-    volatile uint32_t* cpu_test_dst = (volatile uint32_t*)(uintptr_t)sdpramA_base;
-    for (int i = 0; i < 10; i++) {
-        cpu_test_dst[i] = cpu_test_src[i];
-    }
-    // 确保写入完成后再读取
-    Xil_DCacheFlushRange((UINTPTR)sdpramA_base, 10 * sizeof(uint32_t));
-    LPRINTF("CPU copy test - sdpramA: %d %d %d %d\n",
-            (int)cpu_test_dst[0], (int)cpu_test_dst[1], (int)cpu_test_dst[2], (int)cpu_test_dst[3]);
-    LPRINTF("CPU copy test - src    : %d %d %d %d\n",
-            (int)cpu_test_src[0], (int)cpu_test_src[1], (int)cpu_test_src[2], (int)cpu_test_src[3]);
-
     // 搬运tileA: 共享内存 → sdpramA (从地址0开始)
     // 注意：源地址需要 +64 跳过状态标志区域
     if (dmdrv_transfer(&g_datamover, 0,  // DataMover 0
